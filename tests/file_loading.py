@@ -24,7 +24,7 @@ R = TypeVar("R", bound=RecipeReader)
 
 def get_test_path() -> Path:
     """
-    Returns a path object that points to the directory containing all auxillary testing files. We no longer store this
+    Returns a path object that points to the directory containing all auxiliary testing files. We no longer store this
     value as a constant by design. We cannot guarantee the proper construction of a global constants Path variable
     in tests that use `pyfakefs`. So instead, this function aims to provide the convenience of using `pathlib` while
     simplifying the `pyfakefs` nuance.

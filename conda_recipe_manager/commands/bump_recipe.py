@@ -403,6 +403,9 @@ def _update_sha256(recipe_parser: RecipeParser, cli_args: _CliArgs) -> None:
     # what to do.
     unique_hashes: set[str] = set()
 
+    # TODO refactor this. The HTTP fetcher table needs to fetch all source files AND THEN process the SHA-256 hashes,
+    # post corrections.
+
     # Filter-out artifacts that don't need a SHA-256 hash.
     http_fetcher_tbl: Final[dict[str, HttpArtifactFetcher]] = {
         k: v for k, v in fetcher_tbl.items() if isinstance(v, HttpArtifactFetcher)
