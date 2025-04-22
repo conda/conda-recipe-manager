@@ -52,7 +52,7 @@ jobs:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
-          repository: conda-incubator/conda-recipe-manager-test-data
+          repository: conda/conda-recipe-manager-test-data
           path: test_data
           sparse-checkout: recipes_v0/${{ matrix.test-directory }}
       - uses: ./.github/actions/setup-env

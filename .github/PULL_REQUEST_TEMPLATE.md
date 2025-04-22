@@ -18,5 +18,5 @@
      let us know!
 
      Helpful links:
-       - Conda Org COC: https://github.com/conda-incubator/conda-recipe-manager/blob/main/CODE_OF_CONDUCT.md
-       - Contributing docs: https://github.com/conda-incubator/conda-recipe-manager/blob/main/CONTRIBUTING.md -->
+       - Conda Org COC: https://github.com/conda/conda-recipe-manager/blob/main/CODE_OF_CONDUCT.md
+       - Contributing docs: https://github.com/conda/conda-recipe-manager/blob/main/CONTRIBUTING.md -->

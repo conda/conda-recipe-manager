@@ -50,7 +50,7 @@ Some highlights:
 - Adds `pyfakefs` to the unit testing suite.
 
 Full changelog available at:
-https://github.com/conda-incubator/conda-recipe-manager/compare/v0.2.1...v0.3.0
+https://github.com/conda/conda-recipe-manager/compare/v0.2.1...v0.3.0
 
 ## 0.2.1
 Minor bug fixes and documentation improvements. Conversion compatibility with Bioconda recipe has improved significantly.
