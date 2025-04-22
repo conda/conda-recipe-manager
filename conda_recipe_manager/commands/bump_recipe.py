@@ -58,7 +58,16 @@ class _CliArgs(NamedTuple):
 
 
 # Common variable names used for source artifact hashes.
-_COMMON_HASH_VAR_NAMES: Final[set[str]] = {"sha256", "hash", "hash_val", "hash_value"}
+_COMMON_HASH_VAR_NAMES: Final[set[str]] = {
+    "sha256",
+    "hash",
+    "hash_val",
+    "hash_value",
+    "checksum",
+    "check_sum",
+    "hashval",
+    "hashvalue",
+}
 
 # Maximum number of retries to attempt when trying to fetch an external artifact.
 _RETRY_LIMIT: Final[int] = 5

@@ -246,7 +246,16 @@ class RecipeReader(IsModifiable):
     @staticmethod
     def _set_key_and_matches(
         key: str,
-    ) -> tuple[str, Optional[re.Match[str]], Optional[re.Match[str]], Optional[re.Match[str]], Optional[re.Match[str]]]:
+    ) -> tuple[
+        str,
+        Optional[re.Match[str]],
+        Optional[re.Match[str]],
+        Optional[re.Match[str]],
+        Optional[re.Match[str]],
+        Optional[re.Match[str]],
+        Optional[re.Match[str]],
+        Optional[re.Match[str]],
+    ]:
         """
         Helper function for `_render_jinja_vars()` that takes a JINJA statement (string inside the braces) and attempts
         to match and apply any currently supported "JINJA functions" to the statement.
@@ -254,29 +263,66 @@ class RecipeReader(IsModifiable):
         :param key: Sanitized key to perform JINJA functions on.
         :returns: The modified key, if any JINJA functions apply. Also returns any applicable match objects.
         """
-        # TODO add support for REPLACE
+
+        # Helper function that strips-out JINJA ops out of the string, `key`.
+        def _strip_op(k: str, m: Optional[re.Match[str]]) -> str:
+            if not m:
+                return k
+            return k.replace(m.group(), "").strip()
 
         # Example: {{ name | lower }}
         lower_match = Regex.JINJA_FUNCTION_LOWER.search(key)
-        if lower_match:
-            key = key.replace(lower_match.group(), "").strip()
+        key = _strip_op(key, lower_match)
 
         # Example: {{ name | upper }}
         upper_match = Regex.JINJA_FUNCTION_UPPER.search(key)
-        if upper_match:
-            key = key.replace(upper_match.group(), "").strip()
+        key = _strip_op(key, upper_match)
+
+        # Example: {{ name | replace('-', '_') }
+        replace_match = Regex.JINJA_FUNCTION_REPLACE.search(key)
+        key = _strip_op(key, replace_match)
+
+        # Example: {{ name | split('.') }
+        split_match = Regex.JINJA_FUNCTION_SPLIT.search(key)
+        # Example: {{ '.'.join(version.split(".")[:2]) }}
+        join_match = Regex.JINJA_FUNCTION_JOIN.search(key)
 
         # Example: {{ name[0] }}
         idx_match = Regex.JINJA_FUNCTION_IDX_ACCESS.search(key)
         if idx_match:
             key = key.replace(f"[{cast(str, idx_match.group(2))}]", "").strip()
 
+        # NOTE: `split` and `join` are special. `split` changes the type from a string to a list and `join` requires
+        # a list to work as expected. As a workaround, we only apply `split` if a `join` or `index` operation is
+        # present. Additionally, we only apply a `join` if a `split` is present.
+        if split_match and join_match:
+            key = _strip_op(key, split_match)
+            # Re-calculate the join's match now that `split` has been removed.
+            join_match = Regex.JINJA_FUNCTION_JOIN.search(key)
+            if join_match:
+                # If we are in the | form, remove the `join()` portion entirely
+                if join_match.groups()[0] is not None:
+                    key = _strip_op(key, join_match)
+                # If we are in the `.` form, extract the key from the `.join()` call.
+                else:
+                    key = join_match.group(5)
+            # This should not be possible, but we still want to guard against accidental list evaluation if a `join` is
+            # no longer possible.
+            else:
+                join_match = None
+                split_match = None
+        elif split_match and idx_match:
+            key = _strip_op(key, split_match)
+        else:
+            join_match = None
+            split_match = None
+
         # Addition/concatenation. Note the key(s) will need to be evaluated later.
         # Example: {{ build_number + 100 }}
         # Example: {{ version + ".1" }}
         add_concat_match = Regex.JINJA_FUNCTION_ADD_CONCAT.search(key)
 
-        return key, lower_match, upper_match, idx_match, add_concat_match
+        return key, lower_match, upper_match, replace_match, split_match, join_match, idx_match, add_concat_match
 
     def _eval_jinja_token(self, s: str) -> JsonType:
         """
@@ -307,7 +353,7 @@ class RecipeReader(IsModifiable):
 
     def _render_jinja_vars(self, s: str) -> JsonType:
         # pylint: disable=too-complex
-        # TODO Refactor and simplify ^
+        # TODO Refactor and simplify. We should really consider using a proper parser over REGEX soup.
         """
         Helper function that replaces Jinja substitutions with their actual set values.
 
@@ -325,7 +371,9 @@ class RecipeReader(IsModifiable):
             # The regex guarantees the string starts and ends with double braces
             key = match[start_idx:-2].strip()
             # Check for and interpret common JINJA functions
-            key, lower_match, upper_match, idx_match, add_concat_match = RecipeReader._set_key_and_matches(key)
+            key, lower_match, upper_match, replace_match, split_match, join_match, idx_match, add_concat_match = (
+                RecipeReader._set_key_and_matches(key)
+            )
 
             if add_concat_match:
                 lhs = self._eval_jinja_token(cast(str, add_concat_match.group(1)))
@@ -345,13 +393,25 @@ class RecipeReader(IsModifiable):
                     value = value.lower()
                 if upper_match:
                     value = value.upper()
+                # NOTE: We previously guarantee in `_set_key_and_matches()` that `split` is accompanied by a operation
+                # that will normalize it back to a string. But for this to work, we must perform the `split` before a
+                # `join` or an index access.
+                if split_match:
+                    value = value.split(split_match.group(2))  # type: ignore[assignment]
+                if join_match:
+                    # The index of the string that we join on changes depending on which form of the function is used.
+                    # NOTE: `.groups()` does not return the top-level 0th grouping, so the indices are 1-off.
+                    join_str_idx = 3 if join_match.groups()[2] is not None else 2
+                    value = join_match.group(join_str_idx).join(value)
                 if idx_match:
                     idx = int(cast(str, idx_match.group(2)))
                     # From our research, it looks like string indexing on JINJA variables is almost exclusively used
                     # get the first character in a string. If the index is out of bounds, we will default to the
-                    # variable's value as a fall-back.
-                    if 0 <= idx < len(value):
+                    # variable's value as a fall-back. Although rare, negative indexing is supported.
+                    if -len(value) <= idx < len(value):
                         value = value[idx]
+                if replace_match:
+                    value = value.replace(replace_match.group(2), replace_match.group(3))
                 s = s.replace(match, value)
             # $-Escaping the unresolved variable does a few things:
             #   - Clearly identifies the value as an unresolved variable

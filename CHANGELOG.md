@@ -3,6 +3,12 @@ NOTES:
 - Version releases in the 0.x.y range may introduce breaking changes.
 - See the auto-generated release notes for more details.
 
+## 0.4.2
+- Various bug fixes and improvements related to `crm bump-recipe`
+  - Introduces the new `--override-build-num` flag to allow bumped recipes to start counting
+    from a non-zero value
+  - Adds support for `| replace()` JINJA functions to be evaluated.
+
 ## 0.4.1
 - `crm convert` now prints stacktraces when the `--debug` flag is used.
 - `crm bump-recipe` now includes a `--save-on-failure` flag that can save the

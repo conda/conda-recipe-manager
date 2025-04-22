@@ -197,10 +197,20 @@ class Regex:
 
     # All recognized JINJA functions are kept in a set for the convenience of trying to match against all of them.
     # Group 1 contains the function or variable name, Group 2 contains the arguments, if any.
-    JINJA_FUNCTION_LOWER: Final[re.Pattern[str]] = re.compile(r"\|\s*(lower)")
-    JINJA_FUNCTION_UPPER: Final[re.Pattern[str]] = re.compile(r"\|\s*(upper)")
-    JINJA_FUNCTION_REPLACE: Final[re.Pattern[str]] = re.compile(r"\|\s*(replace)\((.*)\)")
-    JINJA_FUNCTION_IDX_ACCESS: Final[re.Pattern[str]] = re.compile(r"(\w+)\[(\d+)\]")
+    # NOTE: `| replace()` and `.replace()` are both valid in V0 and common. `.upper()` and `.lower()` are VERY uncommon,
+    # but are trivial to support. In V1, `| <func>` is the only acceptable form.
+    JINJA_FUNCTION_LOWER: Final[re.Pattern[str]] = re.compile(r"\|\s*(lower)|\.(lower)\(\)")
+    JINJA_FUNCTION_UPPER: Final[re.Pattern[str]] = re.compile(r"\|\s*(upper)|\.(upper)\(\)")
+    JINJA_FUNCTION_REPLACE: Final[re.Pattern[str]] = re.compile(
+        r"""[\|\.]\s*(replace)\(['"]([^'"]*)['"]\s*,\s*['"]([^'"]*)['"]\)"""
+    )
+    JINJA_FUNCTION_SPLIT: Final[re.Pattern[str]] = re.compile(r"""[\|\.]\s*(split)\(['"]([^'"]*)['"]\)""")
+    # NOTE: `join` doesn't follow the same pattern as the other JINJA regular expressions. The function name can be in
+    # one of two group locations.
+    JINJA_FUNCTION_JOIN: Final[re.Pattern[str]] = re.compile(
+        r"""\|\s*(join)\(['"]([^'"]*)['"]\)|['"]([^'"]*)['"]\.(join)\((.*)\)"""
+    )
+    JINJA_FUNCTION_IDX_ACCESS: Final[re.Pattern[str]] = re.compile(r"(.+)\[(-?\d+)\]")
     JINJA_FUNCTION_ADD_CONCAT: Final[re.Pattern[str]] = re.compile(
         r"([\"\']?[\w\.]+[\"\']?)\s*\+\s*([\"\']?[\w\.]+[\"\']?)"
     )
@@ -210,6 +220,11 @@ class Regex:
         JINJA_FUNCTION_LOWER,
         JINJA_FUNCTION_UPPER,
         JINJA_FUNCTION_REPLACE,
+        # TODO FIX: Adding `split` and `join` to this list causes some odd bracket-escaping in the
+        # `regression_jinja_sub.yaml` upgrade test. This will require additional investigation, but for now, IMO the
+        # old behavior is a little less wrong, so we'll leave it as is.
+        # JINJA_FUNCTION_SPLIT,
+        # JINJA_FUNCTION_JOIN,
         JINJA_FUNCTION_IDX_ACCESS,
         JINJA_FUNCTION_ADD_CONCAT,
         JINJA_FUNCTION_MATCH,

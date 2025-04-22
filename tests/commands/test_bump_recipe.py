@@ -144,6 +144,10 @@ def test_bump_recipe_cli(
     cli_args: Final[list[str]] = (
         ["--build-num", str(recipe_file_path)] if version is None else ["-t", version, str(recipe_file_path)]
     )
+    # We should not need to set a retry limit on valid mocked HTTP calls. But this mitigates the retry mechanism from
+    # slowing down the tests. This problem is described by Issue #265.
+    # Special thanks to @mrbean-bremen for assisting with this investigation.
+    cli_args.extend(["--retry-interval", "0.001"])
 
     with patch("requests.get", new=mock_requests_get):
         result = runner.invoke(bump_recipe.bump_recipe, cli_args)

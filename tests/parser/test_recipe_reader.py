@@ -645,6 +645,21 @@ def test_contains_value(file: str, path: str, expected: bool) -> None:
         ("sub_vars.yaml", "/requirements/fake_run_constrained/14", True, "dne42"),
         ("sub_vars.yaml", "/requirements/fake_run_constrained/15", True, 'foo > "42"'),
         ("sub_vars.yaml", "/requirements/fake_run_constrained/16", True, "foo > 6"),
+        # Replace cases
+        ("sub_vars.yaml", "/requirements/fake_run_constrained/17", True, "TYPES_toml"),
+        ("sub_vars.yaml", "/requirements/fake_run_constrained/18", True, "types_toml"),
+        ("sub_vars.yaml", "/requirements/fake_run_constrained/19", True, "TYPES_toml"),
+        ("sub_vars.yaml", "/requirements/fake_run_constrained/20", True, "types_toml"),
+        ("sub_vars.yaml", "/requirements/fake_run_constrained/21", True, "TYPES_TOML"),
+        # Complex split and join cases. Note that we do not replace if split/join would result in a non-string value.
+        ("sub_vars.yaml", "/requirements/fake_run_constrained/22", True, "${{ name.split('-') }}"),
+        ("sub_vars.yaml", "/requirements/fake_run_constrained/23", True, "${{ '.'.join(name) }}"),
+        ("sub_vars.yaml", "/requirements/fake_run_constrained/24", True, "TYPES.toml"),
+        ("sub_vars.yaml", "/requirements/fake_run_constrained/25", True, "TYPES"),
+        ("sub_vars.yaml", "/requirements/fake_run_constrained/26", True, "TYPES.toml"),
+        ("sub_vars.yaml", "/requirements/fake_run_constrained/27", True, "l"),
+        ("sub_vars.yaml", "/requirements/fake_run_constrained/28", True, "T"),
+        ("sub_vars.yaml", "/requirements/fake_run_constrained/29", True, "TYPES-toml"),
         ## v1_simple-recipe.yaml ##
         ("v1_format/v1_simple-recipe.yaml", "/build/number", False, 0),
         ("v1_format/v1_simple-recipe.yaml", "/build/number/", False, 0),
@@ -800,6 +815,21 @@ def test_contains_value(file: str, path: str, expected: bool) -> None:
         ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/14", True, "dne42"),
         ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/15", True, 'foo > "42"'),
         ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/16", True, "foo > 6"),
+        # Replace cases
+        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/17", True, "TYPES_toml"),
+        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/18", True, "types_toml"),
+        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/19", True, "TYPES_toml"),
+        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/20", True, "types_toml"),
+        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/21", True, "TYPES_TOML"),
+        # Complex split and join cases. Note that we do not replace if split/join would result in a non-string value.
+        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/22", True, "${{ name.split('-') }}"),
+        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/23", True, "${{ '.'.join(name) }}"),
+        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/24", True, "TYPES.toml"),
+        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/25", True, "TYPES"),
+        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/26", True, "TYPES.toml"),
+        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/27", True, "l"),
+        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/28", True, "T"),
+        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/29", True, "TYPES-toml"),
         ## multi-output.yaml ##
         ("multi-output.yaml", "/outputs/0/build/run_exports/0", False, "bar"),
         ("multi-output.yaml", "/outputs/0/build/run_exports", False, ["bar"]),

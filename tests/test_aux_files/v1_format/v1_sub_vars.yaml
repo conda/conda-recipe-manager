@@ -47,6 +47,19 @@ requirements:
     - ${{ dne + 42 }}
     - foo > ${{ '4' + "2" }}
     - foo > ${{ 4 + 2 }}
+    - ${{ name|replace("-", "_") }}
+    - ${{ name | lower | replace('-', '_') }}
+    - ${{ name.replace('-', '_') }}
+    - ${{ name.lower().replace('-', '_') }}
+    - ${{ name.upper().replace('-', '_') }}
+    - ${{ name.split('-') }}
+    - ${{ '.'.join(name) }}
+    - ${{ '.'.join(name.split('-')) }}
+    - ${{ name.split('-')[0] }}
+    - ${{ name | split('-') | join('.') }}
+    - ${{ name[-1] }}
+    - ${{ name[-10] }}
+    - ${{ name[-11] }}
 
 tests:
   - python:
