@@ -6,7 +6,7 @@
 import datetime
 import logging
 from dataclasses import dataclass
-from typing import Final, cast
+from typing import Final, ItemsView, cast
 
 from conda_recipe_manager.fetcher.api._types import BaseApiException
 from conda_recipe_manager.fetcher.api._utils import check_for_empty_field, make_request_and_validate
@@ -243,8 +243,8 @@ def _parse_version_metadata(data: JsonType) -> VersionMetadata:
         raise ApiException(f"Failed to convert size: {size_str}") from e
 
     parsed: Final[VersionMetadata] = VersionMetadata(
-        md5=str(data["digests"]["md5"]),  # type: ignore
-        sha256=str(data["digests"]["sha256"]),  # type: ignore
+        md5=str(cast(JsonObjectType, cast(JsonObjectType, data)["digests"])["md5"]),
+        sha256=str(cast(JsonObjectType, cast(JsonObjectType, data)["digests"])["sha256"]),
         filename=str(cast(JsonObjectType, data)["filename"]),
         python_version=str(cast(JsonObjectType, data)["python_version"]),
         size=size,
@@ -277,7 +277,7 @@ def _parse_package_info(data: JsonType) -> PackageInfo:
     """
     # Extract the VersionMetadata for "source" objects
     version_metadata: VersionMetadata | None = None
-    urls = cast(list[JsonObjectType], cast(JsonObjectType, data)["urls"])
+    urls: Final[list[JsonObjectType]] = cast(list[JsonObjectType], cast(JsonObjectType, data)["urls"])
     for url in urls:
         if url["python_version"] == "source":
             version_metadata = _parse_version_metadata(url)
@@ -287,32 +287,33 @@ def _parse_package_info(data: JsonType) -> PackageInfo:
         raise ApiException("Source artifacts are not provided!")
 
     # These fields may not always be provided and are not guaranteed
-    project_urls = data["info"]["project_urls"]  # type: ignore
+    project_urls: Final[JsonObjectType] = cast(
+        JsonObjectType, cast(JsonObjectType, cast(JsonObjectType, data)["info"])["project_urls"]
+    )
     homepage_url = ""
-    if "Homepage" in project_urls:  # type: ignore
-        homepage_url = str(project_urls["Homepage"])  # type: ignore
+    if "Homepage" in project_urls:
+        homepage_url = str(project_urls["Homepage"])
 
     source_url = ""
-    if "Source" in project_urls:  # type: ignore
-        source_url = str(project_urls["Source"])  # type: ignore
+    if "Source" in project_urls:
+        source_url = str(project_urls["Source"])
 
+    info: Final[JsonObjectType] = cast(JsonObjectType, cast(JsonObjectType, data)["info"])
     parsed = PackageInfo(
-        description=str(data["info"]["description"] or ""),  # type: ignore
-        description_content_type=str(
-            data["info"]["description_content_type"] or ""  # type:ignore
-        ),
-        docs_url=str(data["info"]["docs_url"] or ""),  # type: ignore
-        license=str(data["info"]["license"]),  # type: ignore
-        name=str(data["info"]["name"]),  # type: ignore
-        package_url=str(data["info"]["package_url"]),  # type: ignore
-        project_url=str(data["info"]["project_url"]),  # type: ignore
+        description=str(info["description"] or ""),
+        description_content_type=str(info["description_content_type"] or ""),
+        docs_url=str(info["docs_url"] or ""),
+        license=str(info["license"]),
+        name=str(info["name"]),
+        package_url=str(info["package_url"]),
+        project_url=str(info["project_url"]),
         homepage_url=homepage_url,
         source_url=source_url,
-        release_url=str(data["info"]["release_url"]),  # type: ignore
+        release_url=str(info["release_url"]),
         # This field may be empty
-        requires_python=str(data["info"]["requires_python"]),  # type: ignore
-        summary=str(data["info"]["summary"] or ""),  # type: ignore
-        version=str(data["info"]["version"]),  # type: ignore
+        requires_python=str(info["requires_python"]),
+        summary=str(info["summary"] or ""),
+        version=str(info["version"]),
         source_metadata=version_metadata,
     )
 
@@ -357,14 +358,13 @@ def fetch_package_metadata(package: str) -> PackageMetadata:
     #
     # In some cases, there may be more than one `source` artifact. In theory, source code is the same for any version,
     # so prefer to pull tar-balls over other archival formats (like `.zip`s) for their compression ability.
-    version: str
-    artifacts: list[JsonType]
-    rel_json: dict[str, JsonType] = response_json["releases"]  # type: ignore
-    for version, artifacts in rel_json.items():  # type: ignore
-        artifact: JsonType
+    artifacts: list[JsonObjectType]
+    rel_json: Final[JsonObjectType] = cast(JsonObjectType, cast(JsonObjectType, response_json)["releases"])
+    for version, artifacts in cast(ItemsView[str, list[JsonObjectType]], rel_json.items()):
+        artifact: JsonObjectType
         release_artifacts: list[VersionMetadata] = []
         for artifact in artifacts:
-            if artifact["python_version"] == "source":  # type: ignore
+            if str(artifact["python_version"]) == "source":
                 release_artifacts.append(_parse_version_metadata(artifact))
         if len(release_artifacts) == 0:
             raise ApiException("API did not return any source artifacts.")
