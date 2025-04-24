@@ -6,11 +6,11 @@
 import datetime
 import logging
 from dataclasses import dataclass
-from typing import Final, no_type_check
+from typing import Final, cast
 
 from conda_recipe_manager.fetcher.api._types import BaseApiException
 from conda_recipe_manager.fetcher.api._utils import check_for_empty_field, make_request_and_validate
-from conda_recipe_manager.types import JsonType, SchemaType
+from conda_recipe_manager.types import JsonObjectType, JsonType, SchemaType
 from conda_recipe_manager.utils.cryptography import hashing
 
 # Logging object for this module
@@ -41,7 +41,6 @@ class VersionMetadata:
     url: str
 
     @staticmethod
-    @no_type_check
     def get_schema() -> SchemaType:
         """
         Returns a JSON schema used to validate JSON responses.
@@ -104,7 +103,6 @@ class PackageInfo:
     source_metadata: VersionMetadata
 
     @staticmethod
-    @no_type_check
     def get_schema(requires_releases: bool) -> SchemaType:
         """
         Returns a JSON schema used to validate JSON responses.
@@ -177,7 +175,7 @@ class PackageInfo:
             },
         }
         if requires_releases:
-            base["required"].append("releases")
+            cast(list[str], base["required"]).append("releases")
         return base
 
 
@@ -230,14 +228,14 @@ def _parse_version_metadata(data: JsonType) -> VersionMetadata:
     :returns: Version metadata, as an immutable dataclass object
     """
     # Validate non-string fields
-    time_str: Final[str] = data["upload_time_iso_8601"]  # type: ignore
+    time_str: Final[str] = str(cast(JsonObjectType, data)["upload_time_iso_8601"])
     upload_time: datetime.datetime
     try:
         upload_time = datetime.datetime.fromisoformat(time_str)
     except Exception as e:
         raise ApiException(f"Failed to convert timestamp: {time_str}") from e
 
-    size_str = int(data["size"])  # type: ignore
+    size_str = str(cast(JsonObjectType, data)["size"])
     size: int
     try:
         size = int(size_str)
@@ -247,11 +245,11 @@ def _parse_version_metadata(data: JsonType) -> VersionMetadata:
     parsed: Final[VersionMetadata] = VersionMetadata(
         md5=str(data["digests"]["md5"]),  # type: ignore
         sha256=str(data["digests"]["sha256"]),  # type: ignore
-        filename=str(data["filename"]),  # type: ignore
-        python_version=str(data["python_version"]),  # type: ignore
+        filename=str(cast(JsonObjectType, data)["filename"]),
+        python_version=str(cast(JsonObjectType, data)["python_version"]),
         size=size,
         upload_time=upload_time,
-        url=str(data["url"] or ""),  # type: ignore
+        url=str(cast(JsonObjectType, data)["url"] or ""),
     )
 
     # Validate the remaining critical fields
@@ -279,10 +277,9 @@ def _parse_package_info(data: JsonType) -> PackageInfo:
     """
     # Extract the VersionMetadata for "source" objects
     version_metadata: VersionMetadata | None = None
-    urls: list[JsonType] = data["urls"]  # type:ignore
-    url: JsonType
+    urls = cast(list[JsonObjectType], cast(JsonObjectType, data)["urls"])
     for url in urls:
-        if url["python_version"] == "source":  # type: ignore
+        if url["python_version"] == "source":
             version_metadata = _parse_version_metadata(url)
             break
     # Although the schema checks have passed, we still need to verify that a `source` code artifact is available.
@@ -344,7 +341,7 @@ def fetch_package_metadata(package: str) -> PackageMetadata:
     response_json: JsonType
     try:
         response_json = make_request_and_validate(
-            _calc_package_metadata_url(package), PackageInfo.get_schema(True), log  # type: ignore[misc]
+            _calc_package_metadata_url(package), PackageInfo.get_schema(True), log
         )
     except BaseApiException as e:
         raise ApiException(e.message) from e
@@ -405,7 +402,7 @@ def fetch_package_version_metadata(package: str, version: str) -> PackageMetadat
     try:
         response_json = make_request_and_validate(
             _calc_package_version_metadata_url(package, version),
-            PackageInfo.get_schema(False),  # type: ignore[misc]
+            PackageInfo.get_schema(False),
             log,
         )
     except BaseApiException as e:
