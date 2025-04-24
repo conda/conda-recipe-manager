@@ -11,11 +11,10 @@ import pytest
 from conda_recipe_manager.fetcher.api import _utils
 from conda_recipe_manager.fetcher.api._types import BaseApiException
 from conda_recipe_manager.fetcher.api.pypi import PackageInfo
-from tests.file_loading import get_test_path, load_json_file
+from tests.file_loading import load_json_file
 
 _MOCK_BASE_URL: Final[str] = "https://mock.website.com"
-# TODO this should not be this way
-_TEST_PYPI_FILES: Final[str] = f"{get_test_path()}/api/pypi"
+_TEST_PYPI_FILES: Final[str] = "api/pypi"
 
 
 @no_type_check

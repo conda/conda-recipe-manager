@@ -13,9 +13,9 @@ from typing import Final, no_type_check
 from unittest.mock import patch
 
 from conda_recipe_manager.fetcher.api import pypi
-from tests.file_loading import get_test_path, load_json_file
+from tests.file_loading import load_json_file
 
-_TEST_PYPI_PATH: Final[str] = "/api/pypi"
+_TEST_PYPI_PATH: Final[str] = "api/pypi"
 
 # Test data
 SCIPY_DESCRIPTION: Final[str] = (
@@ -79,7 +79,7 @@ def test_parse_version_metadata() -> None:
     Tests parsing of version metadata. Ensures that the function can handle parsing the same blob in two possible
     locations.
     """
-    data = load_json_file(get_test_path() / f"{_TEST_PYPI_PATH}/valid_get_package.json")
+    data = load_json_file(f"{_TEST_PYPI_PATH}/valid_get_package.json")
     assert (
         pypi._parse_version_metadata(  # pylint: disable=protected-access
             data["releases"]["1.11.1"][18]  # type: ignore
@@ -98,7 +98,7 @@ def test_parse_package_info() -> None:
     """
     Tests parsing of package info
     """
-    data = load_json_file(get_test_path() / f"{_TEST_PYPI_PATH}/valid_get_package.json")
+    data = load_json_file(f"{_TEST_PYPI_PATH}/valid_get_package.json")
     result = pypi._parse_package_info(data)  # pylint: disable=protected-access
     assert result == SCIPY_PACKAGE_INFO_V1111
 
@@ -112,9 +112,7 @@ def test_fetch_package_metadata() -> None:
     with patch("requests.get") as mock_get:
         mock_get.return_value.status_code = 200
         mock_get.return_value.headers = {"content-type": "application/json"}
-        mock_get.return_value.json.return_value = load_json_file(
-            get_test_path() / f"{_TEST_PYPI_PATH}/valid_get_package.json"
-        )
+        mock_get.return_value.json.return_value = load_json_file(f"{_TEST_PYPI_PATH}/valid_get_package.json")
         result = pypi.fetch_package_metadata("sci-py")
         # Because this JSON blob can be difficult to sift through, we check the size of `releases` as a quick-sanity
         # check all are there.
@@ -183,9 +181,7 @@ def test_fetch_package_version_metadata() -> None:
     with patch("requests.get") as mock_get:
         mock_get.return_value.status_code = 200
         mock_get.return_value.headers = {"content-type": "application/json"}
-        mock_get.return_value.json.return_value = load_json_file(
-            get_test_path() / f"{_TEST_PYPI_PATH}/valid_get_package_version.json"
-        )
+        mock_get.return_value.json.return_value = load_json_file(f"{_TEST_PYPI_PATH}/valid_get_package_version.json")
         assert pypi.fetch_package_version_metadata("sci-py", "1.11.1") == pypi.PackageMetadata(
             info=SCIPY_PACKAGE_INFO_V1111,
             releases={"1.11.1": SCIPY_VERSION_MD_V1111},
