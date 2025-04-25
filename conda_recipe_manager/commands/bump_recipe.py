@@ -15,12 +15,16 @@ from typing import Final, NamedTuple, NoReturn, Optional, cast
 import click
 
 from conda_recipe_manager.commands.utils.types import ExitCode
+from conda_recipe_manager.fetcher.api import pypi
 from conda_recipe_manager.fetcher.artifact_fetcher import from_recipe as af_from_recipe
 from conda_recipe_manager.fetcher.base_artifact_fetcher import BaseArtifactFetcher
 from conda_recipe_manager.fetcher.exceptions import FetchError
 from conda_recipe_manager.fetcher.http_artifact_fetcher import HttpArtifactFetcher
+from conda_recipe_manager.parser.enums import SchemaVersion
 from conda_recipe_manager.parser.recipe_parser import RecipeParser
+from conda_recipe_manager.parser.recipe_reader import RecipeReader
 from conda_recipe_manager.types import JsonPatchType
+from conda_recipe_manager.utils.typing import optional_str
 
 # Truncates the `__name__` to the crm command name.
 log = logging.getLogger(__name__.rsplit(".", maxsplit=1)[-1])
@@ -57,7 +61,6 @@ class _CliArgs(NamedTuple):
     save_on_failure: bool
 
 
-# TODO rm in a post PyPi API world?
 class _Regex:
     """
     Namespace that contains all pre-compiled regular expressions used in this tool.
@@ -251,18 +254,14 @@ def _update_version(recipe_parser: RecipeParser, cli_args: _CliArgs) -> None:
     )
 
 
-def _fetch_archive(fetcher: HttpArtifactFetcher, cli_args: _CliArgs) -> HttpArtifactFetcher:
+def _fetch_archive(fetcher: HttpArtifactFetcher, cli_args: _CliArgs, retries: int = _RETRY_LIMIT) -> None:
     """
-    Fetches the target source archive for future use. If a correction needs to be made, this function returns a new
-    Artifact Fetcher instance.
-
-    For example, many PyPi archives (as of approximately 2024) now use underscores in the archive file name even though
-    the package name still uses hyphens.
+    Fetches the target source archive (with retries) for future use.
 
     :param fetcher: Artifact fetching instance to use.
     :param cli_args: Immutable CLI arguments from the user.
+    :param retries: (Optional) Number of retries to attempt. Defaults to `_RETRY_LIMIT` constant.
     :raises FetchError: If an issue occurred while downloading or extracting the archive.
-    :returns: The original fetcher or a new fetcher instance if a correction needed to be made.
     """
     # NOTE: This is the most I/O-bound operation in `bump-recipe` by a country mile. At the time of writing,
     # running this operation in the background will not make any significant improvements to performance. Every other
@@ -270,53 +269,105 @@ def _fetch_archive(fetcher: HttpArtifactFetcher, cli_args: _CliArgs) -> HttpArti
     # also inherently reliant on having the version change performed ahead of time. In addition, parallelizing the
     # retries defeats the point of having a back-off timer.
 
-    pypi_correct_attempts = 0
-    for retry_id in range(1, _RETRY_LIMIT + 1):
+    for retry_id in range(1, retries + 1):
         try:
             log.info("Fetching artifact `%s`, attempt #%d", fetcher, retry_id)
             fetcher.fetch()
-            return fetcher
+            return
         except FetchError:
-            # Only attempt the correction once. All other retries will be on the original URL and will skip the attempt
-            # logic.
-            if pypi_correct_attempts > 0:
-                time.sleep(retry_id * cli_args.retry_interval)
-                continue
+            time.sleep(retry_id * cli_args.retry_interval)
 
-            # On first failure, attempt to correct the URL, if it is something we know how to try to fix.
-            pypi_match = _Regex.PYPI_URL.match(fetcher.get_archive_url())
-            pypi_correct_attempts += 1
-            # If the PyPi correction fails, we still want to wait the intended time before the next retry.
-            if pypi_match is None:
-                time.sleep(retry_id * cli_args.retry_interval)
-                continue
-
-            corrected_archive = cast(str, pypi_match.group(3).replace("-", "_"))
-            corrected_url = _Regex.PYPI_URL.sub(r"\1\2/" + corrected_archive + r"-\4\5", fetcher.get_archive_url())
-            # TODO update recipe file
-            # TODO add unit tests
-            log.warning("Archive found at %s. Will attempt to update recipe file.", corrected_url)
-            new_fetcher = HttpArtifactFetcher(str(fetcher), corrected_url)
-            try:
-                new_fetcher.fetch()
-                return new_fetcher
-            except FetchError:
-                continue
-
-    raise FetchError(f"Failed to fetch `{fetcher}` after {_RETRY_LIMIT} retries.")
+    raise FetchError(f"Failed to fetch `{fetcher}` after {retries} retries.")
 
 
-def _get_sha256(fetcher: HttpArtifactFetcher, cli_args: _CliArgs) -> str:
+def _correct_pypi_url(recipe_reader: RecipeReader, fetcher: HttpArtifactFetcher) -> str:
+    """
+    Handles correcting PyPi URLs by querying the PyPi API. There are many edge cases here that complicate this process,
+    like managing JINJA variables commonly found in our URL values.
+
+    :param recipe_reader: Read-only parser (enforced by our static analyzer). Editing may not be thread-safe. It is up
+        to the caller to manage that risk.
+    :param fetcher: Artifact fetching instance to use.
+    :raises FetchError: If an issue occurred while downloading or extracting the archive.
+    :returns: Corrected PyPi artifact URL.
+    """
+    version_value: Final[Optional[str]] = optional_str(
+        recipe_reader.get_value(_RecipePaths.VERSION, default=None, sub_vars=True)
+    )
+    if version_value is None:
+        raise FetchError("Unable to determine recipe version for PyPi API request.")
+
+    # TODO we eventually need to handle the case of mapping conda names to PyPi names.
+    # TODO alternatively regex-out the PyPi name from the URL. However, in many cases, this might be wasted
+    # compute.
+    package_name: Final[Optional[str]] = recipe_reader.get_recipe_name()
+    if package_name is None:
+        raise FetchError("Unable to determine package name for PyPi API request.")
+
+    # TODO add retry mechanism for PyPi API query?
+    try:
+        pypi_meta: Final[pypi.PackageMetadata] = pypi.fetch_package_version_metadata(package_name, version_value)
+    except pypi.ApiException as e:
+        raise FetchError("Failed to access the PyPi API to correct a URL.") from e
+
+    if version_value not in pypi_meta.releases:
+        raise FetchError(f"Failed to retrieve target version: {version_value}")
+
+    # We replace the `filename` specifically for a number of reasons:
+    #  1) This decreases the "friction" involved with drastically changing what already exists in the recipe file. Less
+    #     changes, less disruption/confusion for our package builders (or so the theory goes).
+    #  2) The PyPi API generally produces a "post-redirect" URL for package artifacts. Again, as to not change the file
+    #     dramatically, we want to keep the commonly used `https://pypi.io` URL.
+    filename: Final[str] = pypi_meta.releases[version_value].filename
+
+    # If the commonly used `version` variable exists, inject its usage into the file name.
+    version_var: Final[Optional[str]] = optional_str(recipe_reader.get_variable("version", None))
+    if version_var is None:
+        filename_with_var: Final[str] = filename.replace(
+            version_value,
+            "{{ version }}" if recipe_reader.get_schema_version() == SchemaVersion.V0 else "${{ version }}",
+        )
+        return f"{fetcher.get_archive_url().rsplit("/", maxsplit=1)[0]}/{filename_with_var}"
+
+    return f"{fetcher.get_archive_url().rsplit("/", maxsplit=1)[0]}/{filename}"
+
+
+def _get_sha256_and_corrected_url(
+    recipe_reader: RecipeReader, fetcher: HttpArtifactFetcher, cli_args: _CliArgs
+) -> tuple[str, Optional[str]]:
     """
     Wrapping function that attempts to retrieve an HTTP/HTTPS artifact with a retry mechanism.
 
+    This also determines if a URL correction needs to be made.
+
+    For example, many PyPi archives (as of approximately 2024) now use underscores in the archive file name even though
+    the package name still uses hyphens.
+
+    :param recipe_reader: Read-only parser (enforced by our static analyzer). Editing may not be thread-safe. It is up
+        to the caller to manage that risk.
     :param fetcher: Artifact fetching instance to use.
     :param cli_args: Immutable CLI arguments from the user.
     :raises FetchError: If an issue occurred while downloading or extracting the archive.
-    :returns: The SHA-256 hash of the artifact, if it was able to be downloaded.
+    :returns: The SHA-256 hash of the artifact, if it was able to be downloaded. Optionally includes a corrected URL.
     """
-    # TODO eliminate this function
-    return _fetch_archive(fetcher, cli_args).get_archive_sha256()
+    pypi_match = _Regex.PYPI_URL.match(fetcher.get_archive_url())
+    if pypi_match is None:
+        _fetch_archive(fetcher, cli_args)
+        return (fetcher.get_archive_sha256(), None)
+
+    # Attempt to handle PyPi URLs that might have changed.
+    pypi_retries: Final[int] = _RETRY_LIMIT // 2
+    try:
+        _fetch_archive(fetcher, cli_args, retries=pypi_retries)
+        return (fetcher.get_archive_sha256(), None)
+    except FetchError:
+        # TODO update recipe file
+        corrected_url: Final[str] = _correct_pypi_url(recipe_reader, fetcher)
+        corrected_fetcher: Final[HttpArtifactFetcher] = HttpArtifactFetcher(str(fetcher), corrected_url)
+
+        _fetch_archive(corrected_fetcher, cli_args, retries=pypi_retries)
+        log.warning("Archive found at %s. Will attempt to update recipe file.", corrected_url)
+        return (corrected_fetcher.get_archive_sha256(), corrected_url)
 
 
 def _update_sha256_check_hash_var(
@@ -345,7 +396,9 @@ def _update_sha256_check_hash_var(
             and _RecipePaths.SINGLE_SHA_256 in recipe_parser.get_variable_references(hash_var)
         ):
             try:
-                recipe_parser.set_variable(hash_var, _get_sha256(src_fetcher, cli_args))
+                # TODO ADD URL correction logic
+                sha, _ = _get_sha256_and_corrected_url(recipe_parser, src_fetcher, cli_args)
+                recipe_parser.set_variable(hash_var, sha)
             except FetchError:
                 _exit_on_failed_fetch(recipe_parser, src_fetcher, cli_args)
             return True
@@ -365,17 +418,22 @@ def _update_sha256_check_hash_var(
     return False
 
 
-def _update_sha256_fetch_one(src_path: str, fetcher: HttpArtifactFetcher, cli_args: _CliArgs) -> tuple[str, str]:
+def _update_sha256_fetch_one(
+    recipe_reader: RecipeReader, src_path: str, fetcher: HttpArtifactFetcher, cli_args: _CliArgs
+) -> tuple[str, str]:
     """
     Helper function that retrieves a single HTTP source artifact, so that we can parallelize network requests.
 
+    :param recipe_reader: Read-only parser (enforced by our static analyzer). Editing may not be thread-safe. It is up
+        to the caller to manage that risk.
     :param src_path: Recipe key path to the applicable artifact source.
     :param fetcher: Artifact fetching instance to use.
     :param cli_args: Immutable CLI arguments from the user.
     :raises FetchError: In the event that the retry mechanism failed to fetch a source artifact.
     :returns: A tuple containing the path to and the actual SHA-256 value to be updated.
     """
-    sha = _get_sha256(fetcher, cli_args)
+    # TODO ADD URL correction logic
+    sha, _ = _get_sha256_and_corrected_url(recipe_reader, fetcher, cli_args)
     return (RecipeParser.append_to_path(src_path, "/sha256"), sha)
 
 
@@ -418,7 +476,9 @@ def _update_sha256(recipe_parser: RecipeParser, cli_args: _CliArgs) -> None:
     sha_path_to_sha_tbl: dict[str, str] = {}
     with cf.ThreadPoolExecutor() as executor:
         artifact_futures_tbl = {
-            executor.submit(_update_sha256_fetch_one, src_path, fetcher, cli_args): fetcher
+            executor.submit(
+                _update_sha256_fetch_one, cast(RecipeReader, recipe_parser), src_path, fetcher, cli_args
+            ): fetcher
             for src_path, fetcher in http_fetcher_tbl.items()
         }
         for future in cf.as_completed(artifact_futures_tbl):
