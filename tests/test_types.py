@@ -1,5 +1,5 @@
 """
-:Description: Unit tests for the types module
+:Description: Unit tests for the top-level types module.
 """
 
 from __future__ import annotations

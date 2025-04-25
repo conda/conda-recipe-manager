@@ -57,6 +57,7 @@ class _CliArgs(NamedTuple):
     save_on_failure: bool
 
 
+# TODO rm in a post PyPi API world?
 class _Regex:
     """
     Namespace that contains all pre-compiled regular expressions used in this tool.

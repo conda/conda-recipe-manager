@@ -12,12 +12,22 @@ from conda_recipe_manager.fetcher.api._types import BaseApiException
 from conda_recipe_manager.fetcher.api._utils import check_for_empty_field, make_request_and_validate
 from conda_recipe_manager.types import JsonObjectType, JsonType, SchemaType
 from conda_recipe_manager.utils.cryptography import hashing
+from conda_recipe_manager.utils.meta import get_crm_version
 
 # Logging object for this module
 log = logging.getLogger(__name__)
 
 # Base URL that all endpoints use
 _BASE_URL: Final[str] = "https://pypi.python.org/pypi"
+
+# HTTP headers that should be attached to all PyPi API interactions. Check the links below for more details:
+#   - https://docs.pypi.org/api/
+#   - https://packaging.python.org/en/latest/guides/index-mirrors-and-caches/
+# TODO FUTURE: Investigate creating a mirror cache for the conda org.
+_PYPI_API_HEADERS = {
+    "content-type": "application/json",
+    "user-agent": f"conda-recipe-manager/{get_crm_version()}",
+}
 
 
 @dataclass(frozen=True)
@@ -342,7 +352,11 @@ def fetch_package_metadata(package: str) -> PackageMetadata:
     response_json: JsonType
     try:
         response_json = make_request_and_validate(
-            _calc_package_metadata_url(package), PackageInfo.get_schema(True), log
+            _calc_package_metadata_url(package),
+            PackageInfo.get_schema(True),
+            log=log,
+            # TODO add timeout
+            headers=_PYPI_API_HEADERS,
         )
     except BaseApiException as e:
         raise ApiException(e.message) from e
@@ -403,7 +417,9 @@ def fetch_package_version_metadata(package: str, version: str) -> PackageMetadat
         response_json = make_request_and_validate(
             _calc_package_version_metadata_url(package, version),
             PackageInfo.get_schema(False),
-            log,
+            log=log,
+            # TODO add timeout
+            headers=_PYPI_API_HEADERS,
         )
     except BaseApiException as e:
         raise ApiException(e.message) from e

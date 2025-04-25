@@ -14,7 +14,11 @@ from conda_recipe_manager.types import JsonType, SchemaType
 
 
 def make_request_and_validate(
-    endpoint: str, schema: SchemaType, log: Optional[Logger] = None, timeout: int = DEFAULT_HTTP_REQ_TIMEOUT
+    endpoint: str,
+    schema: SchemaType,
+    log: Optional[Logger] = None,
+    timeout: int = DEFAULT_HTTP_REQ_TIMEOUT,
+    headers: Optional[dict[str, str]] = None,
 ) -> JsonType:
     # pylint: disable=too-complex
     """
@@ -24,6 +28,7 @@ def make_request_and_validate(
     :param schema: JSON schema to validate the results against
     :param log: (Optional) Logger instance to log debug information to, if specified.
     :param timeout: (Optional) Timeout for an HTTP request
+    :param headers: (Optional) HTTP headers for the request
     :raises BaseApiException: If there is an unrecoverable issue with the API. Callers should wrap this with the API
                               exception specific to their API!
     """
@@ -31,7 +36,7 @@ def make_request_and_validate(
     try:
         if log is not None:
             log.debug("Performing GET request on: %s", endpoint)
-        response = requests.get(endpoint, timeout=timeout)
+        response = requests.get(endpoint, timeout=timeout, headers=headers)
     except Exception as e:
         raise BaseApiException("GET request failed.") from e
 
