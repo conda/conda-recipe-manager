@@ -420,7 +420,7 @@ def _update_sha256_check_hash_var(
 
 def _update_sha256_fetch_one(
     recipe_reader: RecipeReader, src_path: str, fetcher: HttpArtifactFetcher, cli_args: _CliArgs
-) -> tuple[str, str]:
+) -> tuple[str, str, Optional[tuple[str, str]]]:
     """
     Helper function that retrieves a single HTTP source artifact, so that we can parallelize network requests.
 
@@ -430,11 +430,14 @@ def _update_sha256_fetch_one(
     :param fetcher: Artifact fetching instance to use.
     :param cli_args: Immutable CLI arguments from the user.
     :raises FetchError: In the event that the retry mechanism failed to fetch a source artifact.
-    :returns: A tuple containing the path to and the actual SHA-256 value to be updated.
+    :returns: A tuple containing the path to and the actual SHA-256 value to be updated. Optionally includes a second
+        tuple containing the path to the artifact URL and a corrected URL.
     """
-    # TODO ADD URL correction logic
-    sha, _ = _get_sha256_and_corrected_url(recipe_reader, fetcher, cli_args)
-    return (RecipeParser.append_to_path(src_path, "/sha256"), sha)
+    sha, url = _get_sha256_and_corrected_url(recipe_reader, fetcher, cli_args)
+    url_tup: Final[Optional[tuple[str, str]]] = (
+        None if url is None else (RecipeParser.append_to_path(src_path, "/url"), url)
+    )
+    return (RecipeParser.append_to_path(src_path, "/sha256"), sha, url_tup)
 
 
 def _update_sha256(recipe_parser: RecipeParser, cli_args: _CliArgs) -> None:
@@ -473,7 +476,7 @@ def _update_sha256(recipe_parser: RecipeParser, cli_args: _CliArgs) -> None:
     # significantly more time and resources. That aligns with how I/O bound this process is. We use the
     # `ThreadPoolExecutor` class over a `ThreadPool` so the script may exit gracefully if we failed to acquire an
     # artifact.
-    sha_path_to_sha_tbl: dict[str, str] = {}
+    sha_cntr = 0
     with cf.ThreadPoolExecutor() as executor:
         artifact_futures_tbl = {
             executor.submit(
@@ -484,21 +487,27 @@ def _update_sha256(recipe_parser: RecipeParser, cli_args: _CliArgs) -> None:
         for future in cf.as_completed(artifact_futures_tbl):
             fetcher = artifact_futures_tbl[future]
             try:
-                resolved_tuple = future.result()
-                sha_path_to_sha_tbl[resolved_tuple[0]] = resolved_tuple[1]
+                sha_path, sha, url_tup = future.result()
+                unique_hashes.add(sha)
+                # Guard against the unlikely scenario that the `sha256` field is missing.
+                sha_patch_op = "replace" if recipe_parser.contains_value(sha_path) else "add"
+                _exit_on_failed_patch(recipe_parser, {"op": sha_patch_op, "path": sha_path, "value": sha}, cli_args)
+
+                # Patch the URL if a new one has been provided.
+                if url_tup is None:
+                    continue
+                url_path, url = url_tup
+                # Guard against the "should be impossible" scenario that the `url` field is missing.
+                url_patch_op = "replace" if recipe_parser.contains_value(url_path) else "add"
+                _exit_on_failed_patch(recipe_parser, {"op": url_patch_op, "path": url_path, "value": url}, cli_args)
+
             except FetchError:
                 _exit_on_failed_fetch(recipe_parser, fetcher, cli_args)
-
-    for sha_path, sha in sha_path_to_sha_tbl.items():
-        unique_hashes.add(sha)
-        # Guard against the unlikely scenario that the `sha256` field is missing.
-        patch_op = "replace" if recipe_parser.contains_value(sha_path) else "add"
-        _exit_on_failed_patch(recipe_parser, {"op": patch_op, "path": sha_path, "value": sha}, cli_args)
 
     log.info(
         "Found %d unique SHA-256 hash(es) out of a total of %d hash(es) in %d sources.",
         len(unique_hashes),
-        len(sha_path_to_sha_tbl),
+        sha_cntr,
         len(fetcher_tbl),
     )
 
