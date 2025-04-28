@@ -360,6 +360,7 @@ def _get_sha256_and_corrected_url(
         _fetch_archive(fetcher, cli_args, retries=pypi_retries)
         return (fetcher.get_archive_sha256(), None)
     except FetchError:
+        log.info("PyPI URL detected. Attempting to recover URL.")
         corrected_url: Final[str] = _correct_pypi_url(recipe_reader, fetcher)
         corrected_fetcher: Final[HttpArtifactFetcher] = HttpArtifactFetcher(str(fetcher), corrected_url)
 
