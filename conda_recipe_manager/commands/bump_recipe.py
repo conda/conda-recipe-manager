@@ -321,7 +321,7 @@ def _correct_pypi_url(recipe_reader: RecipeReader, fetcher: HttpArtifactFetcher)
 
     # If the commonly used `version` variable exists, inject its usage into the file name.
     version_var: Final[Optional[str]] = optional_str(recipe_reader.get_variable("version", None))
-    if version_var is None:
+    if version_var is not None:
         filename_with_var: Final[str] = filename.replace(
             version_value,
             "{{ version }}" if recipe_reader.get_schema_version() == SchemaVersion.V0 else "${{ version }}",
