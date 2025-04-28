@@ -67,11 +67,9 @@ class _Regex:
     Namespace that contains all pre-compiled regular expressions used in this tool.
     """
 
-    # Attempts to match PyPi source archive URLs. Here is a mapping of the groupings:
-    # Group:      1                2                          3                         4                   5
-    #        | Base URL | Package Name (in URL) | Package name (in archive) | Version (in archive) | Archive extension |
+    # Attempts to match PyPi source archive URLs by the start of the URL.
     PYPI_URL: Final[re.Pattern[str]] = re.compile(
-        r"(https?://pypi\.io/packages/source/[a-z]/)([\w-]*)/([\w-]*)-([\d\.]*)(\.tar\.gz|\.zip)"
+        r"https?://pypi\.io/packages/source/[a-z]/|https?://files\.pythonhosted\.org/"
     )
 
 
