@@ -39,6 +39,7 @@ class _RecipePaths:
 
     BUILD_NUM: Final[str] = "/build/number"
     SOURCE: Final[str] = "/source"
+    SINGLE_URL: Final[str] = f"{SOURCE}/url"
     SINGLE_SHA_256: Final[str] = f"{SOURCE}/sha256"
     VERSION: Final[str] = "/package/version"
 
@@ -361,7 +362,6 @@ def _get_sha256_and_corrected_url(
         _fetch_archive(fetcher, cli_args, retries=pypi_retries)
         return (fetcher.get_archive_sha256(), None)
     except FetchError:
-        # TODO update recipe file
         corrected_url: Final[str] = _correct_pypi_url(recipe_reader, fetcher)
         corrected_fetcher: Final[HttpArtifactFetcher] = HttpArtifactFetcher(str(fetcher), corrected_url)
 
@@ -396,9 +396,19 @@ def _update_sha256_check_hash_var(
             and _RecipePaths.SINGLE_SHA_256 in recipe_parser.get_variable_references(hash_var)
         ):
             try:
-                # TODO ADD URL correction logic
-                sha, _ = _get_sha256_and_corrected_url(recipe_parser, src_fetcher, cli_args)
+                sha, url = _get_sha256_and_corrected_url(recipe_parser, src_fetcher, cli_args)
                 recipe_parser.set_variable(hash_var, sha)
+                if url is not None:
+                    _exit_on_failed_patch(
+                        recipe_parser,
+                        {
+                            # Guard against the "should be impossible" scenario that the `url` field is missing.
+                            "op": "replace" if recipe_parser.contains_value(_RecipePaths.SINGLE_URL) else "add",
+                            "path": _RecipePaths.SINGLE_URL,
+                            "value": url,
+                        },
+                        cli_args,
+                    )
             except FetchError:
                 _exit_on_failed_fetch(recipe_parser, src_fetcher, cli_args)
             return True
