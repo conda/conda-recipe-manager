@@ -279,7 +279,7 @@ def _fetch_archive(fetcher: HttpArtifactFetcher, cli_args: _CliArgs, retries: in
     raise FetchError(f"Failed to fetch `{fetcher}` after {retries} retries.")
 
 
-def _correct_pypi_url(recipe_reader: RecipeReader, fetcher: HttpArtifactFetcher) -> str:
+def _correct_pypi_url(recipe_reader: RecipeReader, fetcher: HttpArtifactFetcher) -> tuple[str, Optional[str]]:
     """
     Handles correcting PyPi URLs by querying the PyPi API. There are many edge cases here that complicate this process,
     like managing JINJA variables commonly found in our URL values.
@@ -288,7 +288,7 @@ def _correct_pypi_url(recipe_reader: RecipeReader, fetcher: HttpArtifactFetcher)
         to the caller to manage that risk.
     :param fetcher: Artifact fetching instance to use.
     :raises FetchError: If an issue occurred while downloading or extracting the archive.
-    :returns: Corrected PyPi artifact URL.
+    :returns: Corrected PyPi artifact URL and optionally the URL containing the `version` variable to use in the recipe.
     """
     version_value: Final[Optional[str]] = optional_str(
         recipe_reader.get_value(_RecipePaths.VERSION, default=None, sub_vars=True)
@@ -321,14 +321,16 @@ def _correct_pypi_url(recipe_reader: RecipeReader, fetcher: HttpArtifactFetcher)
 
     # If the commonly used `version` variable exists, inject its usage into the file name.
     version_var: Final[Optional[str]] = optional_str(recipe_reader.get_variable("version", None))
+    base_url: Final[str] = fetcher.get_archive_url().rsplit("/", maxsplit=1)[0]
+    fetcher_url: Final[str] = f"{base_url}/{filename}"
     if version_var is not None:
         filename_with_var: Final[str] = filename.replace(
             version_value,
             "{{ version }}" if recipe_reader.get_schema_version() == SchemaVersion.V0 else "${{ version }}",
         )
-        return f"{fetcher.get_archive_url().rsplit("/", maxsplit=1)[0]}/{filename_with_var}"
+        return (fetcher_url, f"{base_url}/{filename_with_var}")
 
-    return f"{fetcher.get_archive_url().rsplit("/", maxsplit=1)[0]}/{filename}"
+    return (fetcher_url, None)
 
 
 def _get_sha256_and_corrected_url(
@@ -347,7 +349,8 @@ def _get_sha256_and_corrected_url(
     :param fetcher: Artifact fetching instance to use.
     :param cli_args: Immutable CLI arguments from the user.
     :raises FetchError: If an issue occurred while downloading or extracting the archive.
-    :returns: The SHA-256 hash of the artifact, if it was able to be downloaded. Optionally includes a corrected URL.
+    :returns: The SHA-256 hash of the artifact, if it was able to be downloaded. Optionally includes a corrected URL to
+        be updated in the recipe file.
     """
     pypi_match = _Regex.PYPI_URL.match(fetcher.get_archive_url())
     if pypi_match is None:
@@ -361,12 +364,18 @@ def _get_sha256_and_corrected_url(
         return (fetcher.get_archive_sha256(), None)
     except FetchError:
         log.info("PyPI URL detected. Attempting to recover URL.")
-        corrected_url: Final[str] = _correct_pypi_url(recipe_reader, fetcher)
-        corrected_fetcher: Final[HttpArtifactFetcher] = HttpArtifactFetcher(str(fetcher), corrected_url)
+        # The `corrected_fetcher_url` is the rendered-out URL, without variables.
+        corrected_fetcher_url, corrected_url = _correct_pypi_url(recipe_reader, fetcher)
+        corrected_fetcher: Final[HttpArtifactFetcher] = HttpArtifactFetcher(str(fetcher), corrected_fetcher_url)
 
         _fetch_archive(corrected_fetcher, cli_args, retries=pypi_retries)
-        log.warning("Archive found at %s. Will attempt to update recipe file.", corrected_url)
-        return (corrected_fetcher.get_archive_sha256(), corrected_url)
+        log.warning("Archive found at %s. Will attempt to update recipe file.", corrected_fetcher_url)
+        return (
+            corrected_fetcher.get_archive_sha256(),
+            # If no variable substitution is required, return what the fetcher used. Otherwise, the variable should be
+            # used in the modified recipe file.
+            corrected_fetcher_url if corrected_url is None else corrected_url,
+        )
 
 
 def _update_sha256_check_hash_var(
