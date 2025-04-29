@@ -19,6 +19,7 @@ from conda_recipe_manager.fetcher.base_artifact_fetcher import BaseArtifactFetch
 from conda_recipe_manager.fetcher.exceptions import FetchError
 from conda_recipe_manager.fetcher.http_artifact_fetcher import HttpArtifactFetcher
 from conda_recipe_manager.parser.recipe_parser import RecipeParser
+from conda_recipe_manager.parser.recipe_reader import RecipeReader
 from conda_recipe_manager.types import JsonPatchType
 
 # Truncates the `__name__` to the crm command name.
@@ -167,25 +168,22 @@ def _pre_process_cleanup(recipe_content: str) -> str:
     return RecipeParser.pre_process_remove_hash_type(recipe_content)
 
 
-def _update_build_num(recipe_parser: RecipeParser, cli_args: _CliArgs) -> None:
+def _exit_on_build_num_failure(msg: str, cli_args: _CliArgs, recipe_parser: RecipeParser) -> NoReturn:
+    if cli_args.save_on_failure:
+        _save_or_print(recipe_parser, cli_args)
+    log.error(msg)
+    sys.exit(ExitCode.ILLEGAL_OPERATION)
+
+
+def _update_build_num_field_directly(recipe_parser: RecipeParser, cli_args: _CliArgs) -> None:
     """
-    Attempts to update the build number in a recipe file.
-
-    :param recipe_parser: Recipe file to update.
-    :param cli_args: Immutable CLI arguments from the user.
+    Update the `build/number` field
     """
 
-    def _exit_on_build_num_failure(msg: str) -> NoReturn:
-        if cli_args.save_on_failure:
-            _save_or_print(recipe_parser, cli_args)
-        log.error(msg)
-        sys.exit(ExitCode.ILLEGAL_OPERATION)
-
-    # Try to get "build" key from the recipe, exit if not found
     try:
         recipe_parser.get_value("/build")
     except KeyError:
-        _exit_on_build_num_failure("`/build` key could not be found in the recipe.")
+        _exit_on_build_num_failure("`/build` key could not be found in the recipe.", cli_args, recipe_parser)
 
     # From the previous check, we know that `/build` exists. If `/build/number` is missing, it'll be added by
     # a patch-add operation and set to a default value of 0. Otherwise, we attempt to increment the build number, if
@@ -194,7 +192,7 @@ def _update_build_num(recipe_parser: RecipeParser, cli_args: _CliArgs) -> None:
         build_number = recipe_parser.get_value(_RecipePaths.BUILD_NUM)
 
         if not isinstance(build_number, int):
-            _exit_on_build_num_failure("Build number is not an integer.")
+            _exit_on_build_num_failure("Build number is not an integer.", cli_args, recipe_parser)
 
         _exit_on_failed_patch(
             recipe_parser,
@@ -208,6 +206,54 @@ def _update_build_num(recipe_parser: RecipeParser, cli_args: _CliArgs) -> None:
         cast(JsonPatchType, {"op": "add", "path": _RecipePaths.BUILD_NUM, "value": cli_args.override_build_num}),
         cli_args,
     )
+
+
+def _update_build_num(recipe_parser: RecipeParser, recipe_reader: RecipeReader, cli_args: _CliArgs) -> None:
+    """
+    Attempts to update the build number in a recipe file.
+
+    :param recipe_parser: Recipe file to update.
+    :param recipe_reader: Recipe reader object
+    :param cli_args: Immutable CLI arguments from the user.
+    """
+
+    # List of possible names for the build number variable as seen in some recipes
+    build_num_possible_variants = ["build_number", "buildnumber", "build"]
+
+    build_num_variable = ""
+    build_num_variable_value = ""
+
+    # Check if any of the possible names for the build number variable are found in the recipe
+    for bn in build_num_possible_variants:
+        try:
+            recipe_reader.get_variable(bn)
+            build_num_variable = bn
+            build_num_variable_value = recipe_reader.get_variable(bn)
+            break  # break out of the loop once a match is found
+        except KeyError:
+            continue
+
+    if build_num_variable_value:
+        if isinstance(build_num_variable_value, str):
+            try:
+                build_num_variable_value = int(build_num_variable_value)
+            except ValueError:
+                _exit_on_build_num_failure("Build number is not an integer.", cli_args, recipe_parser)
+        if not isinstance(build_num_variable_value, int):
+            _exit_on_build_num_failure("Build number is not an integer.", cli_args, recipe_parser)
+        if references := recipe_reader.get_variable_references(build_num_variable):
+            if "/build/number" in references:
+                if cli_args.increment_build_num:
+                    # converting to string before patching because Jinja variables are usually set to str values
+                    recipe_parser.set_variable(build_num_variable, str(build_num_variable_value + 1))
+                else:
+                    recipe_parser.set_variable(build_num_variable, str(cli_args.override_build_num))
+            else:
+                log.error(f"{build_num_variable} set but unused.")
+                if recipe_parser.contains_value(_RecipePaths.BUILD_NUM):
+                    _update_build_num_field_directly(recipe_parser, cli_args)
+    else:
+        _update_build_num_field_directly(recipe_parser, cli_args)
 
 
 def _update_version(recipe_parser: RecipeParser, cli_args: _CliArgs) -> None:
@@ -511,8 +557,14 @@ def bump_recipe(
         log.error("An error occurred while parsing the recipe file contents.")
         sys.exit(ExitCode.PARSE_EXCEPTION)
 
+    try:
+        recipe_reader = RecipeReader(recipe_content)
+    except Exception:
+        log.error("An error occurred while parsing the recipe file contents.")
+        sys.exit(ExitCode.READ_EXCEPTION)
+
     # Attempt to update fields
-    _update_build_num(recipe_parser, cli_args)
+    _update_build_num(recipe_parser, recipe_reader, cli_args)
 
     # NOTE: We check if `target_version` is specified to perform a "full bump" for type checking reasons. Also note that
     # the `build_num` flag is invalidated if we are bumping to a new version. The build number must be reset to 0 in

@@ -405,3 +405,37 @@ def test_bump_recipe_save_on_failure(
     # Read the edited file and check it against the expected file. We don't parse the recipe file as it isn't necessary.
     assert load_file(recipe_file_path) == load_file(expected_recipe_file_path)
     assert result.exit_code != ExitCode.SUCCESS
+
+
+@pytest.mark.parametrize(
+    "recipe_file, expected_recipe_file",
+    [
+        (
+            "bump_recipe/build_num_jinja_variable/build_number.yaml",
+            "bump_recipe/build_num_jinja_variable/build_number_bumped.yaml",
+        ),
+        (
+            "bump_recipe/build_num_jinja_variable/buildnumber.yaml",
+            "bump_recipe/build_num_jinja_variable/buildnumber_bumped.yaml",
+        ),
+        ("bump_recipe/build_num_jinja_variable/build.yaml", "bump_recipe/build_num_jinja_variable/build_bumped.yaml"),
+    ],
+)
+def test_bump_recipe_build_num_is_a_variable(fs: FakeFilesystem, recipe_file: str, expected_recipe_file: str) -> None:
+    """
+    Ensures that recipes are bumped when build number is a jinja variable
+
+    :param fs: `pyfakefs` Fixture used to replace the file system
+    :param recipe_file: Target recipe file to update
+    :param expected_recipe_file: Expected resulting recipe file
+    """
+    runner = CliRunner()
+    fs.add_real_directory(get_test_path(), read_only=False)
+
+    recipe_file_path: Final[Path] = get_test_path() / recipe_file
+    expected_recipe_file_path: Final[Path] = get_test_path() / expected_recipe_file
+
+    result = runner.invoke(bump_recipe.bump_recipe, ["--build-num", str(recipe_file_path)])
+
+    assert result.exit_code == ExitCode.SUCCESS
+    assert load_file(recipe_file_path) == load_file(expected_recipe_file_path)
