@@ -22,7 +22,7 @@ def test_make_request_and_validate_get_package() -> None:
     """
     Tests the fetching and validation of a GET package request
     """
-    response_json = load_json_file(f"{_TEST_PYPI_FILES}/valid_get_package.json")
+    response_json = load_json_file(f"{_TEST_PYPI_FILES}/get_scipy_package.json")
     with patch("requests.get") as mock_get:
         mock_get.return_value.status_code = 200
         mock_get.return_value.headers = {"content-type": "application/json"}
@@ -41,7 +41,7 @@ def test_make_request_and_validate_get_package_version() -> None:
     """
     Tests the fetching and validation of a GET package request @ a version
     """
-    response_json = load_json_file(f"{_TEST_PYPI_FILES}/valid_get_package_version.json")
+    response_json = load_json_file(f"{_TEST_PYPI_FILES}/get_scipy_package_version.json")
     with patch("requests.get") as mock_get:
         mock_get.return_value.status_code = 200
         mock_get.return_value.headers = {"content-type": "application/json"}
@@ -64,7 +64,7 @@ def test_make_request_and_validate_bad_http_response() -> None:
         # GET returns a non-200 error code
         mock_get.return_value.status_code = 400
         mock_get.return_value.headers = {"content-type": "application/json"}
-        mock_get.return_value.json.return_value = load_json_file(f"{_TEST_PYPI_FILES}/valid_get_package_version.json")
+        mock_get.return_value.json.return_value = load_json_file(f"{_TEST_PYPI_FILES}/get_scipy_package_version.json")
         with pytest.raises(BaseApiException):
             _utils.make_request_and_validate(  # pylint: disable=protected-access
                 f"{_MOCK_BASE_URL}/scipy/1.11.1/json",
@@ -89,7 +89,7 @@ def test_make_request_and_validate_bad_http_content() -> None:
         # No content header
         mock_get.return_value.status_code = 200
         mock_get.return_value.headers = {}
-        mock_get.return_value.json.return_value = load_json_file(f"{_TEST_PYPI_FILES}/valid_get_package_version.json")
+        mock_get.return_value.json.return_value = load_json_file(f"{_TEST_PYPI_FILES}/get_scipy_package_version.json")
         with pytest.raises(BaseApiException):
             _utils.make_request_and_validate(  # pylint: disable=protected-access
                 f"{_MOCK_BASE_URL}/scipy/1.11.1/json",
@@ -119,7 +119,7 @@ def test_make_request_and_validate_bad_schema() -> None:
     """
     Tests if the JSON schema validator handles as expected
     """
-    response_json = load_json_file(f"{_TEST_PYPI_FILES}/valid_get_package_version.json")
+    response_json = load_json_file(f"{_TEST_PYPI_FILES}/get_scipy_package_version.json")
     # Redact a required field to corrupt the schema
     del response_json["info"]["license"]
     with patch("requests.get") as mock_get:
