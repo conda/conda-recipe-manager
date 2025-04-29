@@ -5,7 +5,7 @@
                 - Obviously JSON files that are meant to simulate failures were doctored.
                 - `get_scipy_package.json` is a truncated version of the original request,
                   `get_scipy_package_raw.json`. The original file is very long and difficult to work with, including
-                   70 releases of `scipy`. So the testing file has been cut down to save test development time.
+                  70 releases of `scipy`. So the testing file has been cut down to save test development time.
 """
 
 import datetime
