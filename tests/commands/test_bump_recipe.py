@@ -14,11 +14,11 @@ from conda_recipe_manager.commands import bump_recipe
 from conda_recipe_manager.commands.utils.types import ExitCode
 from conda_recipe_manager.parser.recipe_reader import RecipeReader
 from tests.file_loading import get_test_path, load_file, load_recipe
-from tests.http_mocking import MockHttpStreamResponse
+from tests.http_mocking import MockHttpJsonResponse, MockHttpResponse, MockHttpStreamResponse
 from tests.smoke_testing import assert_cli_usage
 
 
-def mock_requests_get(*args: tuple[str], **_: dict[str, str | int]) -> MockHttpStreamResponse:
+def mock_requests_get(*args: tuple[str], **_: dict[str, str | int]) -> MockHttpResponse:
     """
     Mocking function for HTTP requests made in this test file.
 
@@ -26,6 +26,7 @@ def mock_requests_get(*args: tuple[str], **_: dict[str, str | int]) -> MockHttpS
 
     :param args: Arguments passed to the `requests.get()`
     :param _: Name-specified arguments passed to `requests.get()` (Unused)
+    :returns: Mocked HTTP response object.
     """
     endpoint = cast(str, args[0])
     default_artifact_set: Final[set[str]] = {
@@ -54,15 +55,22 @@ def mock_requests_get(*args: tuple[str], **_: dict[str, str | int]) -> MockHttpS
         "https://github.com/google/benchmark/archive/5b7683f49e1e9223cf9927b24f6fd3d6bd82e3f8.tar.gz",
         "https://github.com/google/googletest/archive/5ec7f0c4a113e2f18ac2c6cc7df51ad6afc24081.tar.gz",
     }
+    # Maps mocked PyPi API requests to JSON test files containing the mocked API response.
+    pypi_api_requests_map: Final[dict[str, str]] = {
+        "https://pypi.org/pypi/types-toml/json": "api/pypi/get_types-toml_package.json",
+        "https://pypi.org/pypi/types-toml/0.10.8.20240310/json": "api/pypi/get_types-toml_package_version_0.10.8.20240310.json",  # pylint: disable=line-too-long
+    }
     match endpoint:
         case endpoint if endpoint in default_artifact_set:
             return MockHttpStreamResponse(200, "archive_files/dummy_project_01.tar.gz")
+        case endpoint if endpoint in pypi_api_requests_map:
+            return MockHttpJsonResponse(200, pypi_api_requests_map[endpoint])
         # Error cases
         case "https://pypi.io/error_500.html":
             return MockHttpStreamResponse(500, "archive_files/dummy_project_01.tar.gz")
         case _:
-            # TODO fix: pyfakefs does include `/dev/null` by default, but this actually points to `<temp_dir>/dev/null`
-            return MockHttpStreamResponse(404, "/dev/null")
+            # This points to an empty test file.
+            return MockHttpStreamResponse(404, "null_file.txt")
 
 
 def test_usage() -> None:
@@ -108,7 +116,6 @@ def test_usage() -> None:
         # Validates removal of `hash_type` variable that is sometimes used instead of the `/source/sha256` key
         ("types-toml_hash_type.yaml", None, "bump_recipe/types-toml_hash_type_build_num_1.yaml"),
         ("types-toml_hash_type.yaml", "0.10.8.20240310", "bump_recipe/types-toml_hash_type_version_bump.yaml"),
-        # TODO add V1 test cases/support
         ## Version bump edge cases ##
         # NOTE: These have no source section, therefore all SHA-256 update attempts (and associated network requests)
         # should be skipped.
@@ -118,6 +125,22 @@ def test_usage() -> None:
         ("bump_recipe/build_num_42.yaml", "0.10.8.6", "simple-recipe.yaml"),
         ("bump_recipe/build_num_-1.yaml", None, "simple-recipe.yaml"),
         ("bump_recipe/build_num_-1.yaml", "0.10.8.6", "simple-recipe.yaml"),
+        ## Attempt to correct URLs using the PyPi API ##
+        # "Standard" Grayskull-based recipe needing a URL correction.
+        ("bump_recipe/types-toml_fix_pypi_url.yaml", "0.10.8.20240310", "bump_recipe/types-toml_version_bump.yaml"),
+        # `version` variable is not used in the URL, but others are.
+        (
+            "bump_recipe/types-toml_fix_pypi_url_no_version_variable.yaml",
+            "0.10.8.20240310",
+            "bump_recipe/types-toml_fix_pypi_url_no_version_variable_bump.yaml",
+        ),
+        # No variables are used in the URL.
+        (
+            "bump_recipe/types-toml_fix_pypi_url_no_variables.yaml",
+            "0.10.8.20240310",
+            "bump_recipe/types-toml_fix_pypi_url_no_variables_bump.yaml",
+        ),
+        # TODO add V1 test cases/support
     ],
 )
 def test_bump_recipe_cli(
