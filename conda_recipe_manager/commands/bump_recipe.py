@@ -44,6 +44,25 @@ class _RecipePaths:
     VERSION: Final[str] = "/package/version"
 
 
+class _RecipeVars:
+    """
+    Namespace to store all the commonly used JINJA variable names the bumper should be aware of.
+    """
+    # Common variable name used to track the software version of a package.
+    VERSION: Final[str] = "version"
+    # Common variable names used for source artifact hashes.
+    HASH_NAMES: Final[set[str]] = {
+        "sha256",
+        "hash",
+        "hash_val",
+        "hash_value",
+        "checksum",
+        "check_sum",
+        "hashval",
+        "hashvalue",
+    }
+
+
 class _CliArgs(NamedTuple):
     """
     Typed convenience structure that contains all flags and values set by the CLI. This structure is passed once to
@@ -72,18 +91,6 @@ class _Regex:
         r"https?://pypi\.io/packages/source/[a-z]/|https?://files\.pythonhosted\.org/"
     )
 
-
-# Common variable names used for source artifact hashes.
-_COMMON_HASH_VAR_NAMES: Final[set[str]] = {
-    "sha256",
-    "hash",
-    "hash_val",
-    "hash_value",
-    "checksum",
-    "check_sum",
-    "hashval",
-    "hashvalue",
-}
 
 # Maximum number of retries to attempt when trying to fetch an external artifact.
 _RETRY_LIMIT: Final[int] = 5
@@ -238,12 +245,12 @@ def _update_version(recipe_parser: RecipeParser, cli_args: _CliArgs) -> None:
     # most multi-output recipes)
 
     # If the `version` variable is found, patch that. This is an artifact/pattern from Grayskull.
-    old_variable = recipe_parser.get_variable("version", None)
+    old_variable = recipe_parser.get_variable(_RecipeVars.VERSION, None)
     if old_variable is not None:
-        recipe_parser.set_variable("version", cli_args.target_version)
+        recipe_parser.set_variable(_RecipeVars.VERSION, cli_args.target_version)
         # Generate a warning if `version` is not being used in the `/package/version` field. NOTE: This is a linear
         # search on a small list.
-        if _RecipePaths.VERSION not in recipe_parser.get_variable_references("version"):
+        if _RecipePaths.VERSION not in recipe_parser.get_variable_references(_RecipeVars.VERSION):
             log.warning("`/package/version` does not use the defined JINJA variable `version`.")
         return
 
@@ -279,13 +286,16 @@ def _fetch_archive(fetcher: HttpArtifactFetcher, cli_args: _CliArgs, retries: in
     raise FetchError(f"Failed to fetch `{fetcher}` after {retries} retries.")
 
 
-def _correct_pypi_url(recipe_reader: RecipeReader, fetcher: HttpArtifactFetcher) -> tuple[str, Optional[str]]:
+def _correct_pypi_url(
+    recipe_reader: RecipeReader, url_path: str, fetcher: HttpArtifactFetcher
+) -> tuple[str, Optional[str]]:
     """
     Handles correcting PyPi URLs by querying the PyPi API. There are many edge cases here that complicate this process,
     like managing JINJA variables commonly found in our URL values.
 
     :param recipe_reader: Read-only parser (enforced by our static analyzer). Editing may not be thread-safe. It is up
         to the caller to manage that risk.
+    :param url_path: Recipe-path to the URL string being used by the fetcher.
     :param fetcher: Artifact fetching instance to use.
     :raises FetchError: If an issue occurred while downloading or extracting the archive.
     :returns: Corrected PyPi artifact URL and optionally the URL containing the `version` variable to use in the recipe.
@@ -319,14 +329,21 @@ def _correct_pypi_url(recipe_reader: RecipeReader, fetcher: HttpArtifactFetcher)
     #     dramatically, we want to keep the commonly used `https://pypi.io` URL.
     filename: Final[str] = pypi_meta.releases[version_value].filename
 
-    # If the commonly used `version` variable exists, inject its usage into the file name.
-    version_var: Final[Optional[str]] = optional_str(recipe_reader.get_variable("version", None))
+    # If the commonly used `version` variable exists AND it is being used in the original URL, inject its usage into the
+    # file name.
+    version_var: Final[Optional[str]] = optional_str(recipe_reader.get_variable(_RecipeVars.VERSION, None))
+    is_version_var_used: Final[bool] = url_path in recipe_reader.get_variable_references(_RecipeVars.VERSION)
     base_url: Final[str] = fetcher.get_archive_url().rsplit("/", maxsplit=1)[0]
     fetcher_url: Final[str] = f"{base_url}/{filename}"
-    if version_var is not None:
+    if version_var is not None and is_version_var_used:
         filename_with_var: Final[str] = filename.replace(
             version_value,
-            "{{ version }}" if recipe_reader.get_schema_version() == SchemaVersion.V0 else "${{ version }}",
+            (
+                # NOTE: The double-escaping of the outer `{{` and `}}` braces.
+                f"{{{{ {_RecipePaths.VERSION} }}}}"
+                if recipe_reader.get_schema_version() == SchemaVersion.V0
+                else f"${{{{ {_RecipeVars.VERSION} }}}}"
+            ),
         )
         return (fetcher_url, f"{base_url}/{filename_with_var}")
 
@@ -334,7 +351,7 @@ def _correct_pypi_url(recipe_reader: RecipeReader, fetcher: HttpArtifactFetcher)
 
 
 def _get_sha256_and_corrected_url(
-    recipe_reader: RecipeReader, fetcher: HttpArtifactFetcher, cli_args: _CliArgs
+    recipe_reader: RecipeReader, url_path: str, fetcher: HttpArtifactFetcher, cli_args: _CliArgs
 ) -> tuple[str, Optional[str]]:
     """
     Wrapping function that attempts to retrieve an HTTP/HTTPS artifact with a retry mechanism.
@@ -346,6 +363,7 @@ def _get_sha256_and_corrected_url(
 
     :param recipe_reader: Read-only parser (enforced by our static analyzer). Editing may not be thread-safe. It is up
         to the caller to manage that risk.
+    :param url_path: Recipe-path to the URL string being used by the fetcher.
     :param fetcher: Artifact fetching instance to use.
     :param cli_args: Immutable CLI arguments from the user.
     :raises FetchError: If an issue occurred while downloading or extracting the archive.
@@ -365,7 +383,7 @@ def _get_sha256_and_corrected_url(
     except FetchError:
         log.info("PyPI URL detected. Attempting to recover URL.")
         # The `corrected_fetcher_url` is the rendered-out URL, without variables.
-        corrected_fetcher_url, corrected_url = _correct_pypi_url(recipe_reader, fetcher)
+        corrected_fetcher_url, corrected_url = _correct_pypi_url(recipe_reader, url_path, fetcher)
         corrected_fetcher: Final[HttpArtifactFetcher] = HttpArtifactFetcher(str(fetcher), corrected_fetcher_url)
 
         _fetch_archive(corrected_fetcher, cli_args, retries=pypi_retries)
@@ -392,7 +410,7 @@ def _update_sha256_check_hash_var(
     # Check to see if the SHA-256 hash might be set in a variable. In extremely rare cases, we log warnings to indicate
     # that the "correct" action is unclear and likely requires human intervention. Otherwise, if we see a hash variable
     # and it is used by a single source, we will edit the variable directly.
-    hash_vars_set: Final[set[str]] = _COMMON_HASH_VAR_NAMES & set(recipe_parser.list_variables())
+    hash_vars_set: Final[set[str]] = _RecipeVars.HASH_NAMES & set(recipe_parser.list_variables())
     if len(hash_vars_set) == 1 and len(fetcher_tbl) == 1:
         hash_var: Final[str] = next(iter(hash_vars_set))
         src_fetcher: Final[Optional[BaseArtifactFetcher]] = fetcher_tbl.get(_RecipePaths.SOURCE, None)
@@ -404,7 +422,7 @@ def _update_sha256_check_hash_var(
             and _RecipePaths.SINGLE_SHA_256 in recipe_parser.get_variable_references(hash_var)
         ):
             try:
-                sha, url = _get_sha256_and_corrected_url(recipe_parser, src_fetcher, cli_args)
+                sha, url = _get_sha256_and_corrected_url(recipe_parser, _RecipePaths.SINGLE_URL, src_fetcher, cli_args)
                 recipe_parser.set_variable(hash_var, sha)
                 if url is not None:
                     _exit_on_failed_patch(
@@ -451,10 +469,9 @@ def _update_sha256_fetch_one(
     :returns: A tuple containing the path to and the actual SHA-256 value to be updated. Optionally includes a second
         tuple containing the path to the artifact URL and a corrected URL.
     """
-    sha, url = _get_sha256_and_corrected_url(recipe_reader, fetcher, cli_args)
-    url_tup: Final[Optional[tuple[str, str]]] = (
-        None if url is None else (RecipeParser.append_to_path(src_path, "/url"), url)
-    )
+    url_path: Final[str] = RecipeParser.append_to_path(src_path, "/url")
+    sha, url = _get_sha256_and_corrected_url(recipe_reader, url_path, fetcher, cli_args)
+    url_tup: Final[Optional[tuple[str, str]]] = None if url is None else (url_path, url)
     return (RecipeParser.append_to_path(src_path, "/sha256"), sha, url_tup)
 
 
