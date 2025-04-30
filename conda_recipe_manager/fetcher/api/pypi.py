@@ -18,7 +18,7 @@ from conda_recipe_manager.utils.meta import get_crm_version
 log = logging.getLogger(__name__)
 
 # Base URL that all endpoints use
-_BASE_URL: Final[str] = "https://pypi.python.org/pypi"
+_BASE_URL: Final[str] = "https://pypi.org/pypi"
 
 # HTTP headers that should be attached to all PyPi API interactions. Check the links below for more details:
 #   - https://docs.pypi.org/api/

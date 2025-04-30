@@ -168,7 +168,7 @@ def _exit_on_failed_fetch(recipe_parser: RecipeParser, fetcher: BaseArtifactFetc
     """
     if cli_args.save_on_failure:
         _save_or_print(recipe_parser, cli_args)
-    log.error("Failed to fetch `%s` after %s retries.", fetcher, _RETRY_LIMIT)
+    log.error("Failed to fetch `%s` after attempted retries.", fetcher)
     sys.exit(ExitCode.HTTP_ERROR)
 
 
@@ -506,6 +506,7 @@ def _update_sha256(recipe_parser: RecipeParser, cli_args: _CliArgs) -> None:
             fetcher = artifact_futures_tbl[future]
             try:
                 sha_path, sha, url_tup = future.result()
+                sha_cntr += 1
                 unique_hashes.add(sha)
                 # Guard against the unlikely scenario that the `sha256` field is missing.
                 sha_patch_op = "replace" if recipe_parser.contains_value(sha_path) else "add"
