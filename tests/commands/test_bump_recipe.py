@@ -134,11 +134,17 @@ def test_usage() -> None:
             "0.10.8.20240310",
             "bump_recipe/types-toml_fix_pypi_url_no_version_variable_bump.yaml",
         ),
-        # No variables are used in the URL.
+        # No variables are used in the URL, but they exist in the file.
         (
             "bump_recipe/types-toml_fix_pypi_url_no_variables.yaml",
             "0.10.8.20240310",
             "bump_recipe/types-toml_fix_pypi_url_no_variables_bump.yaml",
+        ),
+        # No variables are used in the URL, and they DON'T exist in the file.
+        (
+            "bump_recipe/types-toml_fix_pypi_url_no_variables_in_file.yaml",
+            "0.10.8.20240310",
+            "bump_recipe/types-toml_fix_pypi_url_no_variables_in_file_bump.yaml",
         ),
         # TODO add V1 test cases/support
     ],
