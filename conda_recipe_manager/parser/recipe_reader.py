@@ -10,7 +10,8 @@ import hashlib
 import json
 import re
 import sys
-from typing import Callable, Final, Optional, cast, no_type_check
+from collections.abc import Callable
+from typing import Final, Optional, cast, no_type_check
 
 import yaml
 
