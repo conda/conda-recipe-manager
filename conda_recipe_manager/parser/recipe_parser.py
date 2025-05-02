@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import difflib
 import re
+from collections.abc import Callable
 from typing import Final, Optional, TypeGuard, cast
 
 from jsonschema import validate as schema_validate
@@ -38,6 +39,9 @@ from conda_recipe_manager.parser.recipe_reader import RecipeReader
 from conda_recipe_manager.parser.selector_parser import SelectorParser
 from conda_recipe_manager.parser.types import JSON_PATCH_SCHEMA
 from conda_recipe_manager.types import PRIMITIVES_TUPLE, JsonPatchType, JsonType
+
+# Callback that allows the caller to perform custom replacements using `search_and_patch_replace()`.
+ReplacePatchFunc = Callable[[JsonType], JsonType]
 
 
 class RecipeParser(RecipeReader):
@@ -565,24 +569,43 @@ class RecipeParser(RecipeReader):
 
         return is_successful
 
-    def search_and_patch(
-        self, regex: str | re.Pattern[str], patch: JsonPatchType, include_comment: bool = False
+    def search_and_patch_replace(
+        self,
+        regex: str | re.Pattern[str],
+        patch_with: JsonType | ReplacePatchFunc,
+        preserve_comment_and_selectors: bool = True,
     ) -> bool:
         """
-        Given a regex string and a JSON patch, apply the patch to any values that match the search expression.
+        Given a regex string and a partial patch, replace values at every location that matches.
+        This function effectively replaces the previous `RecipeParser::search_and_patch()`
 
-        :param regex: Regular expression to match with
-        :param patch: JSON patch to perform. NOTE: The `path` field will be replaced with the path(s) found, so it does
-            not need to be provided.
-        :param include_comment: (Optional) If set to `True`, this function will execute the regular expression on values
-            WITH their comments provided. For example: `42  # This is a comment`
-        :returns: Returns a list of paths where the matched value was found.
+        :param regex: Regular expression to match with. This only matches values on patch-able paths.
+        :param patch_with: `JsonType` value to replace the matching value with directly or a callback that provides the
+            original value as a `JsonType` so the caller can manipulate what is being patched-in.
+        :param preserve_comments_and_selectors: (Optional) TODO
+        :returns: Returns True if all patches were successful. Otherwise, False.
         """
-        paths = self.search(regex, include_comment)
+
+        # Helper initialization function.
+        def _render_patch_value(get_path: str) -> JsonType:
+            if not callable(patch_with):
+                return patch_with
+            # `RecipeReader::get_value()` should never throw UNLESS there is a bug in `RecipeParser::search()`. We
+            # do not want one fault to cause the other patches to fail.
+            return patch_with(self.get_value(get_path, sub_vars=False))
+
+        paths = self.search(regex, include_comment=False)
         summation: bool = True
         for path in paths:
-            patch["path"] = path
-            summation = summation and self.patch(patch)
+            try:
+                summation = summation and self.patch(
+                    {"op": "replace", "path": path, "value": _render_patch_value(path)}
+                )
+            except KeyError:
+                # TODO Future Log this when CRM parsers have proper logging.
+                summation = False
+                continue
+
         return summation
 
     def diff(self) -> str:

@@ -87,6 +87,10 @@ class _Regex:
     Namespace that contains all pre-compiled regular expressions used in this tool.
     """
 
+    # Matches strings that reference `pypi.io` so that we can transition them to use the preferred `pypi.org` TLD.
+    PYPI_DEPRECATED_DOMAINS: Final[re.Pattern[str]] = re.compile(
+        r"https?://(pypi\.io|cheeseshop\.python\.org|pypi\.python\.org)"
+    )
     # Attempts to match PyPi source archive URLs by the start of the URL.
     PYPI_URL: Final[re.Pattern[str]] = re.compile(
         r"https?://pypi\.(?:io|org)/packages/source/[a-z]/|https?://files\.pythonhosted\.org/"

@@ -7,7 +7,7 @@ package:
 
 build:
   number: 0
-  skip: conda
+  skip: true  # [py<37]
   is_true: true
 
 # Comment above a top-level structure

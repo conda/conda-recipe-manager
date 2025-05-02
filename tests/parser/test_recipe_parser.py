@@ -1104,12 +1104,13 @@ def test_patch_copy() -> None:
     assert parser.render() == load_file("simple-recipe_test_patch_copy.yaml")
 
 
-def test_search_and_patch() -> None:
+# TODO significantly upgrade and improve tests.
+def test_search_and_patch_replace() -> None:
     """
     Tests searching for values and then patching them
     """
     parser = load_recipe("simple-recipe.yaml", RecipeParser)
-    assert parser.search_and_patch(r"py.*", {"op": "replace", "value": "conda"}, True)
+    assert parser.search_and_patch_replace(r"py.*", "conda", False)
     assert parser.render() == load_file("simple-recipe_test_search_and_patch.yaml")
     assert parser.is_modified()
 
