@@ -10,6 +10,7 @@ dependencies:
   - python >=3.11
   - pytest
   - pytest-cov
+  - pytest-socket
   - pytest-xdist
   - pyfakefs
   # Match version with .pre-commit-config.yaml to ensure consistent rules with `make lint`.

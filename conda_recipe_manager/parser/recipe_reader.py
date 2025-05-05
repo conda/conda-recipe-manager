@@ -35,9 +35,14 @@ from conda_recipe_manager.parser._utils import (
     stringify_yaml,
     substitute_markers,
 )
-from conda_recipe_manager.parser.dependency import DependencySection, dependency_section_to_str
+from conda_recipe_manager.parser.dependency import (
+    DependencySection,
+    dependency_data_from_str,
+    dependency_section_to_str,
+)
 from conda_recipe_manager.parser.enums import SchemaVersion
 from conda_recipe_manager.parser.types import TAB_AS_SPACES, TAB_SPACE_COUNT, MultilineVariant
+from conda_recipe_manager.parser.v0_recipe_formatter import V0RecipeFormatter
 from conda_recipe_manager.types import PRIMITIVES_TUPLE, JsonType, Primitives, SentinelType
 from conda_recipe_manager.utils.cryptography.hashing import hash_str
 from conda_recipe_manager.utils.typing import optional_str
@@ -241,7 +246,16 @@ class RecipeReader(IsModifiable):
     @staticmethod
     def _set_key_and_matches(
         key: str,
-    ) -> tuple[str, Optional[re.Match[str]], Optional[re.Match[str]], Optional[re.Match[str]], Optional[re.Match[str]]]:
+    ) -> tuple[
+        str,
+        Optional[re.Match[str]],
+        Optional[re.Match[str]],
+        Optional[re.Match[str]],
+        Optional[re.Match[str]],
+        Optional[re.Match[str]],
+        Optional[re.Match[str]],
+        Optional[re.Match[str]],
+    ]:
         """
         Helper function for `_render_jinja_vars()` that takes a JINJA statement (string inside the braces) and attempts
         to match and apply any currently supported "JINJA functions" to the statement.
@@ -249,29 +263,66 @@ class RecipeReader(IsModifiable):
         :param key: Sanitized key to perform JINJA functions on.
         :returns: The modified key, if any JINJA functions apply. Also returns any applicable match objects.
         """
-        # TODO add support for REPLACE
+
+        # Helper function that strips-out JINJA ops out of the string, `key`.
+        def _strip_op(k: str, m: Optional[re.Match[str]]) -> str:
+            if not m:
+                return k
+            return k.replace(m.group(), "").strip()
 
         # Example: {{ name | lower }}
         lower_match = Regex.JINJA_FUNCTION_LOWER.search(key)
-        if lower_match:
-            key = key.replace(lower_match.group(), "").strip()
+        key = _strip_op(key, lower_match)
 
         # Example: {{ name | upper }}
         upper_match = Regex.JINJA_FUNCTION_UPPER.search(key)
-        if upper_match:
-            key = key.replace(upper_match.group(), "").strip()
+        key = _strip_op(key, upper_match)
+
+        # Example: {{ name | replace('-', '_') }
+        replace_match = Regex.JINJA_FUNCTION_REPLACE.search(key)
+        key = _strip_op(key, replace_match)
+
+        # Example: {{ name | split('.') }
+        split_match = Regex.JINJA_FUNCTION_SPLIT.search(key)
+        # Example: {{ '.'.join(version.split(".")[:2]) }}
+        join_match = Regex.JINJA_FUNCTION_JOIN.search(key)
 
         # Example: {{ name[0] }}
         idx_match = Regex.JINJA_FUNCTION_IDX_ACCESS.search(key)
         if idx_match:
             key = key.replace(f"[{cast(str, idx_match.group(2))}]", "").strip()
 
+        # NOTE: `split` and `join` are special. `split` changes the type from a string to a list and `join` requires
+        # a list to work as expected. As a workaround, we only apply `split` if a `join` or `index` operation is
+        # present. Additionally, we only apply a `join` if a `split` is present.
+        if split_match and join_match:
+            key = _strip_op(key, split_match)
+            # Re-calculate the join's match now that `split` has been removed.
+            join_match = Regex.JINJA_FUNCTION_JOIN.search(key)
+            if join_match:
+                # If we are in the | form, remove the `join()` portion entirely
+                if join_match.groups()[0] is not None:
+                    key = _strip_op(key, join_match)
+                # If we are in the `.` form, extract the key from the `.join()` call.
+                else:
+                    key = join_match.group(5)
+            # This should not be possible, but we still want to guard against accidental list evaluation if a `join` is
+            # no longer possible.
+            else:
+                join_match = None
+                split_match = None
+        elif split_match and idx_match:
+            key = _strip_op(key, split_match)
+        else:
+            join_match = None
+            split_match = None
+
         # Addition/concatenation. Note the key(s) will need to be evaluated later.
         # Example: {{ build_number + 100 }}
         # Example: {{ version + ".1" }}
         add_concat_match = Regex.JINJA_FUNCTION_ADD_CONCAT.search(key)
 
-        return key, lower_match, upper_match, idx_match, add_concat_match
+        return key, lower_match, upper_match, replace_match, split_match, join_match, idx_match, add_concat_match
 
     def _eval_jinja_token(self, s: str) -> JsonType:
         """
@@ -301,6 +352,8 @@ class RecipeReader(IsModifiable):
         return s
 
     def _render_jinja_vars(self, s: str) -> JsonType:
+        # pylint: disable=too-complex
+        # TODO Refactor and simplify. We should really consider using a proper parser over REGEX soup.
         """
         Helper function that replaces Jinja substitutions with their actual set values.
 
@@ -318,7 +371,9 @@ class RecipeReader(IsModifiable):
             # The regex guarantees the string starts and ends with double braces
             key = match[start_idx:-2].strip()
             # Check for and interpret common JINJA functions
-            key, lower_match, upper_match, idx_match, add_concat_match = RecipeReader._set_key_and_matches(key)
+            key, lower_match, upper_match, replace_match, split_match, join_match, idx_match, add_concat_match = (
+                RecipeReader._set_key_and_matches(key)
+            )
 
             if add_concat_match:
                 lhs = self._eval_jinja_token(cast(str, add_concat_match.group(1)))
@@ -332,17 +387,31 @@ class RecipeReader(IsModifiable):
             elif key in self._vars_tbl:
                 # Replace value as a string. Re-interpret the entire value before returning.
                 value = str(self._vars_tbl[key])
+                if Regex.JINJA_VAR_VALUE_TERNARY.match(value):
+                    value = "${{" + value + "}}"
                 if lower_match:
                     value = value.lower()
                 if upper_match:
                     value = value.upper()
+                # NOTE: We previously guarantee in `_set_key_and_matches()` that `split` is accompanied by a operation
+                # that will normalize it back to a string. But for this to work, we must perform the `split` before a
+                # `join` or an index access.
+                if split_match:
+                    value = value.split(split_match.group(2))  # type: ignore[assignment]
+                if join_match:
+                    # The index of the string that we join on changes depending on which form of the function is used.
+                    # NOTE: `.groups()` does not return the top-level 0th grouping, so the indices are 1-off.
+                    join_str_idx = 3 if join_match.groups()[2] is not None else 2
+                    value = join_match.group(join_str_idx).join(value)
                 if idx_match:
                     idx = int(cast(str, idx_match.group(2)))
                     # From our research, it looks like string indexing on JINJA variables is almost exclusively used
                     # get the first character in a string. If the index is out of bounds, we will default to the
-                    # variable's value as a fall-back.
-                    if 0 <= idx < len(value):
+                    # variable's value as a fall-back. Although rare, negative indexing is supported.
+                    if -len(value) <= idx < len(value):
                         value = value[idx]
+                if replace_match:
+                    value = value.replace(replace_match.group(2), replace_match.group(3))
                 s = s.replace(match, value)
             # $-Escaping the unresolved variable does a few things:
             #   - Clearly identifies the value as an unresolved variable
@@ -408,8 +477,14 @@ class RecipeReader(IsModifiable):
 
         # Root of the parse tree
         self._root = Node(ROOT_NODE_VALUE)
-        # Start by removing all Jinja lines. Then traverse line-by-line
-        sanitized_yaml = Regex.JINJA_V0_LINE.sub("", self._init_content)
+
+        # Format the text for V0 recipe files in an attempt to improve compatibility with our whitespace-delimited
+        # parser.
+        fmt: Final[V0RecipeFormatter] = V0RecipeFormatter(self._init_content)
+        if fmt.is_v0_recipe():
+            fmt.fmt_text()
+        # Replace all Jinja lines. Then traverse line-by-line
+        sanitized_yaml = Regex.JINJA_V0_LINE.sub("", str(fmt))
 
         # Read the YAML line-by-line, maintaining a stack to manage the last owning node in the tree.
         node_stack: list[Node] = [self._root]
@@ -546,7 +621,9 @@ class RecipeReader(IsModifiable):
         s += f"{self.__class__.__name__} Instance\n"
         s += f"- Schema Version: {self._schema_version}\n"
         s += "- Variables Table:\n"
-        s += json.dumps(self._vars_tbl, indent=TAB_AS_SPACES) + "\n"
+        # If we run into an unserializable type (like data that might be interpreted as a date object), attempt to
+        # the data render as a string
+        s += json.dumps(self._vars_tbl, indent=TAB_AS_SPACES, default=str) + "\n"
         s += "- Selectors Table:\n"
         for key, val in self._selector_tbl.items():
             s += f"{TAB_AS_SPACES}{key}\n"
@@ -703,8 +780,8 @@ class RecipeReader(IsModifiable):
         # `/context`.
         if self._schema_version == SchemaVersion.V0:
             for key, val in self._vars_tbl.items():
-                # Double quote strings
-                if isinstance(val, str):
+                # Double quote strings, except for when we detect a env.get() expression. See issue #271.
+                if isinstance(val, str) and not val.startswith("env.get("):
                     val = f'"{val}"'
                 lines.append(f"{{% set {key} = {val} %}}")
             # Add spacing if variables have been set
@@ -714,6 +791,10 @@ class RecipeReader(IsModifiable):
         # Render parse-tree, -1 is passed in as the "root-level" is not directly rendered in a YAML file; it is merely
         # implied.
         RecipeReader._render_tree(self._root, -1, lines)
+
+        # If present, redact a trailing blank line as it is preferred by some communities. See Issue #279
+        if lines and lines[-1] == "":
+            lines = lines[:-1]
 
         return "\n".join(lines)
 
@@ -821,6 +902,7 @@ class RecipeReader(IsModifiable):
         """
         Determines if a value (via a path) is contained in this recipe. This also allows the caller to determine if a
         path exists.
+
         :param path: JSON patch (RFC 6902)-style path to a value.
         :returns: True if the path exists. False otherwise.
         """
@@ -939,6 +1021,45 @@ class RecipeReader(IsModifiable):
         :returns: True if the recipe produces multiple outputs. False otherwise.
         """
         return self.contains_value("/outputs")
+
+    def is_python_recipe(self) -> bool:
+        """
+        Indicates if a recipe is a "pure Python" recipe.
+
+        :return: True if the recipe is a "pure Python recipe". False otherwise.
+        """
+        # TODO cache this or otherwise find a way to reduce the computation complexity.
+        # TODO consider making a single query interface similar to `RecipeReaderDeps::get_all_dependencies()`
+        # TODO improve definition/validation of "pure Python"
+        for base_path in self.get_package_paths():
+            # A "pure python" package shouldn't need a `build` dependencies.
+            build_deps = cast(
+                Optional[list[str | dict[str, str]]],
+                self.get_value(RecipeReader.append_to_path(base_path, "/requirements/build"), default=[]),
+            )
+            if build_deps:
+                return False
+
+            host_path = RecipeReader.append_to_path(base_path, "/requirements/host")
+            host_deps = cast(Optional[list[str | dict[str, str]]], self.get_value(host_path, default=[]))
+            # Skip the rare edge case where the list may be null (usually caused by commented-out code)
+            if host_deps is None:
+                continue
+            for i, dep in enumerate(host_deps):
+                # If we find a selector on a line, ignore it. Conditionalized `python` inclusion does not indicate
+                # something that is "pure Python". We check for V1 selectors first as it is cheaper and prevents a
+                # a type issue. We do not check which schema the current recipe for the sake of the recipe converter,
+                # which uses this function in the upgrade process.
+                # TODO Improve V1 selector check (when more utilities are built). Checking for
+                if not isinstance(dep, str):
+                    continue
+                if "python" == cast(str, dependency_data_from_str(dep).name).lower():
+                    # The V0 selector check is more costly and it can be delayed until we've determined we have found
+                    # a python host dependency.
+                    if self.contains_selector_at_path(RecipeReader.append_to_path(host_path, f"/{i}")):
+                        continue
+                    return True
+        return False
 
     def get_package_paths(self) -> list[str]:
         """

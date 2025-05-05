@@ -54,11 +54,9 @@ def main() -> None:
         description="Randomly pulls n number of recipe files from a list of repos from a GitHub organization"
     )
     parser.add_argument("--exclude", "-e", default="", type=str, help="File containing a list of repos to exclude")
-    parser.add_argument(
-        "file", type=Path, help="File containing the output of `gh repo list <org>`"  # type: ignore[misc]
-    )
+    parser.add_argument("file", type=Path, help="File containing the output of `gh repo list <org>`")
     parser.add_argument("num_recipes", type=int, help="Target number of recipes to select")
-    parser.add_argument("out_dir", type=Path, help="Directory to place fetched recipe files in.")  # type: ignore[misc]
+    parser.add_argument("out_dir", type=Path, help="Directory to place fetched recipe files in.")
     args = parser.parse_args()
 
     # Keep the type checker happy

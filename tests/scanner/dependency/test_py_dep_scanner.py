@@ -6,11 +6,12 @@ from pathlib import Path
 from typing import Final, cast
 
 import pytest
+from conda.models.match_spec import MatchSpec
 from pyfakefs.fake_filesystem import FakeFilesystem
 
+from conda_recipe_manager.parser.dependency import DependencySection
 from conda_recipe_manager.scanner.dependency.base_dep_scanner import ProjectDependency
 from conda_recipe_manager.scanner.dependency.py_dep_scanner import PythonDependencyScanner
-from conda_recipe_manager.types import DependencyType
 from tests.file_loading import get_test_path
 
 
@@ -20,13 +21,13 @@ from tests.file_loading import get_test_path
         (
             "dummy_py_project_01",
             {
-                ProjectDependency("conda_recipe_manager", DependencyType.RUN),
-                ProjectDependency("matplotlib", DependencyType.RUN),  # Two imports on one line
-                ProjectDependency("networkx", DependencyType.RUN),  # Two imports on one line
-                ProjectDependency("python", DependencyType.HOST),
-                ProjectDependency("python", DependencyType.RUN),
-                ProjectDependency("pyyaml", DependencyType.TEST),
-                ProjectDependency("requests", DependencyType.RUN),  # Found in source and test code.
+                ProjectDependency(MatchSpec("conda_recipe_manager"), DependencySection.RUN),
+                ProjectDependency(MatchSpec("matplotlib"), DependencySection.RUN),  # Two imports on one line
+                ProjectDependency(MatchSpec("networkx"), DependencySection.RUN),  # Two imports on one line
+                ProjectDependency(MatchSpec("python"), DependencySection.HOST),
+                ProjectDependency(MatchSpec("python"), DependencySection.RUN),
+                ProjectDependency(MatchSpec("pyyaml"), DependencySection.TESTS),
+                ProjectDependency(MatchSpec("requests"), DependencySection.RUN),  # Found in source and test code.
             },
         ),
     ],

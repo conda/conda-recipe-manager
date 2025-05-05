@@ -52,6 +52,14 @@ class BaseArtifactFetcher(metaclass=ABCMeta):
             return
         raise FetchRequiredError(msg)
 
+    def __str__(self) -> str:
+        """
+        Returns a simple string identifier that identifies an ArtifactFetcher instance.
+
+        :returns: String identifier (name) of the ArtifactFetcher.
+        """
+        return self._name
+
     @abstractmethod
     def fetch(self) -> None:
         """

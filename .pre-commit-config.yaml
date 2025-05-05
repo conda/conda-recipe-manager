@@ -63,3 +63,4 @@ repos:
     always_run: true
     pass_filenames: false
     entry: make test-cov
+    verbose: true

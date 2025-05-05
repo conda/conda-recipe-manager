@@ -52,6 +52,7 @@ class RecipeReaderDeps(RecipeReader):
         if dep is None:
             return None
 
+        # TODO V1 support missing here: V1 selectors return an `if/then` dictionary, not a string!
         dep = dep.strip()
         if not dep:
             return None
@@ -119,14 +120,17 @@ class RecipeReaderDeps(RecipeReader):
                 root_package = package
 
             requirements = cast(
-                dict[str, list[Optional[str]]],
+                Optional[str | dict[str, list[Optional[str]]]],
                 self.get_value(RecipeReader.append_to_path(path, "/requirements"), default={}, sub_vars=True),
             )
+            # Skip over empty/malformed requirements sections
+            if requirements is None or isinstance(requirements, str):
+                continue
             dep_map[package] = []
             for section_str, deps in requirements.items():
                 section = str_to_dependency_section(section_str)
                 # Unrecognized sections will be skipped as "junk" data
-                if section is None:
+                if section is None or deps is None:
                     continue
 
                 for i, dep in enumerate(deps):

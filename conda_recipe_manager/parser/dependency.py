@@ -129,9 +129,10 @@ class DependencyVariable:
 
         :param s: String to initialize the instance with.
         """
-        # Using `name` allows this class to be used trivially with MatchSpec without type guards.
+        # Using `name` allows this class to be used trivially with MatchSpec without type guards. We sanitize the name
+        # for leading/trailing whitespace as a precaution.
         # TODO normalize common JINJA functions for quote usage
-        self.name = s
+        self.name = s.strip()
 
     def __eq__(self, o: object) -> bool:
         """

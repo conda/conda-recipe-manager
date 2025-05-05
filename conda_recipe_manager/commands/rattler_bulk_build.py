@@ -116,7 +116,7 @@ def create_debug_file(debug_log: Path, results: dict[str, BuildResult], error_hi
         },
     ),
 )
-@click.argument("path", type=click.Path(exists=True, path_type=Path, file_okay=False))  # type: ignore[misc]
+@click.argument("path", type=click.Path(exists=True, path_type=Path, file_okay=False))
 @click.option(
     "--min-success-rate",
     "-m",
@@ -133,7 +133,7 @@ def create_debug_file(debug_log: Path, results: dict[str, BuildResult], error_hi
 @click.option(
     "--debug-log",
     "-l",
-    type=click.Path(exists=False, file_okay=True, dir_okay=False, path_type=Path),  # type: ignore[misc]
+    type=click.Path(exists=False, file_okay=True, dir_okay=False, path_type=Path),
     help="Dumps a large debug log to the file specified.",
 )
 @click.pass_context

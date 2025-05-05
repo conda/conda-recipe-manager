@@ -1,0 +1,4 @@
+requirements:
+  run:
+    - ${{ pin_subpackage(name, min_pin='x') }}
+    - ${{ pin_subpackage(name, max_pin='y') }}

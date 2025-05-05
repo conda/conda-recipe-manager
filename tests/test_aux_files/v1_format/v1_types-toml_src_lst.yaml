@@ -1,0 +1,56 @@
+schema_version: 1
+
+context:
+  name: types-toml
+  version: 0.10.8.6
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  - url: https://pypi.io/packages/source/${{ name[0] }}/${{ name }}/types-toml-${{ version }}.tar.gz
+    sha256: 6d3ac79e36c9ee593c5d4fb33a50cca0e3adceb6ef5cff8b8e5aef67b4c4aaf2
+
+build:
+  number: 0
+  skip: match(python, "<3.7")
+  script: ${{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
+
+requirements:
+  host:
+    - setuptools
+    - wheel
+    - pip
+    - python
+  run:
+    - python
+
+tests:
+  - python:
+      imports:
+        - types
+      pip_check: true
+  - requirements:
+      run:
+        - pip
+    script:
+      - if: unix
+        then: test -f $SP_DIR/toml-stubs/__init__.pyi
+
+about:
+  summary: Typing stubs for toml
+  description: |
+    This is a PEP 561 type stub package for the toml package.
+    It can be used by type-checking tools like mypy, pyright,
+    pytype, PyCharm, etc. to check code that uses toml.
+  license: Apache-2.0 AND MIT
+  license_file: LICENSE
+  homepage: https://github.com/python/typeshed
+  repository: https://github.com/python/typeshed
+  documentation: https://pypi.org/project/types-toml/
+
+extra:
+  recipe-maintainers:
+    - fhoehle
+    - conda-forge/mypy

@@ -8,33 +8,23 @@ from __future__ import annotations
 
 from typing import Final, Optional, cast
 
+from conda.models.match_spec import MatchSpec
+
 from conda_recipe_manager.licenses.spdx_utils import SpdxUtils
-from conda_recipe_manager.parser._node import Node
-from conda_recipe_manager.parser._traverse import traverse
-from conda_recipe_manager.parser._types import (
-    ROOT_NODE_VALUE,
-    TOP_LEVEL_KEY_SORT_ORDER,
-    V1_BUILD_SECTION_KEY_SORT_ORDER,
-    V1_PYTHON_TEST_KEY_SORT_ORDER,
-    V1_SOURCE_SECTION_KEY_SORT_ORDER,
-    Regex,
-)
-from conda_recipe_manager.parser._utils import (
-    search_any_regex,
-    set_key_conditionally,
-    stack_path_to_str,
-    str_to_stack_path,
-)
-from conda_recipe_manager.parser.enums import SchemaVersion
+from conda_recipe_manager.parser._types import ROOT_NODE_VALUE, CanonicalSortOrder, Regex
+from conda_recipe_manager.parser._utils import search_any_regex, set_key_conditionally, stack_path_to_str
+from conda_recipe_manager.parser.dependency import Dependency, DependencyConflictMode
+from conda_recipe_manager.parser.enums import SchemaVersion, SelectorConflictMode
 from conda_recipe_manager.parser.recipe_parser import RecipeParser
+from conda_recipe_manager.parser.recipe_parser_deps import RecipeParserDeps
 from conda_recipe_manager.parser.types import CURRENT_RECIPE_SCHEMA_FORMAT
 from conda_recipe_manager.types import JsonPatchType, JsonType, MessageCategory, MessageTable, Primitives, SentinelType
 
 
-class RecipeParserConvert(RecipeParser):
+class RecipeParserConvert(RecipeParserDeps):
     """
-    Extension of the base RecipeParser class that enables upgrading recipes from the old to V1 format.
-    This was originally part of the RecipeParser class but was broken-out for easier maintenance.
+    Extension of the base RecipeParseDeps class that enables upgrading recipes from the old to V1 format.
+    This was originally part of the RecipeParserDeps class but was broken-out for easier maintenance.
     """
 
     def __init__(self, content: str):
@@ -48,7 +38,7 @@ class RecipeParserConvert(RecipeParser):
         # `copy.deepcopy()` produced some bizarre artifacts, namely single-line comments were being incorrectly rendered
         # as list members. Although inefficient, we have tests that validate round-tripping the parser and there
         # is no development cost in utilizing tools we already must maintain.
-        self._v1_recipe: RecipeParser = RecipeParser(self.render())
+        self._v1_recipe: RecipeParserDeps = RecipeParserDeps(self.render())
 
         self._spdx_utils = SpdxUtils()
         self._msg_tbl = MessageTable()
@@ -130,26 +120,6 @@ class RecipeParserConvert(RecipeParser):
             if self._patch_and_log({"op": "remove", "path": path}):
                 self._msg_tbl.add_message(MessageCategory.WARNING, f"Field at `{path}` is no longer supported.")
 
-    def _sort_subtree_keys(self, sort_path: str, tbl: dict[str, int], rename: str = "") -> None:
-        """
-        Convenience function that sorts 1 level of keys, given a path. Optionally allows renaming of the target node.
-        No changes are made if the path provided is invalid/does not exist.
-
-        :param sort_path: Top-level path to target sorting of child keys
-        :param tbl: Table describing how keys should be sorted. Lower-value key names appear towards the top of the list
-        :param rename: (Optional) If specified, renames the top-level key
-        """
-
-        def _comparison(n: Node) -> int:
-            return RecipeParser._canonical_sort_keys_comparison(n, tbl)
-
-        node = traverse(self._v1_recipe._root, str_to_stack_path(sort_path))  # pylint: disable=protected-access
-        if node is None:
-            return
-        if rename:
-            node.value = rename
-        node.children.sort(key=_comparison)
-
     ## Upgrade functions ##
 
     def _upgrade_jinja_to_context_obj(self) -> None:
@@ -166,7 +136,10 @@ class RecipeParserConvert(RecipeParser):
                 self._msg_tbl.add_message(MessageCategory.WARNING, f"The variable `{name}` is an unsupported type.")
                 continue
             # Function calls need to preserve JINJA escaping or else they turn into unevaluated strings.
-            if isinstance(value, str) and search_any_regex(Regex.JINJA_FUNCTIONS_SET, value):
+            # See issue #271 for details about env.get( string here.
+            if isinstance(value, str) and (
+                search_any_regex(Regex.JINJA_FUNCTIONS_SET, value) or value.startswith("env.get(")
+            ):
                 value = "{{" + value + "}}"
             context_obj[name] = value
         # Ensure that we do not include an empty context object (which is forbidden by the schema).
@@ -203,6 +176,78 @@ class RecipeParserConvert(RecipeParser):
             # Safely replace `{{` but not any existing `${{` instances
             value = Regex.JINJA_REPLACE_V0_STARTING_MARKER.sub("${{", value)
             self._patch_and_log({"op": "replace", "path": path, "value": value})
+
+    def _upgrade_ambiguous_deps(self) -> None:
+        """
+        Attempts to update all dependency sections to use unambiguous version constraints. This uses the dependency
+        tooling to prevent repeated logic. See Issue #276 and PR prefix-dev/rattler-build#1271 for more details.
+
+        This must be run before selectors are upgraded to the V1 format, as V1 support for dependency management is not
+        yet available.
+        """
+        try:
+            dep_map = self._v1_recipe.get_all_dependencies()
+        except (KeyError, ValueError):
+            self._msg_tbl.add_message(
+                MessageCategory.ERROR,
+                "Could not parse dependencies when attempting to upgrade ambiguous version numbers.",
+            )
+            return
+
+        for _, deps in dep_map.items():
+            for dep in deps:
+                # Warn and quit-early if there is a potential for a ambiguous version variable.
+                if not isinstance(dep.data, MatchSpec):  # type: ignore[misc]
+                    # TODO: Reduce spammy-ness by looking at the variables table
+                    self._msg_tbl.add_message(
+                        MessageCategory.WARNING,
+                        (
+                            "Recipe upgrades cannot currently upgrade ambiguous version constraints on dependencies"
+                            f" that use variables: {dep.data.name}"
+                        ),
+                    )
+                    continue
+
+                if dep.data.version is None or not isinstance(dep.data.original_spec_str, str):  # type: ignore[misc]
+                    continue
+
+                spec_str = dep.data.original_spec_str
+                # Corrects fairly common typos when dealing with >= and <= operators in dependency version selection
+                # statements.
+                spec_str = Regex.AMBIGUOUS_DEP_VERSION_GE_TYPO.sub(r"\1>=\2", spec_str)
+                spec_str = Regex.AMBIGUOUS_DEP_VERSION_LE_TYPO.sub(r"\1<=\2", spec_str)
+                # Corrects cases where two operators are used (i.e. `foo >=1.2.*`). We can't rely on MatchSpec to detect
+                # multiple operators, so we fall back to using a regular expression. We drop the trailing `.*` to be
+                # in alignment with `rattler-build`'s preferences:
+                # https://github.com/conda/rattler/blob/main/crates/rattler_conda_types/src/version_spec/parse.rs#L224
+                spec_str = Regex.AMBIGUOUS_DEP_MULTI_OPERATOR.sub(r"\1\2\3", spec_str)
+
+                # Add a trailing `.*` to ambiguous dependencies that lack an operator. This is not that easy as
+                # `VersionSpec` does not make a distinction between a version that contains a `==` operator and a
+                # version with no operator (which is ambiguous per the V1 specification).
+                if (
+                    cast(bool, dep.data.version.is_exact())  # type: ignore[misc]
+                    and "=" not in dep.data.original_spec_str
+                ):
+                    spec_str = f"{spec_str}.*"
+
+                # Only commit changes to modified dependencies.
+                if dep.data.original_spec_str == spec_str:
+                    continue
+
+                # TODO add IGNORE conflict mode for selectors???
+                self._v1_recipe.add_dependency(
+                    Dependency(
+                        required_by=dep.required_by,
+                        path=dep.path,
+                        type=dep.type,
+                        data=MatchSpec(spec_str),
+                        selector=dep.selector,
+                    ),
+                    dep_mode=DependencyConflictMode.EXACT_POSITION,
+                    sel_mode=SelectorConflictMode.OR,
+                )
+                self._msg_tbl.add_message(MessageCategory.WARNING, f"Version on dependency changed to: {spec_str}")
 
     def _upgrade_selectors_to_conditionals(self) -> None:
         """
@@ -286,12 +331,27 @@ class RecipeParserConvert(RecipeParser):
         """
         for base_path in base_package_paths:
             build_path = RecipeParser.append_to_path(base_path, "/build")
+            about_path = RecipeParser.append_to_path(base_path, "/about")
             # "If I had a nickel for every time `skip` was misspelled, I would have several nickels. Which isn't a lot,
             #  but it is weird that it has happened multiple times."
             #                                                             - Dr. Doofenshmirtz, probably
             self._patch_move_base_path(build_path, "skipt", "skip")
             self._patch_move_base_path(build_path, "skips", "skip")
             self._patch_move_base_path(build_path, "Skip", "skip")
+
+            # Various misspellings of "license_file" and "license_family". Note that `license_family` is deprecated,
+            # but we fix the spelling so it can be removed at a later phase.
+            self._patch_move_base_path(about_path, "licence_file", "license_file")
+            self._patch_move_base_path(about_path, "licensse_file", "license_file")
+            self._patch_move_base_path(about_path, "license_filte", "license_file")
+            self._patch_move_base_path(about_path, "licsense_file", "license_file")
+            self._patch_move_base_path(about_path, "icense_file", "license_file")
+            self._patch_move_base_path(about_path, "licence_family", "license_family")
+            self._patch_move_base_path(about_path, "license_familiy", "license_family")
+            self._patch_move_base_path(about_path, "license_familly", "license_family")
+
+            # Other about fields
+            self._patch_move_base_path(about_path, "Description", "description")
 
             # `/extras` -> `/extra`
             self._patch_move_base_path(base_path, "extras", "extra")
@@ -340,7 +400,9 @@ class RecipeParserConvert(RecipeParser):
                 self._patch_move_base_path(src_path, "/git_depth", "/depth")
 
                 # Canonically sort this section
-                self._sort_subtree_keys(src_path, V1_SOURCE_SECTION_KEY_SORT_ORDER)
+                self._v1_recipe._sort_subtree_keys(  # pylint: disable=protected-access
+                    src_path, CanonicalSortOrder.V1_SOURCE_SECTION_KEY_SORT_ORDER
+                )
 
     def _upgrade_build_script_section(self, build_path: str) -> None:
         """
@@ -480,7 +542,9 @@ class RecipeParserConvert(RecipeParser):
             self._patch_deprecated_fields(build_path, build_deprecated)
 
             # Canonically sort this section
-            self._sort_subtree_keys(build_path, V1_BUILD_SECTION_KEY_SORT_ORDER)
+            self._v1_recipe._sort_subtree_keys(  # pylint: disable=protected-access
+                build_path, CanonicalSortOrder.V1_BUILD_SECTION_KEY_SORT_ORDER
+            )
 
     def _upgrade_requirements_section(self, base_package_paths: list[str]) -> None:
         """
@@ -493,7 +557,7 @@ class RecipeParserConvert(RecipeParser):
             if not self._v1_recipe.contains_value(requirements_path):
                 continue
 
-            # Simple transformations
+            # Renames `run_constrained` to the new equivalent name
             self._patch_move_base_path(requirements_path, "/run_constrained", "/run_constraints")
 
     def _fix_bad_licenses(self, about_path: str) -> None:
@@ -572,28 +636,28 @@ class RecipeParserConvert(RecipeParser):
             # Remove deprecated `about` fields
             self._patch_deprecated_fields(about_path, about_deprecated)
 
-    def _upgrade_test_pip_check(self, base_path: str, test_path: str) -> None:
+    def _upgrade_test_pip_check(self, test_path: str) -> None:
         """
         Replaces the commonly used `pip check` test-case with the new `python/pip_check` attribute, if applicable.
 
-        :param base_path: Base path for the build target to upgrade
         :param test_path: Test path for the build target to upgrade
         """
+        # Replace `- pip check` in `commands` with the new flag. If not found, set the flag to `False` (as the
+        # flag defaults to `True`). DO NOT ADD THIS FLAG IF THE RECIPE IS NOT A "PYTHON RECIPE".
+        if not self._v1_recipe.is_python_recipe():
+            return
+
         pip_check_variants: Final[set[str]] = {
             "pip check",
             "python -m pip check",
             "python3 -m pip check",
         }
-        # Replace `- pip check` in `commands` with the new flag. If not found, set the flag to `False` (as the
-        # flag defaults to `True`). DO NOT ADD THIS FLAG IF THE RECIPE IS NOT A "PYTHON RECIPE".
-        if "python" not in cast(
-            list[str],
-            self._v1_recipe.get_value(RecipeParser.append_to_path(base_path, "/requirements/host"), default=[]),
-        ):
-            return
 
         commands_path: Final[str] = RecipeParser.append_to_path(test_path, "/commands")
-        commands = cast(list[str], self._v1_recipe.get_value(commands_path, []))
+        commands = cast(Optional[list[str]], self._v1_recipe.get_value(commands_path, []))
+        # Normalize the rare edge case where the list may be null (usually caused by commented-out code)
+        if commands is None:
+            commands = []
         pip_check = False
         for i, command in enumerate(commands):
             # TODO Future: handle selector cases (pip check will be in the `then` section of a dictionary object)
@@ -620,6 +684,8 @@ class RecipeParserConvert(RecipeParser):
         )
 
     def _upgrade_test_section(self, base_package_paths: list[str]) -> None:
+        # pylint: disable=too-complex
+        # TODO Refactor and simplify ^
         """
         Upgrades/converts the `test` section(s) of a recipe file.
 
@@ -658,7 +724,7 @@ class RecipeParserConvert(RecipeParser):
             self._patch_move_base_path(test_path, "/requires", "/requirements/run")
 
             # Upgrade `pip-check`, if applicable
-            self._upgrade_test_pip_check(base_path, test_path)
+            self._upgrade_test_pip_check(test_path)
 
             self._patch_move_base_path(test_path, "/commands", "/script")
             if self._v1_recipe.contains_value(RecipeParser.append_to_path(test_path, "/imports")):
@@ -667,11 +733,16 @@ class RecipeParserConvert(RecipeParser):
             self._patch_move_base_path(test_path, "/downstreams", "/downstream")
 
             # Canonically sort the python section, if it exists
-            self._sort_subtree_keys(RecipeParser.append_to_path(test_path, "/python"), V1_PYTHON_TEST_KEY_SORT_ORDER)
+            self._v1_recipe._sort_subtree_keys(  # pylint: disable=protected-access
+                RecipeParser.append_to_path(test_path, "/python"), CanonicalSortOrder.V1_PYTHON_TEST_KEY_SORT_ORDER
+            )
 
             # Move `test` to `tests` and encapsulate the pre-existing object into a list
             new_test_path = f"{test_path}s"
-            test_element = cast(dict[str, JsonType], self._v1_recipe.get_value(test_path))
+            test_element = cast(Optional[dict[str, JsonType]], self._v1_recipe.get_value(test_path, default=None))
+            # Handle empty test sections (commonly seen in bioconda and R recipes)
+            if test_element is None:
+                continue
             test_array: list[JsonType] = []
             # There are 3 types of test elements. We break them out of the original object, if they exist.
             # `Python` Test Element
@@ -715,7 +786,9 @@ class RecipeParserConvert(RecipeParser):
 
             # Not all the top-level keys are found in each output section, but all the output section keys are
             # found at the top-level. So for consistency, we sort on that ordering.
-            self._sort_subtree_keys(output_path, TOP_LEVEL_KEY_SORT_ORDER)
+            self._v1_recipe._sort_subtree_keys(  # pylint: disable=protected-access
+                output_path, CanonicalSortOrder.TOP_LEVEL_KEY_SORT_ORDER
+            )
 
     @staticmethod
     def pre_process_recipe_text(content: str) -> str:
@@ -754,7 +827,7 @@ class RecipeParserConvert(RecipeParser):
         #   - This is mostly used by Bioconda recipes and R-based-packages in the `license_file` field.
         #   - From our search, it looks like we never deal with more than one set of outer quotes within the brackets
         replacements: list[tuple[str, str]] = []
-        for groups in cast(list[str], Regex.PRE_PROCESS_ENVIRON.findall(content)):
+        for groups in cast(list[tuple[str, ...]], Regex.PRE_PROCESS_ENVIRON.findall(content)):
             # Each match should return ["<quote char>", "<key>", "<quote_char>"]
             quote_char = groups[0]
             key = groups[1]
@@ -764,22 +837,25 @@ class RecipeParserConvert(RecipeParser):
                     f"env.get({quote_char}{key}{quote_char})",
                 )
             )
+
+        for groups in cast(list[tuple[str, ...]], Regex.PRE_PROCESS_ENVIRON_GET.findall(content)):
+            environ_key = f"{groups[0]}{groups[1]}{groups[2]}"
+            environ_default = f"{groups[3]}{groups[4]}{groups[5]}"
+
+            replacements.append(
+                (
+                    f"environ | get({environ_key}, {environ_default})",
+                    f"env.get({environ_key}, default={environ_default})",
+                )
+            )
+
         for old, new in replacements:
             content = content.replace(old, new, 1)
 
         # Replace `{{ hash_type }}:` with the value of `hash_type`, which is likely `sha256`. This is an uncommon
         # practice that is not part of the V1 specification. Currently, about 70 AnacondaRecipes and conda-forge files
         # do this in our integration testing sample.
-        hash_type_var_variants: Final[set[str]] = {
-            '{% set hash_type = "sha256" %}\n',
-            '{% set hashtype = "sha256" %}\n',
-            '{% set hash = "sha256" %}\n',  # NOTE: `hash` is also commonly used for the actual SHA-256 hash value
-        }
-        for hash_type_variant in hash_type_var_variants:
-            content = content.replace(hash_type_variant, "")
-        content = Regex.PRE_PROCESS_JINJA_HASH_TYPE_KEY.sub("sha256:", content)
-
-        return content
+        return RecipeParser.pre_process_remove_hash_type(content)
 
     def render_to_v1_recipe_format(self) -> tuple[str, MessageTable, str]:
         """
@@ -787,8 +863,8 @@ class RecipeParserConvert(RecipeParser):
         state.
 
         This "new" format is defined in the following CEPs:
-          - https://github.com/conda-incubator/ceps/blob/main/cep-13.md
-          - https://github.com/conda-incubator/ceps/blob/main/cep-14.md
+          - https://github.com/conda/ceps/blob/main/cep-0013.md
+          - https://github.com/conda/ceps/blob/main/cep-0014.md
 
         :returns: Returns a tuple containing: - The converted recipe, as a string - A `MessageTbl` instance that
             contains error logging - Converted recipe file debug string. USE FOR DEBUGGING PURPOSES ONLY!
@@ -798,6 +874,9 @@ class RecipeParserConvert(RecipeParser):
 
         # Log the original comments
         old_comments: Final[dict[str, str]] = self._v1_recipe.get_comments_table()
+
+        # Attempts to update ambiguous dependency constraints. See function comments for more details.
+        self._upgrade_ambiguous_deps()
 
         # Convert selectors into ternary statements or `if` blocks. We process selectors first so that there is no
         # chance of selector comments getting accidentally wiped by patch or other operations.
@@ -845,7 +924,9 @@ class RecipeParserConvert(RecipeParser):
 
         # Sort the top-level keys to a "canonical" ordering. This should make previous patch operations look more
         # "sensible" to a human reader.
-        self._sort_subtree_keys("/", TOP_LEVEL_KEY_SORT_ORDER)
+        self._v1_recipe._sort_subtree_keys(  # pylint: disable=protected-access
+            "/", CanonicalSortOrder.TOP_LEVEL_KEY_SORT_ORDER
+        )
 
         # Override the schema value as the recipe conversion is now complete.
         self._v1_recipe._schema_version = SchemaVersion.V1  # pylint: disable=protected-access

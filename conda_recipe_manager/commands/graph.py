@@ -21,7 +21,7 @@ from conda_recipe_manager.grapher.types import GraphDirection, GraphType, Packag
 
 
 @click.command(short_help="Interactive CLI for examining recipe dependency graphs.")
-@click.argument("path", type=click.Path(exists=True, path_type=Path, file_okay=False))  # type: ignore[misc]
+@click.argument("path", type=click.Path(exists=True, path_type=Path, file_okay=False))
 def graph(path: Path) -> None:
     """
     Interactive CLI that provides tools for examining a dependency graph created from conda recipes.

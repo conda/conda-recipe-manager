@@ -1,0 +1,128 @@
+{% set version = "3.20.3" %}
+
+package:
+  name: libprotobuf-suite
+  version: {{ version }}
+
+source:
+  - url: https://github.com/protocolbuffers/protobuf/archive/v{{ version }}/libprotobuf-v{{ version }}.tar.gz
+    sha256: 9c0fd39c7a08dff543c643f0f4baf081988129a411b977a07c46221793605638
+    patches:  # [linux]
+      # We don't want the build to fail because of -Werror being used during
+      # make check.
+      - 0001-remove-Werror-from-test-flags.patch  # [linux]
+      # - 0002-remove-failing-json-parser-test.patch  # [s390x]
+      # our build machine does not have enough memory for this test.
+      # see: https://github.com/protocolbuffers/protobuf/issues/8082
+      # - 0003-remove-large-output-test.patch         # [s390x]
+      # This issue gets fixed and then reintroduced often
+      # https://github.com/protocolbuffers/protobuf/issues/7567
+      #- issue-7567.patch
+  # these are git submodules from the {{ version }} release
+  # https://github.com/protocolbuffers/protobuf/tree/v{{ version }}/third_party
+  - url: https://github.com/google/benchmark/archive/5b7683f49e1e9223cf9927b24f6fd3d6bd82e3f8.tar.gz
+    sha256: 5dc92703f811f94e2aa63bdab07ab749f28a094befa6cdfd5fe177f947590a48
+    folder: third_party/benchmark
+  - url: https://github.com/google/googletest/archive/5ec7f0c4a113e2f18ac2c6cc7df51ad6afc24081.tar.gz
+    sha256: 0e2f36e8e403c125fd0ab02171bdb786d3b6b3875b6ccf3b2eb7969be8faecd0
+    folder: third_party/googletest
+
+build:
+  number: 1
+
+requirements:
+  build:  # [linux or (osx and arm64)]
+    - patch  # [linux]
+    - sed  # [osx and arm64]
+
+outputs:
+  - name: libprotobuf
+    script: build-shared.sh  # [unix]
+    script: bld-shared.bat  # [win]
+    build:
+      missing_dso_whitelist:  # [s390x]
+        - $RPATH/ld64.so.1  # [s390x]
+      run_exports:
+        # breaks backwards compatibility and new SONAME each minor release
+        # https://abi-laboratory.pro/tracker/timeline/protobuf/
+        # One exception was that 3.6.1 was incompatible with 3.6.0
+        - {{ pin_subpackage('libprotobuf', max_pin='x.x') }}
+    requirements:
+      build:
+        - {{ compiler('c') }}
+        - {{ compiler('cxx') }}
+        - cmake  # [win]
+        - ninja  # [win]
+        - autoconf  # [not win]
+        - automake  # [not win]
+        - libtool  # [not win]
+        - pkg-config  # [not win]
+        - unzip  # [not win]
+        - make  # [not win]
+        - sed  # [osx and arm64]
+      host:
+        - zlib
+      run:
+        - zlib
+    test:
+      commands:
+        - protoc --help
+        - test -f ${PREFIX}/lib/libprotobuf${SHLIB_EXT}  # [not win]
+        - test ! -f ${PREFIX}/lib/libprotobuf.a  # [not win]
+        - if not exist %PREFIX%\\Library\\lib\\libprotoc.lib exit 1  # [win]
+        - if not exist %PREFIX%\\Library\\lib\\libprotobuf.lib exit 1  # [win]
+        - if not exist %PREFIX%\\Library\\lib\\libprotobuf-lite.lib exit 1  # [win]
+  - name: libprotobuf-static
+    script: build_static.sh  # [unix]
+    script: bld-static.bat  # [win]
+    requirements:
+      build:
+        - {{ compiler('c') }}
+        - {{ compiler('cxx') }}
+        - cmake  # [win]
+        - ninja  # [win]
+        - autoconf  # [not win]
+        - automake  # [not win]
+        - libtool  # [not win]
+        - pkg-config  # [not win]
+        - unzip  # [not win]
+        - make  # [not win]
+      host:
+        - zlib  # [not win]
+        - {{ pin_subpackage('libprotobuf', exact=True) }}  # [not win]
+      run:
+        - zlib  # [not win]
+        - {{ pin_subpackage('libprotobuf', exact=True) }}  # [not win]
+      run_constrained:
+        - libprotobuf <0a0  # [win]
+    test:
+      commands:
+        - test -f ${PREFIX}/lib/libprotobuf.a  # [unix]
+        - test -f ${PREFIX}/lib/libprotobuf-lite.a  # [unix]
+        - test -f ${PREFIX}/lib/libprotoc.a  # [unix]
+        - if exist %PREFIX%\\Library\\bin\\libprotoc.dll exit 1  # [win]
+        - if not exist %PREFIX%\\Library\\lib\\libprotoc.lib exit 1  # [win]
+        - if not exist %PREFIX%\\Library\\lib\\libprotobuf.lib exit 1  # [win]
+        - if not exist %PREFIX%\\Library\\lib\\libprotobuf-lite.lib exit 1  # [win]
+
+about:
+  home: https://developers.google.com/protocol-buffers/
+  license: BSD-3-Clause
+  license_family: BSD
+  license_file: LICENSE
+  summary: "Protocol Buffers - Google's data interchange format. C++ Libraries and protoc, the protobuf compiler."
+  description: |
+    Protocol buffers are Google's language-neutral,
+    platform-neutral, extensible mechanism for serializing structured data-
+    think XML, but smaller, faster, and simpler.
+  dev_url: https://github.com/protocolbuffers/protobuf
+  doc_url: https://developers.google.com/protocol-buffers/
+
+extra:
+  recipe-maintainers:
+    - dopplershift
+    - jakirkham
+    - ocefpaf
+    - wesm
+    - hajapy
+    - xhochy

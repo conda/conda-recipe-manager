@@ -10,8 +10,13 @@ import sys
 from pathlib import Path
 from typing import Final
 
-from conda_recipe_manager.scanner.dependency.base_dep_scanner import BaseDependencyScanner, ProjectDependency
-from conda_recipe_manager.types import DependencyType, MessageCategory
+from conda_recipe_manager.parser.dependency import DependencySection
+from conda_recipe_manager.scanner.dependency.base_dep_scanner import (
+    BaseDependencyScanner,
+    ProjectDependency,
+    new_project_dependency,
+)
+from conda_recipe_manager.types import MessageCategory
 
 # Table that maps import names that do not match the package name for common packages. See this StackOverflow post for
 # more details:
@@ -117,10 +122,12 @@ class PythonDependencyScanner(BaseDependencyScanner):
                 # Most Python imports fall under the `run` section in the Conda recipe format. The major exception is
                 # any import found in test code.
                 dep_type = (
-                    DependencyType.TEST if PythonDependencyScanner._is_likely_test_file(file) else DependencyType.RUN
+                    DependencySection.TESTS
+                    if PythonDependencyScanner._is_likely_test_file(file)
+                    else DependencySection.RUN
                 )
 
-                deps.add(ProjectDependency(package_name, dep_type))
+                deps.add(new_project_dependency(package_name, dep_type))
 
         return deps
 
@@ -145,7 +152,10 @@ class PythonDependencyScanner(BaseDependencyScanner):
         # `RUN` dependencies are automatically added as `TEST` dependencies, so we need to filter if there are
         # (effectively) duplicates
         def _filter_test_duplicates(dep: ProjectDependency) -> bool:
-            if dep.type == DependencyType.TEST and ProjectDependency(dep.name, DependencyType.RUN) in all_imports:
+            if (
+                dep.type == DependencySection.TESTS
+                and ProjectDependency(dep.data, DependencySection.RUN) in all_imports
+            ):
                 return False
             return True
 
@@ -157,7 +167,7 @@ class PythonDependencyScanner(BaseDependencyScanner):
         # TODO filter unused imports
 
         # Python is inherently a HOST and RUN dependency for all Python projects.
-        all_imports.add(ProjectDependency("python", DependencyType.HOST))
-        all_imports.add(ProjectDependency("python", DependencyType.RUN))
+        all_imports.add(new_project_dependency("python", DependencySection.HOST))
+        all_imports.add(new_project_dependency("python", DependencySection.RUN))
 
         return all_imports

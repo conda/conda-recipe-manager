@@ -1,5 +1,5 @@
 {% set name = "conda-recipe-manager" %}
-{% set version = "0.3.4" %}
+{% set version = "0.4.2" %}
 
 package:
   name: {{ name|lower }}
@@ -37,27 +37,26 @@ requirements:
 
 test:
   imports:
-    - conda_recipe_manager.commands
-    - conda_recipe_manager.licenses
-    - conda_recipe_manager.parser
+    - conda_recipe_manager
   source_files:
     - tests/
   requires:
     - pip
     - pytest
     - pytest-xdist
+    - pytest-socket
     - pyfakefs
   commands:
     - pip check
     - python -m pytest -n auto --ignore=tests/test_aux_files tests/
 
 about:
-  home: https://github.com/anaconda/conda-recipe-manager
+  home: https://github.com/conda/conda-recipe-manager
   license: BSD-3-Clause
   license_file: LICENSE
-  license_url: https://github.com/anaconda/conda-recipe-manager/blob/main/LICENSE
+  license_url: https://github.com/conda/conda-recipe-manager/blob/main/LICENSE
   summary: Helper tool for recipes on aggregate.
   description: |
     Renders local recipes, provides build orders, find outdated recipes.
-  doc_url: https://conda-incubator.github.io/conda-recipe-manager/index.html
-  dev_url: https://github.com/anaconda/conda-recipe-manager
+  doc_url: https://conda.github.io/conda-recipe-manager/index.html
+  dev_url: https://github.com/conda/conda-recipe-manager

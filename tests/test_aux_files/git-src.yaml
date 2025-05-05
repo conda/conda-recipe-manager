@@ -6,7 +6,7 @@ package:
   version: {{ version }}
 
 source:
-  git_url: https://github.com/conda-incubator/conda-recipe-manager.git
+  git_url: https://github.com/conda/conda-recipe-manager.git
   git_tag: v1.0.0
   git_rev: 1
   git_depth: 0

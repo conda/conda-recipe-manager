@@ -1,0 +1,6 @@
+{% set a = environ["a"] %}
+{% set b = environ.get("b", "0") %}
+
+package:
+  name: abc
+  version: 0

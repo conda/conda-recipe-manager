@@ -16,12 +16,12 @@ from tests.file_loading import get_test_path, load_file
 @pytest.mark.parametrize(
     "file,algo,expected",
     [
-        ("types-toml.yaml", "sha256", "e117d210da9ea6507fdea856ee96407265aec40cbc58432aa6e1c7e31998a686"),
-        ("types-toml.yaml", hashlib.sha256, "e117d210da9ea6507fdea856ee96407265aec40cbc58432aa6e1c7e31998a686"),
+        ("types-toml.yaml", "sha256", "d4c2fd9b24793a890e67dc58f5182981b4dd34c50967a8358de10eade8b2e415"),
+        ("types-toml.yaml", hashlib.sha256, "d4c2fd9b24793a890e67dc58f5182981b4dd34c50967a8358de10eade8b2e415"),
         (
             "types-toml.yaml",
             "sha512",
-            "0055bcbefb34695caa35e487cdd4e94340ff08db19a3de45a0fb79a270b2cc1f5183b8ebbca018a747e3b3a6fb8ce2a70d090f8510de4712bb24645202d75b36",  # pylint: disable=line-too-long
+            "b343b159400058f74a01f95c856094b1add15e516592d5102a09738ba6a3c2ddb044ee0e7d461d16515925483a5bcf5f516b2725924f2900f88ec6641b1d6e72",  # pylint: disable=line-too-long
         ),
     ],
 )
@@ -62,11 +62,11 @@ def test_hash_str(s: str, algo: Callable[[bytes], hashlib._Hash], expected: str)
 @pytest.mark.parametrize(
     "file,algo,expected",
     [
-        ("types-toml.yaml", hashlib.sha256, "e117d210da9ea6507fdea856ee96407265aec40cbc58432aa6e1c7e31998a686"),
+        ("types-toml.yaml", hashlib.sha256, "d4c2fd9b24793a890e67dc58f5182981b4dd34c50967a8358de10eade8b2e415"),
         (
             "types-toml.yaml",
             hashlib.sha512,
-            "0055bcbefb34695caa35e487cdd4e94340ff08db19a3de45a0fb79a270b2cc1f5183b8ebbca018a747e3b3a6fb8ce2a70d090f8510de4712bb24645202d75b36",  # pylint: disable=line-too-long
+            "b343b159400058f74a01f95c856094b1add15e516592d5102a09738ba6a3c2ddb044ee0e7d461d16515925483a5bcf5f516b2725924f2900f88ec6641b1d6e72",  # pylint: disable=line-too-long
         ),
     ],
 )

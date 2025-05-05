@@ -1,0 +1,187 @@
+{% set version = "2.22.0" %}
+
+package:
+  name: google-cloud-cpp-split
+  version: {{ version }}
+
+source:
+  url: https://github.com/googleapis/google-cloud-cpp/archive/v{{ version }}.tar.gz
+  sha256: 0c68782e57959c82e0c81def805c01460a042c1aae0c2feee905acaa2a2dc9bf
+
+build:
+  number: 2
+
+requirements:
+  build:
+    - {{ compiler('c') }}
+    - {{ compiler('cxx') }}
+    - cmake
+    - ninja
+    - libgrpc
+    - libprotobuf
+    - zlib  # Needed by gRPC
+  host:
+    - libgoogle-cloud-devel =={{ version }}
+    - libabseil
+    - libcurl
+    - libgrpc
+    - libprotobuf
+    - openssl
+    - nlohmann_json
+    - zlib  # Needed by gRPC
+
+outputs:
+  - name: libgoogle-cloud-all
+    script: install-libgoogle-cloud.sh  # [unix]
+    script: install-libgoogle-cloud.bat  # [win]
+    requirements:
+      build:
+        - {{ compiler('c') }}
+        - {{ compiler('cxx') }}
+        - cmake
+        - ninja
+      host:
+        - libgoogle-cloud-devel =={{ version }}
+        - libgoogle-cloud-logging-devel =={{ version }}
+        - libabseil
+        - libgrpc
+        - libprotobuf
+      run:
+        # From the google-cloud-cpp-core feedstock
+        - libgoogle-cloud-oauth2
+        - libgoogle-cloud-bigtable
+        - libgoogle-cloud-iam
+        - libgoogle-cloud-logging
+        - libgoogle-cloud-monitoring
+        - libgoogle-cloud-policytroubleshooter
+        - libgoogle-cloud-pubsub
+        - libgoogle-cloud-spanner
+        - libgoogle-cloud-storage
+        - libgoogle-cloud-trace
+        # From the google-cloud-cpp-bigquery feedstock
+        - libgoogle-cloud-bigquery
+        # From the google-cloud-cpp-compute feedstock
+        - libgoogle-cloud-compute
+        # From the google-cloud-cpp-ai feedstock
+        - libgoogle-cloud-aiplatform
+        - libgoogle-cloud-automl
+        - libgoogle-cloud-contentwarehouse
+        - libgoogle-cloud-discoveryengine
+        - libgoogle-cloud-dialogflow_es
+        - libgoogle-cloud-dialogflow_cx
+        - libgoogle-cloud-dlp
+        - libgoogle-cloud-documentai
+        - libgoogle-cloud-retail
+        - libgoogle-cloud-speech
+        - libgoogle-cloud-talent
+    test:
+      commands:
+        # We use `kms` as a canary. Any other feature could do the job.
+        #
+        # presence of shared library (unix)
+        - test -f $PREFIX/lib/libgoogle_cloud_cpp_kms.{{ version }}.dylib  # [osx]
+        - test -f $PREFIX/lib/libgoogle_cloud_cpp_kms.so.{{ version }}  # [linux]
+        # absence of static library (windows). It belongs only in devel package.
+        - if exist %LIBRARY_LIB%\google_cloud_cpp_kms.lib exit 1  # [win]
+        # absence of headers (they belong in devel package)
+        - test ! -f $PREFIX/include/google/cloud/kms/v1/ekm_client.h  # [unix]
+        - if exist %LIBRARY_INC%\google\cloud\kms\v1\ekm_client.h exit 1  # [win]
+        # absence of metadata for CMake & pkgconfig (belongs in devel package)
+        - test ! -f $PREFIX/lib/pkgconfig/google_cloud_cpp_kms.pc  # [unix]
+        - test ! -f $PREFIX/lib/cmake/google_cloud_cpp_kms/google_cloud_cpp_kms-config.cmake  # [unix]
+        - if exist %LIBRARY_PREFIX%\\lib\\cmake\\google_cloud_cpp_kms\\google_cloud_cpp_kms-config.cmake exit 1  # [win]
+  - name: libgoogle-cloud-all-devel
+    script: install-libgoogle-cloud.sh  # [unix]
+    script: install-libgoogle-cloud.bat  # [win]
+    build:
+      run_exports:
+        - {{ pin_subpackage("libgoogle-cloud-all", max_pin="x.x") }}
+    requirements:
+      build:
+        - {{ compiler('c') }}
+        - {{ compiler('cxx') }}
+        - cmake
+        - ninja
+      host:
+        - libgoogle-cloud-devel =={{ version }}
+        - libgoogle-cloud-logging-devel =={{ version }}
+      run:
+        - {{ pin_subpackage("libgoogle-cloud-all", exact=True) }}
+        # From the google-cloud-cpp-core feedstock
+        - libgoogle-cloud-devel =={{ version }}
+        - libgoogle-cloud-oauth2-devel
+        - libgoogle-cloud-bigtable-devel
+        - libgoogle-cloud-iam-devel
+        - libgoogle-cloud-logging-devel
+        - libgoogle-cloud-monitoring-devel
+        - libgoogle-cloud-policytroubleshooter-devel
+        - libgoogle-cloud-pubsub-devel
+        - libgoogle-cloud-spanner-devel
+        - libgoogle-cloud-storage-devel
+        - libgoogle-cloud-trace-devel
+        # From the google-cloud-cpp-bigquery feedstock
+        - libgoogle-cloud-bigquery-devel
+        # From the google-cloud-cpp-compute feedstock
+        - libgoogle-cloud-compute-devel
+        # From the google-cloud-cpp-ai feedstock
+        - libgoogle-cloud-aiplatform-devel
+        - libgoogle-cloud-automl-devel
+        - libgoogle-cloud-contentwarehouse-devel
+        - libgoogle-cloud-discoveryengine-devel
+        - libgoogle-cloud-dialogflow_es-devel
+        - libgoogle-cloud-dialogflow_cx-devel
+        - libgoogle-cloud-dlp-devel
+        - libgoogle-cloud-documentai-devel
+        - libgoogle-cloud-retail-devel
+        - libgoogle-cloud-speech-devel
+        - libgoogle-cloud-talent-devel
+    test:
+      commands:
+        # presence of headers (they belong in devel package)
+        - test -f $PREFIX/include/google/cloud/kms/ekm_client.h  # [unix]
+        - if not exist %LIBRARY_INC%\google\cloud\kms\ekm_client.h exit 1  # [win]
+        # presence of static library (on Windows)
+        - if not exist %LIBRARY_LIB%\google_cloud_cpp_kms.lib exit 1  # [win]
+        # build an example
+        - ./run_test_feature.sh  # [unix]
+        - ./run_test_feature.bat  # [win]
+      requires:
+        - {{ compiler('cxx') }}
+        - cmake
+        - ninja
+      files:
+        - run_test_feature.sh
+        - run_test_feature.bat
+      source_files:
+        # We use `kms` as a canary. Any other feature could do the job.
+        - google/cloud/kms/quickstart/*.cc
+        - google/cloud/kms/quickstart/CMakeLists.txt
+  # compatibility wrapper for legacy all-in-one output
+  - name: google-cloud-cpp
+    build:
+      run_exports:
+        - {{ pin_subpackage("libgoogle-cloud-all", max_pin="x.x") }}
+    requirements:
+      host:
+        - {{ pin_subpackage("libgoogle-cloud-all-devel", exact=True) }}
+      run:
+        - {{ pin_subpackage("libgoogle-cloud-all-devel", exact=True) }}
+    test:
+      commands:
+        - echo no test needed
+
+about:
+  home: https://github.com/googleapis/google-cloud-cpp
+  license: Apache-2.0
+  license_family: Apache
+  license_file: LICENSE
+  summary: Google Cloud Client Library for C++
+
+extra:
+  feedstock-name: google-cloud-cpp
+  recipe-maintainers:
+    - coryan
+    - davidbrochart
+    - dbolduc
+    - h-vetinari
+    - xhochy

@@ -14,6 +14,9 @@ to unique error cases.
 
 - [Conda Recipe Manager CLI Overview](#conda-recipe-manager-cli-overview)
 - [List of Tools](#list-of-tools)
+    - [bump-recipe](#bump-recipe)
+        - [Usage](#usage)
+        - [Example](#example)
     - [convert](#convert)
         - [Usage](#usage)
     - [graph](#graph)
@@ -27,9 +30,53 @@ to unique error cases.
 
 # List of Tools
 
+## `bump-recipe`
+This tool takes an existing recipe file and "bumps" it to target a new software version.
+
+As of writing, this tool can automatically update:
+- The `/build/number` field
+- The package version number (either by canonical `version` variable or `/package/version` field)
+- Any applicable `sha-256` fields in the `/source` section
+
+If a network request is required to perform a modification, this script will use a retry-with-a-back-off mechanism to
+recover in the event of a network failure.
+
+If the recipe only needs to increment the `/build/number` field, `--build-num` flag can be used.
+
+### Usage
+```sh
+Usage: crm bump-recipe [OPTIONS] RECIPE_FILE_PATH
+
+  Bumps a recipe to a new version.
+
+  RECIPE_FILE_PATH: Path to the target recipe file
+
+Options:
+  -b, --build-num             Bump the build number by 1.
+  -d, --dry-run               Performs a dry-run operation that prints the
+                              recipe to STDOUT and does not save to the recipe
+                              file.
+  -t, --target-version TEXT   New project version to target. Required if
+                              `--build-num` is NOT specified.
+  -i, --retry-interval FLOAT  Retry interval (in seconds) for network
+                              requests. Scales with number of failed attempts.
+                              Defaults to 30 seconds
+  --help                      Show this message and exit.
+```
+
+### Example
+Upgrade the `types-toml` feedstock from version `0.10.8.6` to `0.10.8.20240310`.
+```sh
+crm bump-recipe -t 0.10.8.20240310 types-toml-feedstock/recipe/meta.yaml
+```
+Only increment the `/build/number` field.
+```sh
+crm bump-recipe --build-num types-toml-feedstock/recipe/meta.yaml
+```
+
 ## `convert`
 This tool converts one or more recipe files from the V0 recipe format to the
-[V1 recipe format](https://github.com/conda/ceps/blob/main/cep-14.md).
+[V1 recipe format](https://github.com/conda/ceps/blob/main/cep-0014.md).
 
 In single file mode, a converted recipe file is dumped to `STDOUT` or can be written to a specified file using the `-o`
 option. Warnings and errors are printed to `STDERR`

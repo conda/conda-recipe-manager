@@ -45,7 +45,7 @@ def _render_git_key(recipe: RecipeReader, key: str) -> str:
                     raise FetchUnsupportedError(f"The following key is not supported for git sources: {key}")
 
 
-def from_recipe(recipe: RecipeReader, ignore_unsupported: bool = False) -> list[BaseArtifactFetcher]:
+def from_recipe(recipe: RecipeReader, ignore_unsupported: bool = False) -> dict[str, BaseArtifactFetcher]:
     """
     Parses and constructs a list of artifact-fetching objects based on the contents of a recipe.
 
@@ -60,17 +60,19 @@ def from_recipe(recipe: RecipeReader, ignore_unsupported: bool = False) -> list[
     :param ignore_unsupported: (Optional) If set to `True`, ignore currently unsupported artifacts found in the source
         section and return the list of supported sources. Otherwise, throw an exception.
     :raises FetchUnsupportedError: If an unsupported source format is found.
-    :returns: A list containing one Artifact Fetcher instance per source found in the recipe file.
+    :returns: A map containing one path and Artifact Fetcher instance pair per source found in the recipe file.
     """
-    sources: list[BaseArtifactFetcher] = []
+    sources: dict[str, BaseArtifactFetcher] = {}
     parsed_sources = cast(
         dict[str, Primitives] | list[dict[str, Primitives]], recipe.get_value("/source", sub_vars=True, default=[])
     )
     # TODO Handle selector evaluation/determine how common it is to have a selector in `/source`
 
     # Normalize to a list to handle both single and multi-source cases.
+    is_src_lst = True
     if not isinstance(parsed_sources, list):
         parsed_sources = [parsed_sources]
+        is_src_lst = False
 
     recipe_name = recipe.get_recipe_name()
     if recipe_name is None:
@@ -85,19 +87,19 @@ def from_recipe(recipe: RecipeReader, ignore_unsupported: bool = False) -> list[
 
         src_name = recipe_name if len(parsed_sources) == 1 else f"{recipe_name}_{i}"
 
+        # If the source section is not a list, it contains one "flag" source object.
+        src_path = f"/source/{i}" if is_src_lst else "/source"
         if url is not None:
-            sources.append(HttpArtifactFetcher(src_name, url))
+            sources[src_path] = HttpArtifactFetcher(src_name, url)
         elif git_url is not None:
-            sources.append(
-                GitArtifactFetcher(
-                    src_name,
-                    git_url,
-                    branch=optional_str(parsed_source.get(_render_git_key(recipe, "git_branch"))),
-                    tag=optional_str(parsed_source.get(_render_git_key(recipe, "git_tag"))),
-                    rev=optional_str(parsed_source.get(_render_git_key(recipe, "git_rev"))),
-                )
+            sources[src_path] = GitArtifactFetcher(
+                src_name,
+                git_url,
+                branch=optional_str(parsed_source.get(_render_git_key(recipe, "git_branch"))),
+                tag=optional_str(parsed_source.get(_render_git_key(recipe, "git_tag"))),
+                rev=optional_str(parsed_source.get(_render_git_key(recipe, "git_rev"))),
             )
         elif not ignore_unsupported:
-            raise FetchUnsupportedError(f"{recipe_name} contains an unsupported source object at `/source/{i}`.")
+            raise FetchUnsupportedError(f"{recipe_name} contains an unsupported source object at `{src_path}`.")
 
     return sources

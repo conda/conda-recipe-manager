@@ -1,0 +1,9 @@
+schema_version: 1
+
+context:
+  a: ${{env.get("a")}}
+  b: ${{env.get("b", default="0")}}
+
+package:
+  name: abc
+  version: 0

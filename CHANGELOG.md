@@ -3,6 +3,26 @@ NOTES:
 - Version releases in the 0.x.y range may introduce breaking changes.
 - See the auto-generated release notes for more details.
 
+## 0.4.2
+- Various bug fixes and improvements related to `crm bump-recipe`
+  - Introduces the new `--override-build-num` flag to allow bumped recipes to start counting
+    from a non-zero value
+  - Adds support for `| replace()` JINJA functions to be evaluated.
+
+## 0.4.1
+- `crm convert` now prints stacktraces when the `--debug` flag is used.
+- `crm bump-recipe` now includes a `--save-on-failure` flag that can save the
+  contents of a bumped recipe if the bump fails to fully complete.
+- Significant recipe compatibility improvements, brought on by changes made in
+  `rattler-build @0.34.1`.
+- Several community-reported bug fixes.
+
+## 0.4.0
+- Introduces MVP for the `bump-recipe` command. This command should be able to update the
+  version number, build number, and SHA-256 hash for most simple recipe files.
+- Starts work for scanning `pyproject.toml` dependencies
+- Minor bug fixes and infrastructure improvements.
+
 ## 0.3.4
 - Makes `DependencyVariable` type hashable.
 
@@ -30,7 +50,7 @@ Some highlights:
 - Adds `pyfakefs` to the unit testing suite.
 
 Full changelog available at:
-https://github.com/conda-incubator/conda-recipe-manager/compare/v0.2.1...v0.3.0
+https://github.com/conda/conda-recipe-manager/compare/v0.2.1...v0.3.0
 
 ## 0.2.1
 Minor bug fixes and documentation improvements. Conversion compatibility with Bioconda recipe has improved significantly.

@@ -35,6 +35,10 @@ class ExitCode(IntEnum):
     PRE_PROCESS_EXCEPTION = 105
     ILLEGAL_OPERATION = 106
 
+    # bump-recipe
+    PATCH_ERROR = 107
+    HTTP_ERROR = 108
+
     ## rattler-bulk-build ##
     # NOTE: There may be overlap with rattler-build
 

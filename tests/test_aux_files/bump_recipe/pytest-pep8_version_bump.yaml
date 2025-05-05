@@ -1,0 +1,48 @@
+{% set name = "pytest-pep8" %}
+{% set version = "1.0.7" %}
+{% set sha256 = "e594f5bc141acabe4b0298d05234e80195116667edad3d6a9cd610cab36bc4e1" %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  fn: {{ name }}-{{ version }}.tar.gz
+  url: https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz
+  sha256: {{ sha256 }}
+
+build:
+  noarch: python
+  number: 0
+  script: python -m pip install --no-deps --ignore-installed .
+
+requirements:
+  host:
+    - pip
+    - python
+    - setuptools
+  run:
+    - python
+    - pytest-cache
+    - pytest >=2.4.2
+    - pep8 >=1.3
+
+test:
+  imports:
+    - pytest_pep8
+
+about:
+  home: https://bitbucket.org/pytest-dev/pytest-pep8
+  license: MIT
+  license_file: LICENSE
+  summary: py.test plugin for efficiently checking PEP8 compliance
+  description: |
+    py.test plugin for efficiently checking PEP8 compliance.
+  doc_url: https://pypi.python.org/pypi/pytest-pep8
+  doc_source_url: https://bitbucket.org/pytest-dev/pytest-pep8/src
+  dev_url: https://bitbucket.org/pytest-dev/pytest-pep8
+
+extra:
+  recipe-maintainers:
+    - bjodah
+    - nicoddemus

@@ -152,7 +152,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Extracts JSON results from CI operations from a directory of CI log files"
     )
-    parser.add_argument("dir", type=Path, help="Directory that contains log files to parse.")  # type: ignore[misc]
+    parser.add_argument("dir", type=Path, help="Directory that contains log files to parse.")
     parser.add_argument("-v", "--verbose", action="store_true", help="Enables verbose final report.")
     args = parser.parse_args()
 

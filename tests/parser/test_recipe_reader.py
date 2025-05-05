@@ -134,6 +134,8 @@ def test_loading_obj_in_list() -> None:
         "dynamic-linking.yaml",
         "sub_vars.yaml",
         "h5py.yaml",  # `numpy {{ numpy }}` regression example.
+        # TODO Fix: string quotes around concatenation are not correct when round-tripped.
+        "x264.yaml",
         # V1 Recipe Files
         "v1_format/v1_types-toml.yaml",
         "v1_format/v1_simple-recipe.yaml",
@@ -626,23 +628,38 @@ def test_contains_value(file: str, path: str, expected: bool) -> None:
             },
         ),
         # Add/concat cases
-        ("sub_vars.yaml", "/requirements/run_constrained/0", True, 43),
-        ("sub_vars.yaml", "/requirements/run_constrained/1", True, 43.3),
-        ("sub_vars.yaml", "/requirements/run_constrained/2", True, "421"),
-        ("sub_vars.yaml", "/requirements/run_constrained/3", True, "421.3"),
-        ("sub_vars.yaml", "/requirements/run_constrained/4", True, 43),
-        ("sub_vars.yaml", "/requirements/run_constrained/5", True, 43.3),
-        ("sub_vars.yaml", "/requirements/run_constrained/6", True, "142"),
-        ("sub_vars.yaml", "/requirements/run_constrained/7", True, "1.342"),
-        ("sub_vars.yaml", "/requirements/run_constrained/8", True, "0.10.8.61.3"),
-        ("sub_vars.yaml", "/requirements/run_constrained/9", True, "0.10.8.61.3"),
-        ("sub_vars.yaml", "/requirements/run_constrained/10", True, "1.30.10.8.6"),
-        ("sub_vars.yaml", "/requirements/run_constrained/11", True, "1.30.10.8.6"),
-        ("sub_vars.yaml", "/requirements/run_constrained/12", True, 6),
-        ("sub_vars.yaml", "/requirements/run_constrained/13", True, "42"),
-        ("sub_vars.yaml", "/requirements/run_constrained/14", True, "dne42"),
-        ("sub_vars.yaml", "/requirements/run_constrained/15", True, 'foo > "42"'),
-        ("sub_vars.yaml", "/requirements/run_constrained/16", True, "foo > 6"),
+        ("sub_vars.yaml", "/requirements/fake_run_constrained/0", True, 43),
+        ("sub_vars.yaml", "/requirements/fake_run_constrained/1", True, 43.3),
+        ("sub_vars.yaml", "/requirements/fake_run_constrained/2", True, "421"),
+        ("sub_vars.yaml", "/requirements/fake_run_constrained/3", True, "421.3"),
+        ("sub_vars.yaml", "/requirements/fake_run_constrained/4", True, 43),
+        ("sub_vars.yaml", "/requirements/fake_run_constrained/5", True, 43.3),
+        ("sub_vars.yaml", "/requirements/fake_run_constrained/6", True, "142"),
+        ("sub_vars.yaml", "/requirements/fake_run_constrained/7", True, "1.342"),
+        ("sub_vars.yaml", "/requirements/fake_run_constrained/8", True, "0.10.8.61.3"),
+        ("sub_vars.yaml", "/requirements/fake_run_constrained/9", True, "0.10.8.61.3"),
+        ("sub_vars.yaml", "/requirements/fake_run_constrained/10", True, "1.30.10.8.6"),
+        ("sub_vars.yaml", "/requirements/fake_run_constrained/11", True, "1.30.10.8.6"),
+        ("sub_vars.yaml", "/requirements/fake_run_constrained/12", True, 6),
+        ("sub_vars.yaml", "/requirements/fake_run_constrained/13", True, "42"),
+        ("sub_vars.yaml", "/requirements/fake_run_constrained/14", True, "dne42"),
+        ("sub_vars.yaml", "/requirements/fake_run_constrained/15", True, 'foo > "42"'),
+        ("sub_vars.yaml", "/requirements/fake_run_constrained/16", True, "foo > 6"),
+        # Replace cases
+        ("sub_vars.yaml", "/requirements/fake_run_constrained/17", True, "TYPES_toml"),
+        ("sub_vars.yaml", "/requirements/fake_run_constrained/18", True, "types_toml"),
+        ("sub_vars.yaml", "/requirements/fake_run_constrained/19", True, "TYPES_toml"),
+        ("sub_vars.yaml", "/requirements/fake_run_constrained/20", True, "types_toml"),
+        ("sub_vars.yaml", "/requirements/fake_run_constrained/21", True, "TYPES_TOML"),
+        # Complex split and join cases. Note that we do not replace if split/join would result in a non-string value.
+        ("sub_vars.yaml", "/requirements/fake_run_constrained/22", True, "${{ name.split('-') }}"),
+        ("sub_vars.yaml", "/requirements/fake_run_constrained/23", True, "${{ '.'.join(name) }}"),
+        ("sub_vars.yaml", "/requirements/fake_run_constrained/24", True, "TYPES.toml"),
+        ("sub_vars.yaml", "/requirements/fake_run_constrained/25", True, "TYPES"),
+        ("sub_vars.yaml", "/requirements/fake_run_constrained/26", True, "TYPES.toml"),
+        ("sub_vars.yaml", "/requirements/fake_run_constrained/27", True, "l"),
+        ("sub_vars.yaml", "/requirements/fake_run_constrained/28", True, "T"),
+        ("sub_vars.yaml", "/requirements/fake_run_constrained/29", True, "TYPES-toml"),
         ## v1_simple-recipe.yaml ##
         ("v1_format/v1_simple-recipe.yaml", "/build/number", False, 0),
         ("v1_format/v1_simple-recipe.yaml", "/build/number/", False, 0),
@@ -781,23 +798,38 @@ def test_contains_value(file: str, path: str, expected: bool) -> None:
             },
         ),
         # Add/concat cases
-        ("v1_format/v1_sub_vars.yaml", "/requirements/run_constraints/0", True, 43),
-        ("v1_format/v1_sub_vars.yaml", "/requirements/run_constraints/1", True, 43.3),
-        ("v1_format/v1_sub_vars.yaml", "/requirements/run_constraints/2", True, "421"),
-        ("v1_format/v1_sub_vars.yaml", "/requirements/run_constraints/3", True, "421.3"),
-        ("v1_format/v1_sub_vars.yaml", "/requirements/run_constraints/4", True, 43),
-        ("v1_format/v1_sub_vars.yaml", "/requirements/run_constraints/5", True, 43.3),
-        ("v1_format/v1_sub_vars.yaml", "/requirements/run_constraints/6", True, "142"),
-        ("v1_format/v1_sub_vars.yaml", "/requirements/run_constraints/7", True, "1.342"),
-        ("v1_format/v1_sub_vars.yaml", "/requirements/run_constraints/8", True, "0.10.8.61.3"),
-        ("v1_format/v1_sub_vars.yaml", "/requirements/run_constraints/9", True, "0.10.8.61.3"),
-        ("v1_format/v1_sub_vars.yaml", "/requirements/run_constraints/10", True, "1.30.10.8.6"),
-        ("v1_format/v1_sub_vars.yaml", "/requirements/run_constraints/11", True, "1.30.10.8.6"),
-        ("v1_format/v1_sub_vars.yaml", "/requirements/run_constraints/12", True, 6),
-        ("v1_format/v1_sub_vars.yaml", "/requirements/run_constraints/13", True, "42"),
-        ("v1_format/v1_sub_vars.yaml", "/requirements/run_constraints/14", True, "dne42"),
-        ("v1_format/v1_sub_vars.yaml", "/requirements/run_constraints/15", True, 'foo > "42"'),
-        ("v1_format/v1_sub_vars.yaml", "/requirements/run_constraints/16", True, "foo > 6"),
+        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/0", True, 43),
+        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/1", True, 43.3),
+        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/2", True, "421"),
+        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/3", True, "421.3"),
+        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/4", True, 43),
+        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/5", True, 43.3),
+        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/6", True, "142"),
+        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/7", True, "1.342"),
+        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/8", True, "0.10.8.61.3"),
+        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/9", True, "0.10.8.61.3"),
+        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/10", True, "1.30.10.8.6"),
+        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/11", True, "1.30.10.8.6"),
+        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/12", True, 6),
+        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/13", True, "42"),
+        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/14", True, "dne42"),
+        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/15", True, 'foo > "42"'),
+        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/16", True, "foo > 6"),
+        # Replace cases
+        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/17", True, "TYPES_toml"),
+        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/18", True, "types_toml"),
+        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/19", True, "TYPES_toml"),
+        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/20", True, "types_toml"),
+        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/21", True, "TYPES_TOML"),
+        # Complex split and join cases. Note that we do not replace if split/join would result in a non-string value.
+        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/22", True, "${{ name.split('-') }}"),
+        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/23", True, "${{ '.'.join(name) }}"),
+        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/24", True, "TYPES.toml"),
+        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/25", True, "TYPES"),
+        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/26", True, "TYPES.toml"),
+        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/27", True, "l"),
+        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/28", True, "T"),
+        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/29", True, "TYPES-toml"),
         ## multi-output.yaml ##
         ("multi-output.yaml", "/outputs/0/build/run_exports/0", False, "bar"),
         ("multi-output.yaml", "/outputs/0/build/run_exports", False, ["bar"]),
@@ -958,7 +990,7 @@ def test_find_value_raises(file: str, value: Primitives) -> None:
     assert not parser.is_modified()
 
 
-## Dependencies ##
+## Convenience Functions ##
 
 
 @pytest.mark.parametrize(
@@ -966,8 +998,14 @@ def test_find_value_raises(file: str, value: Primitives) -> None:
     [
         ("multi-output.yaml", True),
         ("simple-recipe.yaml", False),
+        ("types-toml.yaml", False),
+        ("boto.yaml", False),
+        ("cctools-ld64.yaml", True),
         ("v1_format/v1_multi-output.yaml", True),
         ("v1_format/v1_simple-recipe.yaml", False),
+        ("v1_format/v1_types-toml.yaml", False),
+        ("v1_format/v1_boto.yaml", False),
+        ("v1_format/v1_cctools-ld64.yaml", True),
     ],
 )
 def test_is_multi_output(file: str, expected: bool) -> None:
@@ -978,6 +1016,34 @@ def test_is_multi_output(file: str, expected: bool) -> None:
     :param expected: Expected output
     """
     assert load_recipe(file, RecipeReader).is_multi_output() == expected
+
+
+@pytest.mark.parametrize(
+    "file,expected",
+    [
+        ("multi-output.yaml", False),
+        ("simple-recipe.yaml", False),
+        ("types-toml.yaml", True),
+        ("boto.yaml", True),
+        ("cctools-ld64.yaml", False),
+        ("v1_format/v1_multi-output.yaml", False),
+        ("v1_format/v1_simple-recipe.yaml", False),
+        ("v1_format/v1_types-toml.yaml", True),
+        ("v1_format/v1_boto.yaml", True),
+        ("v1_format/v1_cctools-ld64.yaml", False),
+        # Regression test for Issue 289. Compiled projects that use Python are not "pure python" packages.
+        ("issue_289_regression.yaml", False),
+        ("v1_format/v1_issue_289_regression.yaml", False),
+    ],
+)
+def test_is_python_recipe(file: str, expected: bool) -> None:
+    """
+    Validates if a recipe is a "pure Python" package.
+
+    :param file: File to test against
+    :param expected: Expected output
+    """
+    assert load_recipe(file, RecipeReader).is_python_recipe() == expected
 
 
 @pytest.mark.parametrize(
@@ -1425,11 +1491,11 @@ def test_search() -> None:
 @pytest.mark.parametrize(
     "file,expected",
     [
-        ("simple-recipe.yaml", "359215c5ac3460d07470f2e3f524ed24154ff2eb7d274feb98149e6949c2ddbe"),
-        ("v1_format/v1_simple-recipe.yaml", "68c0b7fd829c17715b5b9941c882eda3bb70cb1dcef8cc08a55a9ee2b959fb7f"),
-        ("types-toml.yaml", "e117d210da9ea6507fdea856ee96407265aec40cbc58432aa6e1c7e31998a686"),
-        ("v1_format/v1_types-toml.yaml", "3474ed870eea9c8efbd248d24de8bdf54ad8651a7aed06d240f118272d8a3fd1"),
-        ("v1_format/v1_boto.yaml", "b42349254d020ffeda77f3068e8ad8804a92d1c7b89eb0f3d45632b38fc0a3bc"),
+        ("simple-recipe.yaml", "ffb3eba5cdbd950def9301bd7283c68ce002ab6f40de26d4d3c26f93eafd1e26"),
+        ("v1_format/v1_simple-recipe.yaml", "7a4c09fb7c7161a3d11f635e8ed74154dbfb4e28bd83aa7e03ad9d57d22810ab"),
+        ("types-toml.yaml", "d4c2fd9b24793a890e67dc58f5182981b4dd34c50967a8358de10eade8b2e415"),
+        ("v1_format/v1_types-toml.yaml", "9781d24867bc7e3b6e35aca84824c3139f64546b0792af59a361f20dc97a92fe"),
+        ("v1_format/v1_boto.yaml", "9b0f1ca532f4e94346fb69490ee69fb8505e6f76e317466f3b241c334fb4ff5c"),
     ],
 )
 def test_calc_sha256(file: str, expected: str) -> None:

@@ -60,17 +60,6 @@ class SentinelType:
             return _schema_type_singleton
 
 
-class DependencyType(StrEnum):
-    """
-    Enumerates the dependency categories found in Conda recipe files.
-    """
-
-    BUILD = auto()
-    HOST = auto()
-    RUN = auto()
-    TEST = auto()
-
-
 class MessageCategory(StrEnum):
     """
     Categories to classify messages into.

@@ -38,9 +38,9 @@ export PRINT_HELP_PYSCRIPT
 
 BROWSER := python -c "$$BROWSER_PYSCRIPT"
 
-clean: clean-test clean-build clean-env clean-docs ## remove all build, test, coverage, and Python artifacts
+clean: clean-test clean-build clean-env clean-docs ## Removes all build, test, coverage, and Python artifacts
 
-clean-build: ## remove build and Python artifacts
+clean-build: ## Removes build and Python artifacts
 	rm -fr build/
 	rm -fr dist/
 	rm -fr .eggs/
@@ -54,7 +54,7 @@ clean-build: ## remove build and Python artifacts
 clean-env:					## remove conda environment
 	conda remove -y -n $(CONDA_ENV_NAME) --all
 
-clean-test: ## remove test, coverage, and profiler artifacts
+clean-test: ## Removes test, coverage, and profiler artifacts
 	rm -fr .tox/
 	rm -f .coverage
 	rm -fr htmlcov/
@@ -72,33 +72,33 @@ clean-docs:	## Removes temporary and auto-generated static doc files
 help:
 	$(PYTHON3) -c "$$PRINT_HELP_PYSCRIPT" < $(MAKEFILE_LIST)
 
-dev: clean		## install the package's development version to a fresh environment
+dev: clean		## Installs the package's development version to a fresh environment
 	conda env create -f environment.yaml --name $(CONDA_ENV_NAME) --yes
 	conda run --name $(CONDA_ENV_NAME) pip install -e .
 	$(CONDA_ACTIVATE) $(CONDA_ENV_NAME) && pre-commit install
 
-pre-commit:     ## runs pre-commit against files. NOTE: older files are disabled in the pre-commit config.
+pre-commit:     ## Runs pre-commit against files.
 	pre-commit run --all-files
 
-test:			## runs test cases
+test:			## Runs test cases
 	$(PYTHON3) -m pytest -n auto --capture=no $(TEST_DIR)
 
-test-cov:		## checks test coverage requirements
+test-cov:		## Checks test coverage requirements
 	$(PYTHON3) -m pytest -n auto --cov-config=.coveragerc --cov=$(SRC_DIR) \
-		$(TEST_DIR) --cov-fail-under=80 --cov-report term-missing
+		$(TEST_DIR) --cov-fail-under=85 --cov-report term-missing
 
-lint:			## runs the linter against the project
+lint:			## Runs the linter against the project
 	pylint --rcfile=.pylintrc $(SRC_DIR) $(TEST_DIR)
 
-format:			## runs the code auto-formatter
+format:			## Runs the code auto-formatter
 	isort --profile black --line-length=120 $(SRC_DIR) $(TEST_DIR) $(SCRIPTS_DIR)
 	black --line-length=120 $(SRC_DIR) $(TEST_DIR) $(SCRIPTS_DIR)
 
-format-docs:	## runs the docstring auto-formatter. NOTE: this requires manually installing `docconvert` with `pip`
+format-docs:	## Runs the docstring auto-formatter. NOTE: this requires manually installing `docconvert` with `pip`
 	docconvert --in-place --config .docconvert.json $(SRC_DIR)
 
-analyze:		## runs static analyzer on the project
+analyze:		## Runs static analyzer on the project
 	mypy --config-file=.mypy.ini --cache-dir=/dev/null $(SRC_DIR) $(TEST_DIR) $(SCRIPTS_DIR)
 
-docs: clean-docs	## generates static html documentation
+docs: clean-docs	## Generates static html documentation
 	$(MAKE) -C docs html

@@ -1,13 +1,13 @@
-[commit-checks-badge]: https://github.com/conda-incubator/conda-recipe-manager/actions/workflows/commit_checks.yaml/badge.svg?branch=main
-[integration-tests-badge]: https://github.com/conda-incubator/conda-recipe-manager/actions/workflows/integration_tests.yaml/badge.svg?branch=main
-[release-badge]: https://img.shields.io/github/v/release/conda-incubator/conda-recipe-manager?logo=github
+[commit-checks-badge]: https://github.com/conda/conda-recipe-manager/actions/workflows/commit_checks.yaml/badge.svg?branch=main
+[integration-tests-badge]: https://github.com/conda/conda-recipe-manager/actions/workflows/integration_tests.yaml/badge.svg?branch=main
+[release-badge]: https://img.shields.io/github/v/release/conda/conda-recipe-manager?logo=github
 
 
 # `conda-recipe-manager`
 
-[![Commit Checks][commit-checks-badge]](https://github.com/conda-incubator/conda-recipe-manager/actions/workflows/commit_checks.yaml)
-[![Integration Tests][integration-tests-badge]](https://github.com/conda-incubator/conda-recipe-manager/actions/workflows/integration_tests.yaml)
-[![GitHub Release][release-badge]](https://github.com/conda-incubator/conda-recipe-manager/releases)
+[![Commit Checks][commit-checks-badge]](https://github.com/conda/conda-recipe-manager/actions/workflows/commit_checks.yaml)
+[![Integration Tests][integration-tests-badge]](https://github.com/conda/conda-recipe-manager/actions/workflows/integration_tests.yaml)
+[![GitHub Release][release-badge]](https://github.com/conda/conda-recipe-manager/releases)
 
 # Overview
 Conda Recipe Manager (CRM) is a library and tool-set capable of managing `conda` recipe files. It is intended
@@ -21,9 +21,9 @@ For a more comprehensive break-down and status of the library modules, see
 
 ## Recipe Compatibility
 The latest recipe-parsing compatibility statistics can be found in the summary of our automated
-[Integration Tests](https://github.com/conda-incubator/conda-recipe-manager/actions).
+[Integration Tests](https://github.com/conda/conda-recipe-manager/actions).
 
-Our integration test data set is available [here](https://github.com/conda-incubator/conda-recipe-manager-test-data)
+Our integration test data set is available [here](https://github.com/conda/conda-recipe-manager-test-data)
 and is based off of publicly available recipe files from various sources.
 
 NOTE: CRM only officially supports recipe files in the V0. There is on-going work to add full support for editing
@@ -79,9 +79,11 @@ Usage: crm [OPTIONS] COMMAND [ARGS]...
   Command line interface for conda recipe management commands.
 
 Options:
-  --help  Show this message and exit.
+  -v, --verbose  Enables verbose logging (for commands that use the logger).
+  --help         Show this message and exit.
 
 Commands:
+  bump-recipe         Bumps a recipe file to a new version.
   convert             Converts a `meta.yaml` formatted-recipe file to the new
                       `recipe.yaml` format.
   graph               Interactive CLI for examining recipe dependency graphs.
@@ -103,7 +105,7 @@ conda activate conda-recipe-manager
 
 ### Developer Documentation
 We aim for a very high bar when it comes to code documentation so that we may leverage automatic documentation
-workflows. API docs are hosted [here](https://conda-incubator.github.io/conda-recipe-manager/index.html)
+workflows. API docs are hosted [here](https://conda.github.io/conda-recipe-manager/index.html)
 
 ### Setup Troubleshooting
 - If you are currently in the `conda-recipe-manager` environment, make sure that you exit the environment with
@@ -144,3 +146,4 @@ Here is a brief overview of our current release process:
 - @cbouss for his work on the [Percy project](https://github.com/anaconda/percy) that originally inspired the recipe parser.
 - @akabanovs for his work and experimentation on package dependency graph building.
 - @JeanChristopheMorinPerso for his PR review contributions when this project was a part of `Percy` and answering questions about the `conda` file formats.
+- @mrbean-bremen for maintaining the `pyfakefs` project and for providing guidance and assistance with `pyfakefs`.

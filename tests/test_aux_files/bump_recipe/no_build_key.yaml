@@ -1,0 +1,48 @@
+{% set zz_non_alpha_first = 42 %}
+{% set name = "types-toml" %}
+{% set version = "0.10.8.6" %}
+
+package:
+  name: {{ name|lower }}  # [unix]
+
+# Comment above a top-level structure
+requirements:
+  empty_field1:
+  host:
+    - setuptools  # [unix]
+    - fakereq  # [unix] selector with comment
+  empty_field2:  # [unix and win] # selector with comment with comment symbol
+  run:
+    - python  # not a selector
+  empty_field3:
+
+about:
+  summary: This is a small recipe for testing
+  description: |
+    This is a PEP '561 type stub package for the toml package.
+    It can be used by type-checking tools like mypy, pyright,
+    pytype, PyCharm, etc. to check code that uses toml.
+  license: Apache-2.0 AND MIT
+
+multi_level:
+  list_1:
+    - foo
+    # Ensure a comment in a list is supported
+    - bar
+  list_2:
+    - cat
+    - bat
+    - mat
+  list_3:
+    - ls
+    - sl
+    - cowsay
+
+test_var_usage:
+  foo: {{ version }}
+  bar:
+    - baz
+    - {{ zz_non_alpha_first }}
+    - blah
+    - This {{ name }} is silly
+    - last

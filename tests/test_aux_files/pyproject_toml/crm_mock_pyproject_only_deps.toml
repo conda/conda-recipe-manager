@@ -1,0 +1,59 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+namespaces = false
+exclude = ["tests"]
+
+[tool.setuptools.package-data]
+"conda_recipe_manager" = ["py.typed", "licenses/*.json"]
+
+[project]
+name = "conda_recipe_manager"
+version = "0.3.4"
+authors = [
+  { name="Anaconda, Inc.", email="distribution_team@anaconda.com" },
+]
+description = "Fast and rough renderer of conda recipes."
+readme = "README.md"
+license = {file = "LICENSE"}
+requires-python = ">=3.11"
+keywords = ["renderer", "conda recipe"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: BSD License",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Utilities",
+]
+dependencies = [
+  "click",
+  "jinja2",
+  "pyyaml",
+  "jsonschema",
+  "requests",
+  "gitpython",
+  "networkx",
+  "matplotlib",
+  "pygraphviz",
+]
+
+[project.scripts]
+conda-recipe-manager = "conda_recipe_manager.commands.conda_recipe_manager:conda_recipe_manager"
+crm = "conda_recipe_manager.commands.conda_recipe_manager:conda_recipe_manager"
+
+[project.urls]
+"Homepage" = "https://github.com/anaconda/conda-recipe-manager"
+"Bug Tracker" = "https://github.com/anaconda/conda-recipe-manager/issues"
+"Repository" = "https://github.com/anaconda/conda-recipe-manager"
+"Documentation" = "https://github.com/anaconda/conda-recipe-manager/blob/main/README.md"

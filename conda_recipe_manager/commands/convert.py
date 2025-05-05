@@ -9,6 +9,7 @@ import multiprocessing as mp
 import os
 import sys
 import time
+import traceback
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Final, Optional
@@ -58,6 +59,7 @@ def _record_unrecoverable_failure(
     exit_code: ExitCode,
     e_msg: str,
     print_output: bool,
+    debug: bool,
     e: Optional[Exception] = None,
 ) -> ConversionResult:
     """
@@ -68,12 +70,15 @@ def _record_unrecoverable_failure(
     :param exit_code: Exit code to return for this error case.
     :param e_msg: Error message to display, if enabled.
     :param print_output: Prints the recipe to STDERR if the output file is not specified and this flag is `True`.
+    :param debug: Enables debug mode output. Prints to STDERR.
     :param e: (Optional) Exception instance to capture, if applicable
     :returns: The final `conversion_result` instance that should be returned immediately.
     """
     print_err(e_msg, print_enabled=print_output)
     if e is not None:
         print_err(e, print_enabled=print_output)
+        if print_output and debug:
+            traceback.print_exception(e, file=sys.stderr)  #
     conversion_result.msg_tbl.add_message(MessageCategory.EXCEPTION, e_msg)
     conversion_result.code = exit_code
     return conversion_result
@@ -100,7 +105,12 @@ def convert_file(file_path: Path, output: Optional[Path], print_output: bool, de
         recipe_content = Path(file_path).read_text(encoding="utf-8")
     except Exception as e:  # pylint: disable=broad-exception-caught
         return _record_unrecoverable_failure(
-            conversion_result, ExitCode.READ_EXCEPTION, f"EXCEPTION: Failed to read: {file_path}", print_output, e
+            conversion_result,
+            ExitCode.READ_EXCEPTION,
+            f"EXCEPTION: Failed to read: {file_path}",
+            print_output,
+            debug,
+            e,
         )
 
     # Pre-process the recipe
@@ -112,6 +122,7 @@ def convert_file(file_path: Path, output: Optional[Path], print_output: bool, de
             ExitCode.PRE_PROCESS_EXCEPTION,
             "EXCEPTION: An exception occurred while pre-processing the recipe file",
             print_output,
+            debug,
             e,
         )
 
@@ -125,6 +136,7 @@ def convert_file(file_path: Path, output: Optional[Path], print_output: bool, de
             ExitCode.PARSE_EXCEPTION,
             "EXCEPTION: An exception occurred while parsing the recipe file",
             print_output,
+            debug,
             e,
         )
 
@@ -135,6 +147,7 @@ def convert_file(file_path: Path, output: Optional[Path], print_output: bool, de
             ExitCode.ILLEGAL_OPERATION,
             "ILLEGAL OPERATION: Only V0-formatted recipe files can be converted",
             print_output,
+            debug,
             None,
         )
 
@@ -154,6 +167,7 @@ def convert_file(file_path: Path, output: Optional[Path], print_output: bool, de
             ExitCode.RENDER_EXCEPTION,
             "EXCEPTION: An exception occurred while converting to the new recipe file",
             print_output,
+            debug,
             e,
         )
 
@@ -230,7 +244,7 @@ def _collect_issue_stats(project_name: str, issues: list[str], hist: dict[str, i
 
 
 @click.command(short_help="Converts a `meta.yaml` formatted-recipe file to the new `recipe.yaml` format.")
-@click.argument("path", type=click.Path(exists=True, path_type=Path))  # type: ignore[misc]
+@click.argument("path", type=click.Path(exists=True, path_type=Path))
 @click.option(
     "--output",
     "-o",
