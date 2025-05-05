@@ -863,8 +863,8 @@ class RecipeParserConvert(RecipeParserDeps):
         state.
 
         This "new" format is defined in the following CEPs:
-          - https://github.com/conda-incubator/ceps/blob/main/cep-13.md
-          - https://github.com/conda-incubator/ceps/blob/main/cep-14.md
+          - https://github.com/conda/ceps/blob/main/cep-0013.md
+          - https://github.com/conda/ceps/blob/main/cep-0014.md
 
         :returns: Returns a tuple containing: - The converted recipe, as a string - A `MessageTbl` instance that
             contains error logging - Converted recipe file debug string. USE FOR DEBUGGING PURPOSES ONLY!

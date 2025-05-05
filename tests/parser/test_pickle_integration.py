@@ -52,7 +52,7 @@ def test_pickle_integration_recipe_parsers(file: str, constructor: Callable[[str
     the thread pool tooling available in `multiprocessing`.
 
     More details about this problem can be found in this PR:
-      https://github.com/conda-incubator/conda-recipe-manager/pull/105
+      https://github.com/conda/conda-recipe-manager/pull/105
     """
     file_text = load_file(file)
     parser = constructor(file_text)

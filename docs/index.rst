@@ -10,7 +10,7 @@ by package builders and developers to automate the generation and editing of con
 
 This website acts as an API document for using conda-recipe-manager in other projects. For details about how to use
 the CLI tools provided by this project or how to contribute to this project directly, please visit the
-`CRM GitHub repository <https://github.com/conda-incubator/conda-recipe-manager>`_.
+`CRM GitHub repository <https://github.com/conda/conda-recipe-manager>`_.
 
 Contents
 ========

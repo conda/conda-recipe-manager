@@ -10,7 +10,7 @@ package:
 
 source:
   sha256: 6d3ac79e36c9ee593c5d4fb33a50cca0e3adceb6ef5cff8b8e5aef67b4c4aaf2
-  git: https://github.com/conda-incubator/conda-recipe-manager.git
+  git: https://github.com/conda/conda-recipe-manager.git
   tag: v1.0.0
   rev: 1
   depth: 0
