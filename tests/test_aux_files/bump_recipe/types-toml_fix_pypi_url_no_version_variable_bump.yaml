@@ -5,7 +5,7 @@ package:
   version: 0.10.8.20240310
 
 source:
-  url: https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/types-toml-0.10.8.20240310.tar.gz
+  url: https://pypi.org/packages/source/{{ name[0] }}/{{ name }}/types-toml-0.10.8.20240310.tar.gz
   sha256: e594f5bc141acabe4b0298d05234e80195116667edad3d6a9cd610cab36bc4e1
 
 build:

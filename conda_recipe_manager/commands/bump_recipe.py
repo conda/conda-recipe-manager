@@ -236,7 +236,7 @@ def _post_process_cleanup(recipe_parser: RecipeParser, cli_args: _CliArgs) -> No
     _exit_on_failed_search_and_patch_replace(
         recipe_parser,
         _Regex.PYPI_DEPRECATED_DOMAINS,
-        lambda s: _Regex.PYPI_DEPRECATED_DOMAINS.sub(r"https://pypi.org\3", s),
+        lambda s: _Regex.PYPI_DEPRECATED_DOMAINS.sub(r"https://pypi.org\3", str(s)),
         cli_args,
     )
 
