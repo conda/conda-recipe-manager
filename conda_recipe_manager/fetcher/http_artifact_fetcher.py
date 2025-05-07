@@ -143,3 +143,11 @@ class HttpArtifactFetcher(BaseArtifactFetcher):
         self._fetch_guard("Archive has not been downloaded, so the type can't be determined.")
 
         return self._archive_type
+
+    def get_archive_url(self) -> str:
+        """
+        Returns the URL where the archive can be found. This may be useful if the URL needs to be corrected or modified.
+
+        :returns: The URL where the archive can be found.
+        """
+        return self._archive_url

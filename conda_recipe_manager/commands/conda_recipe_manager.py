@@ -31,7 +31,7 @@ def conda_recipe_manager(verbose: bool) -> None:
     """
     # Initialize the logger, available to all CRM commands.
     logging.basicConfig(
-        format="%(asctime)s [%(levelname)s] [%(name)s]: %(message)s",
+        format="%(asctime)s[%(levelname)s][%(name)s]: %(message)s",
         level=logging.DEBUG if verbose else logging.INFO,
     )
 

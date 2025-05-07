@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import concurrent.futures as cf
 import logging
+import re
 import sys
 import time
 from pathlib import Path
@@ -14,12 +15,16 @@ from typing import Final, NamedTuple, NoReturn, Optional, cast
 import click
 
 from conda_recipe_manager.commands.utils.types import ExitCode
+from conda_recipe_manager.fetcher.api import pypi
 from conda_recipe_manager.fetcher.artifact_fetcher import from_recipe as af_from_recipe
 from conda_recipe_manager.fetcher.base_artifact_fetcher import BaseArtifactFetcher
 from conda_recipe_manager.fetcher.exceptions import FetchError
 from conda_recipe_manager.fetcher.http_artifact_fetcher import HttpArtifactFetcher
+from conda_recipe_manager.parser.enums import SchemaVersion
 from conda_recipe_manager.parser.recipe_parser import RecipeParser
+from conda_recipe_manager.parser.recipe_reader import RecipeReader
 from conda_recipe_manager.types import JsonPatchType
+from conda_recipe_manager.utils.typing import optional_str
 
 # Truncates the `__name__` to the crm command name.
 log = logging.getLogger(__name__.rsplit(".", maxsplit=1)[-1])
@@ -34,8 +39,29 @@ class _RecipePaths:
 
     BUILD_NUM: Final[str] = "/build/number"
     SOURCE: Final[str] = "/source"
+    SINGLE_URL: Final[str] = f"{SOURCE}/url"
     SINGLE_SHA_256: Final[str] = f"{SOURCE}/sha256"
     VERSION: Final[str] = "/package/version"
+
+
+class _RecipeVars:
+    """
+    Namespace to store all the commonly used JINJA variable names the bumper should be aware of.
+    """
+
+    # Common variable name used to track the software version of a package.
+    VERSION: Final[str] = "version"
+    # Common variable names used for source artifact hashes.
+    HASH_NAMES: Final[set[str]] = {
+        "sha256",
+        "hash",
+        "hash_val",
+        "hash_value",
+        "checksum",
+        "check_sum",
+        "hashval",
+        "hashvalue",
+    }
 
 
 class _CliArgs(NamedTuple):
@@ -56,17 +82,16 @@ class _CliArgs(NamedTuple):
     save_on_failure: bool
 
 
-# Common variable names used for source artifact hashes.
-_COMMON_HASH_VAR_NAMES: Final[set[str]] = {
-    "sha256",
-    "hash",
-    "hash_val",
-    "hash_value",
-    "checksum",
-    "check_sum",
-    "hashval",
-    "hashvalue",
-}
+class _Regex:
+    """
+    Namespace that contains all pre-compiled regular expressions used in this tool.
+    """
+
+    # Attempts to match PyPi source archive URLs by the start of the URL.
+    PYPI_URL: Final[re.Pattern[str]] = re.compile(
+        r"https?://pypi\.(?:io|org)/packages/source/[a-z]/|https?://files\.pythonhosted\.org/"
+    )
+
 
 # Maximum number of retries to attempt when trying to fetch an external artifact.
 _RETRY_LIMIT: Final[int] = 5
@@ -151,7 +176,7 @@ def _exit_on_failed_fetch(recipe_parser: RecipeParser, fetcher: BaseArtifactFetc
     """
     if cli_args.save_on_failure:
         _save_or_print(recipe_parser, cli_args)
-    log.error("Failed to fetch `%s` after %s retries.", fetcher, _RETRY_LIMIT)
+    log.error("Failed to fetch `%s` after attempted retries.", fetcher)
     sys.exit(ExitCode.HTTP_ERROR)
 
 
@@ -221,12 +246,12 @@ def _update_version(recipe_parser: RecipeParser, cli_args: _CliArgs) -> None:
     # most multi-output recipes)
 
     # If the `version` variable is found, patch that. This is an artifact/pattern from Grayskull.
-    old_variable = recipe_parser.get_variable("version", None)
+    old_variable = recipe_parser.get_variable(_RecipeVars.VERSION, None)
     if old_variable is not None:
-        recipe_parser.set_variable("version", cli_args.target_version)
+        recipe_parser.set_variable(_RecipeVars.VERSION, cli_args.target_version)
         # Generate a warning if `version` is not being used in the `/package/version` field. NOTE: This is a linear
         # search on a small list.
-        if _RecipePaths.VERSION not in recipe_parser.get_variable_references("version"):
+        if _RecipePaths.VERSION not in recipe_parser.get_variable_references(_RecipeVars.VERSION):
             log.warning("`/package/version` does not use the defined JINJA variable `version`.")
         return
 
@@ -236,35 +261,144 @@ def _update_version(recipe_parser: RecipeParser, cli_args: _CliArgs) -> None:
     )
 
 
-def _get_sha256(fetcher: HttpArtifactFetcher, cli_args: _CliArgs) -> str:
+def _fetch_archive(fetcher: HttpArtifactFetcher, cli_args: _CliArgs, retries: int = _RETRY_LIMIT) -> None:
     """
-    Wrapping function that attempts to retrieve an HTTP/HTTPS artifact with a retry mechanism.
+    Fetches the target source archive (with retries) for future use.
 
     :param fetcher: Artifact fetching instance to use.
     :param cli_args: Immutable CLI arguments from the user.
+    :param retries: (Optional) Number of retries to attempt. Defaults to `_RETRY_LIMIT` constant.
     :raises FetchError: If an issue occurred while downloading or extracting the archive.
-    :returns: The SHA-256 hash of the artifact, if it was able to be downloaded.
     """
     # NOTE: This is the most I/O-bound operation in `bump-recipe` by a country mile. At the time of writing,
     # running this operation in the background will not make any significant improvements to performance. Every other
     # operation is so fast in comparison, any gains would likely be lost with the additional overhead. This op is
     # also inherently reliant on having the version change performed ahead of time. In addition, parallelizing the
     # retries defeats the point of having a back-off timer.
-    for retry_id in range(1, _RETRY_LIMIT + 1):
+
+    for retry_id in range(1, retries + 1):
         try:
             log.info("Fetching artifact `%s`, attempt #%d", fetcher, retry_id)
             fetcher.fetch()
-            return fetcher.get_archive_sha256()
+            return
         except FetchError:
             time.sleep(retry_id * cli_args.retry_interval)
-    raise FetchError(f"Failed to fetch `{fetcher}` after {_RETRY_LIMIT} retries.")
+
+    raise FetchError(f"Failed to fetch `{fetcher}` after {retries} retries.")
+
+
+def _correct_pypi_url(recipe_reader: RecipeReader, url_path: str) -> tuple[str, str]:
+    """
+    Handles correcting PyPi URLs by querying the PyPi API. There are many edge cases here that complicate this process,
+    like managing JINJA variables commonly found in our URL values.
+
+    :param recipe_reader: Read-only parser (enforced by our static analyzer). Editing may not be thread-safe. It is up
+        to the caller to manage that risk.
+    :param url_path: Recipe-path to the URL string being used by the fetcher.
+    :raises FetchError: If an issue occurred while downloading or extracting the archive.
+    :returns: Corrected PyPi artifact URL for the fetcher and recipe file.
+    """
+    version_value: Final[Optional[str]] = optional_str(
+        recipe_reader.get_value(_RecipePaths.VERSION, default=None, sub_vars=True)
+    )
+    if version_value is None:
+        raise FetchError("Unable to determine recipe version for PyPi API request.")
+
+    # TODO we eventually need to handle the case of mapping conda names to PyPi names.
+    # TODO alternatively regex-out the PyPi name from the URL. However, in many cases, this might be wasted
+    # compute.
+    package_name: Final[Optional[str]] = recipe_reader.get_recipe_name()
+    if package_name is None:
+        raise FetchError("Unable to determine package name for PyPi API request.")
+
+    # TODO add retry mechanism for PyPi API query?
+    try:
+        pypi_meta: Final[pypi.PackageMetadata] = pypi.fetch_package_version_metadata(package_name, version_value)
+    except pypi.ApiException as e:
+        raise FetchError("Failed to access the PyPi API to correct a URL.") from e
+
+    if version_value not in pypi_meta.releases:
+        raise FetchError(f"Failed to retrieve target version: {version_value}")
+
+    # We replace the `filename` specifically for a number of reasons:
+    #  1) This decreases the "friction" involved with drastically changing what already exists in the recipe file. Less
+    #     changes, less disruption/confusion for our package builders (or so the theory goes).
+    #  2) The PyPi API generally produces a "post-redirect" URL for package artifacts. Again, as to not change the file
+    #     dramatically, we want to keep the commonly used `https://pypi.io` URL.
+    filename: Final[str] = pypi_meta.releases[version_value].filename
+
+    # If the commonly used `version` variable exists AND it is being used in the original URL, inject its usage into the
+    # file name.
+    version_var: Final[Optional[str]] = optional_str(recipe_reader.get_variable(_RecipeVars.VERSION, None))
+    is_version_var_used: Final[bool] = url_path in recipe_reader.get_variable_references(_RecipeVars.VERSION)
+    base_original_url: Final[str] = str(recipe_reader.get_value(url_path, default="", sub_vars=False)).rsplit(
+        "/", maxsplit=1
+    )[0]
+    base_rendered_url: Final[str] = str(recipe_reader.get_value(url_path, default="", sub_vars=True)).rsplit(
+        "/", maxsplit=1
+    )[0]
+    fetcher_url: Final[str] = f"{base_rendered_url}/{filename}"
+    if version_var is not None and is_version_var_used:
+        filename_with_var: Final[str] = filename.replace(
+            version_value,
+            (
+                # NOTE: The double-escaping of the outer `{{` and `}}` braces.
+                f"{{{{ {_RecipeVars.VERSION} }}}}"
+                if recipe_reader.get_schema_version() == SchemaVersion.V0
+                else f"${{{{ {_RecipeVars.VERSION} }}}}"
+            ),
+        )
+        return (fetcher_url, f"{base_original_url}/{filename_with_var}")
+
+    return (fetcher_url, f"{base_original_url}/{filename}")
+
+
+def _get_sha256_and_corrected_url(
+    recipe_reader: RecipeReader, url_path: str, fetcher: HttpArtifactFetcher, cli_args: _CliArgs
+) -> tuple[str, Optional[str]]:
+    """
+    Wrapping function that attempts to retrieve an HTTP/HTTPS artifact with a retry mechanism.
+
+    This also determines if a URL correction needs to be made.
+
+    For example, many PyPi archives (as of approximately 2024) now use underscores in the archive file name even though
+    the package name still uses hyphens.
+
+    :param recipe_reader: Read-only parser (enforced by our static analyzer). Editing may not be thread-safe. It is up
+        to the caller to manage that risk.
+    :param url_path: Recipe-path to the URL string being used by the fetcher.
+    :param fetcher: Artifact fetching instance to use.
+    :param cli_args: Immutable CLI arguments from the user.
+    :raises FetchError: If an issue occurred while downloading or extracting the archive.
+    :returns: The SHA-256 hash of the artifact, if it was able to be downloaded. Optionally includes a corrected URL to
+        be updated in the recipe file.
+    """
+    pypi_match = _Regex.PYPI_URL.match(fetcher.get_archive_url())
+    if pypi_match is None:
+        _fetch_archive(fetcher, cli_args)
+        return (fetcher.get_archive_sha256(), None)
+
+    # Attempt to handle PyPi URLs that might have changed.
+    pypi_retries: Final[int] = _RETRY_LIMIT // 2
+    try:
+        _fetch_archive(fetcher, cli_args, retries=pypi_retries)
+        return (fetcher.get_archive_sha256(), None)
+    except FetchError:
+        log.info("PyPI URL detected. Attempting to recover URL.")
+        # The `corrected_fetcher_url` is the rendered-out URL, without variables.
+        corrected_fetcher_url, corrected_recipe_url = _correct_pypi_url(recipe_reader, url_path)
+        corrected_fetcher: Final[HttpArtifactFetcher] = HttpArtifactFetcher(str(fetcher), corrected_fetcher_url)
+
+        _fetch_archive(corrected_fetcher, cli_args, retries=pypi_retries)
+        log.warning("Archive found at %s. Will attempt to update recipe file.", corrected_fetcher_url)
+        return (corrected_fetcher.get_archive_sha256(), corrected_recipe_url)
 
 
 def _update_sha256_check_hash_var(
     recipe_parser: RecipeParser, fetcher_tbl: dict[str, BaseArtifactFetcher], cli_args: _CliArgs
 ) -> bool:
     """
-    Helper function that checks if the SHA-256 is stored in a variable. If it does, it performs the update.
+    Helper function that checks if the SHA-256 is stored in a variable. If it is, it performs the update.
 
     :param recipe_parser: Recipe file to update.
     :param fetcher_tbl: Table of artifact source locations to corresponding ArtifactFetcher instances.
@@ -274,7 +408,7 @@ def _update_sha256_check_hash_var(
     # Check to see if the SHA-256 hash might be set in a variable. In extremely rare cases, we log warnings to indicate
     # that the "correct" action is unclear and likely requires human intervention. Otherwise, if we see a hash variable
     # and it is used by a single source, we will edit the variable directly.
-    hash_vars_set: Final[set[str]] = _COMMON_HASH_VAR_NAMES & set(recipe_parser.list_variables())
+    hash_vars_set: Final[set[str]] = _RecipeVars.HASH_NAMES & set(recipe_parser.list_variables())
     if len(hash_vars_set) == 1 and len(fetcher_tbl) == 1:
         hash_var: Final[str] = next(iter(hash_vars_set))
         src_fetcher: Final[Optional[BaseArtifactFetcher]] = fetcher_tbl.get(_RecipePaths.SOURCE, None)
@@ -286,7 +420,19 @@ def _update_sha256_check_hash_var(
             and _RecipePaths.SINGLE_SHA_256 in recipe_parser.get_variable_references(hash_var)
         ):
             try:
-                recipe_parser.set_variable(hash_var, _get_sha256(src_fetcher, cli_args))
+                sha, url = _get_sha256_and_corrected_url(recipe_parser, _RecipePaths.SINGLE_URL, src_fetcher, cli_args)
+                recipe_parser.set_variable(hash_var, sha)
+                if url is not None:
+                    _exit_on_failed_patch(
+                        recipe_parser,
+                        {
+                            # Guard against the "should be impossible" scenario that the `url` field is missing.
+                            "op": "replace" if recipe_parser.contains_value(_RecipePaths.SINGLE_URL) else "add",
+                            "path": _RecipePaths.SINGLE_URL,
+                            "value": url,
+                        },
+                        cli_args,
+                    )
             except FetchError:
                 _exit_on_failed_fetch(recipe_parser, src_fetcher, cli_args)
             return True
@@ -306,18 +452,25 @@ def _update_sha256_check_hash_var(
     return False
 
 
-def _update_sha256_fetch_one(src_path: str, fetcher: HttpArtifactFetcher, cli_args: _CliArgs) -> tuple[str, str]:
+def _update_sha256_fetch_one(
+    recipe_reader: RecipeReader, src_path: str, fetcher: HttpArtifactFetcher, cli_args: _CliArgs
+) -> tuple[str, str, Optional[tuple[str, str]]]:
     """
     Helper function that retrieves a single HTTP source artifact, so that we can parallelize network requests.
 
+    :param recipe_reader: Read-only parser (enforced by our static analyzer). Editing may not be thread-safe. It is up
+        to the caller to manage that risk.
     :param src_path: Recipe key path to the applicable artifact source.
     :param fetcher: Artifact fetching instance to use.
     :param cli_args: Immutable CLI arguments from the user.
     :raises FetchError: In the event that the retry mechanism failed to fetch a source artifact.
-    :returns: A tuple containing the path to and the actual SHA-256 value to be updated.
+    :returns: A tuple containing the path to and the actual SHA-256 value to be updated. Optionally includes a second
+        tuple containing the path to the artifact URL and a corrected URL.
     """
-    sha = _get_sha256(fetcher, cli_args)
-    return (RecipeParser.append_to_path(src_path, "/sha256"), sha)
+    url_path: Final[str] = RecipeParser.append_to_path(src_path, "/url")
+    sha, url = _get_sha256_and_corrected_url(recipe_reader, url_path, fetcher, cli_args)
+    url_tup: Final[Optional[tuple[str, str]]] = None if url is None else (url_path, url)
+    return (RecipeParser.append_to_path(src_path, "/sha256"), sha, url_tup)
 
 
 def _update_sha256(recipe_parser: RecipeParser, cli_args: _CliArgs) -> None:
@@ -345,6 +498,9 @@ def _update_sha256(recipe_parser: RecipeParser, cli_args: _CliArgs) -> None:
     # what to do.
     unique_hashes: set[str] = set()
 
+    # TODO refactor this. The HTTP fetcher table needs to fetch all source files AND THEN process the SHA-256 hashes,
+    # post corrections.
+
     # Filter-out artifacts that don't need a SHA-256 hash.
     http_fetcher_tbl: Final[dict[str, HttpArtifactFetcher]] = {
         k: v for k, v in fetcher_tbl.items() if isinstance(v, HttpArtifactFetcher)
@@ -353,30 +509,39 @@ def _update_sha256(recipe_parser: RecipeParser, cli_args: _CliArgs) -> None:
     # significantly more time and resources. That aligns with how I/O bound this process is. We use the
     # `ThreadPoolExecutor` class over a `ThreadPool` so the script may exit gracefully if we failed to acquire an
     # artifact.
-    sha_path_to_sha_tbl: dict[str, str] = {}
+    sha_cntr = 0
     with cf.ThreadPoolExecutor() as executor:
         artifact_futures_tbl = {
-            executor.submit(_update_sha256_fetch_one, src_path, fetcher, cli_args): fetcher
+            executor.submit(
+                _update_sha256_fetch_one, cast(RecipeReader, recipe_parser), src_path, fetcher, cli_args
+            ): fetcher
             for src_path, fetcher in http_fetcher_tbl.items()
         }
         for future in cf.as_completed(artifact_futures_tbl):
             fetcher = artifact_futures_tbl[future]
             try:
-                resolved_tuple = future.result()
-                sha_path_to_sha_tbl[resolved_tuple[0]] = resolved_tuple[1]
+                sha_path, sha, url_tup = future.result()
+                sha_cntr += 1
+                unique_hashes.add(sha)
+                # Guard against the unlikely scenario that the `sha256` field is missing.
+                sha_patch_op = "replace" if recipe_parser.contains_value(sha_path) else "add"
+                _exit_on_failed_patch(recipe_parser, {"op": sha_patch_op, "path": sha_path, "value": sha}, cli_args)
+
+                # Patch the URL if a new one has been provided.
+                if url_tup is None:
+                    continue
+                url_path, url = url_tup
+                # Guard against the "should be impossible" scenario that the `url` field is missing.
+                url_patch_op = "replace" if recipe_parser.contains_value(url_path) else "add"
+                _exit_on_failed_patch(recipe_parser, {"op": url_patch_op, "path": url_path, "value": url}, cli_args)
+
             except FetchError:
                 _exit_on_failed_fetch(recipe_parser, fetcher, cli_args)
-
-    for sha_path, sha in sha_path_to_sha_tbl.items():
-        unique_hashes.add(sha)
-        # Guard against the unlikely scenario that the `sha256` field is missing.
-        patch_op = "replace" if recipe_parser.contains_value(sha_path) else "add"
-        _exit_on_failed_patch(recipe_parser, {"op": patch_op, "path": sha_path, "value": sha}, cli_args)
 
     log.info(
         "Found %d unique SHA-256 hash(es) out of a total of %d hash(es) in %d sources.",
         len(unique_hashes),
-        len(sha_path_to_sha_tbl),
+        sha_cntr,
         len(fetcher_tbl),
     )
 

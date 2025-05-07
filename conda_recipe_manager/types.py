@@ -22,8 +22,10 @@ PRIMITIVES_TUPLE: Final[tuple[type[str], type[int], type[float], type[bool], typ
 # Type that represents a JSON-like type
 JsonType = Union[dict[str, "JsonType"], list["JsonType"], Primitives]
 
-# Type that represents a JSON patch payload
-JsonPatchType = dict[str, JsonType]
+# A JSON object must be have string keys.
+JsonObjectType = dict[str, JsonType]
+# Type that represents a JSON patch payload. A patch is a JSON object, so this alias is used for readability.
+JsonPatchType = JsonObjectType
 
 # Types that build up to types used in `jsonschema`s
 SchemaPrimitives = Union[str, int, bool, None]

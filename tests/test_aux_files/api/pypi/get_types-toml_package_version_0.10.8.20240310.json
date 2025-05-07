@@ -1,0 +1,94 @@
+{
+  "info": {
+    "author": "",
+    "author_email": "",
+    "bugtrack_url": null,
+    "classifiers": [
+      "License :: OSI Approved :: Apache Software License",
+      "Programming Language :: Python :: 3",
+      "Typing :: Stubs Only"
+    ],
+    "description": "## Typing stubs for toml\n\nThis is a [PEP 561](https://peps.python.org/pep-0561/)\ntype stub package for the [`toml`](https://github.com/uiri/toml) package.\nIt can be used by type-checking tools like\n[mypy](https://github.com/python/mypy/),\n[pyright](https://github.com/microsoft/pyright),\n[pytype](https://github.com/google/pytype/),\nPyCharm, etc. to check code that uses\n`toml`.\n\nThis version of `types-toml` aims to provide accurate annotations\nfor `toml==0.10.*`.\nThe source for this package can be found at\nhttps://github.com/python/typeshed/tree/main/stubs/toml. All fixes for\ntypes and metadata should be contributed there.\n\nSee https://github.com/python/typeshed/blob/main/README.md for more details.\nThis package was generated from typeshed commit `f94bbfbcc4c3b2b289425ea793beda0822e702f8` and was tested\nwith mypy 1.9.0, pyright 1.1.350, and\npytype 2024.2.27.\n",
+    "description_content_type": "text/markdown",
+    "docs_url": null,
+    "download_url": "",
+    "downloads": {
+      "last_day": -1,
+      "last_month": -1,
+      "last_week": -1
+    },
+    "dynamic": null,
+    "home_page": "https://github.com/python/typeshed",
+    "keywords": "",
+    "license": "Apache-2.0 license",
+    "license_expression": null,
+    "license_files": null,
+    "maintainer": "",
+    "maintainer_email": "",
+    "name": "types-toml",
+    "package_url": "https://pypi.org/project/types-toml/",
+    "platform": null,
+    "project_url": "https://pypi.org/project/types-toml/",
+    "project_urls": {
+      "Changes": "https://github.com/typeshed-internal/stub_uploader/blob/main/data/changelogs/toml.md",
+      "Chat": "https://gitter.im/python/typing",
+      "GitHub": "https://github.com/python/typeshed",
+      "Homepage": "https://github.com/python/typeshed",
+      "Issue tracker": "https://github.com/python/typeshed/issues"
+    },
+    "provides_extra": null,
+    "release_url": "https://pypi.org/project/types-toml/0.10.8.20240310/",
+    "requires_dist": null,
+    "requires_python": "\u003E=3.8",
+    "summary": "Typing stubs for toml",
+    "version": "0.10.8.20240310",
+    "yanked": false,
+    "yanked_reason": null
+  },
+  "last_serial": 22248574,
+  "urls": [
+    {
+      "comment_text": "",
+      "digests": {
+        "blake2b_256": "daa2d32ab58c0b216912638b140ab2170ee4b8644067c293b170e19fba340ccc",
+        "md5": "e355e535c85596df0b31b5664b614ed3",
+        "sha256": "627b47775d25fa29977d9c70dc0cbab3f314f32c8d8d0c012f2ef5de7aaec05d"
+      },
+      "downloads": -1,
+      "filename": "types_toml-0.10.8.20240310-py3-none-any.whl",
+      "has_sig": false,
+      "md5_digest": "e355e535c85596df0b31b5664b614ed3",
+      "packagetype": "bdist_wheel",
+      "python_version": "py3",
+      "requires_python": "\u003E=3.8",
+      "size": 4777,
+      "upload_time": "2024-03-10T02:18:36",
+      "upload_time_iso_8601": "2024-03-10T02:18:36.568092Z",
+      "url": "https://files.pythonhosted.org/packages/da/a2/d32ab58c0b216912638b140ab2170ee4b8644067c293b170e19fba340ccc/types_toml-0.10.8.20240310-py3-none-any.whl",
+      "yanked": false,
+      "yanked_reason": null
+    },
+    {
+      "comment_text": "",
+      "digests": {
+        "blake2b_256": "86473e4c75042792bff8e90d7991aa5c51812cc668828cc6cce711e97f63a607",
+        "md5": "04cdb67bc054c64da67b32093f77ae7f",
+        "sha256": "3d41501302972436a6b8b239c850b26689657e25281b48ff0ec06345b8830331"
+      },
+      "downloads": -1,
+      "filename": "types-toml-0.10.8.20240310.tar.gz",
+      "has_sig": false,
+      "md5_digest": "04cdb67bc054c64da67b32093f77ae7f",
+      "packagetype": "sdist",
+      "python_version": "source",
+      "requires_python": "\u003E=3.8",
+      "size": 4392,
+      "upload_time": "2024-03-10T02:18:37",
+      "upload_time_iso_8601": "2024-03-10T02:18:37.518202Z",
+      "url": "https://files.pythonhosted.org/packages/86/47/3e4c75042792bff8e90d7991aa5c51812cc668828cc6cce711e97f63a607/types-toml-0.10.8.20240310.tar.gz",
+      "yanked": false,
+      "yanked_reason": null
+    }
+  ],
+  "vulnerabilities": []
+}

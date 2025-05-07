@@ -1,0 +1,1045 @@
+{
+  "info": {
+    "author": "",
+    "author_email": "",
+    "bugtrack_url": null,
+    "classifiers": [
+      "License :: OSI Approved :: Apache Software License",
+      "Programming Language :: Python :: 3",
+      "Typing :: Stubs Only"
+    ],
+    "description": "## Typing stubs for toml\n\nThis is a [PEP 561](https://peps.python.org/pep-0561/)\ntype stub package for the [`toml`](https://github.com/uiri/toml) package.\nIt can be used by type-checking tools like\n[mypy](https://github.com/python/mypy/),\n[pyright](https://github.com/microsoft/pyright),\n[pytype](https://github.com/google/pytype/),\nPyCharm, etc. to check code that uses\n`toml`.\n\nThis version of `types-toml` aims to provide accurate annotations\nfor `toml==0.10.*`.\nThe source for this package can be found at\nhttps://github.com/python/typeshed/tree/main/stubs/toml. All fixes for\ntypes and metadata should be contributed there.\n\nSee https://github.com/python/typeshed/blob/main/README.md for more details.\nThis package was generated from typeshed commit `f94bbfbcc4c3b2b289425ea793beda0822e702f8` and was tested\nwith mypy 1.9.0, pyright 1.1.350, and\npytype 2024.2.27.\n",
+    "description_content_type": "text/markdown",
+    "docs_url": null,
+    "download_url": "",
+    "downloads": {
+      "last_day": -1,
+      "last_month": -1,
+      "last_week": -1
+    },
+    "dynamic": null,
+    "home_page": "https://github.com/python/typeshed",
+    "keywords": "",
+    "license": "Apache-2.0 license",
+    "license_expression": null,
+    "license_files": null,
+    "maintainer": "",
+    "maintainer_email": "",
+    "name": "types-toml",
+    "package_url": "https://pypi.org/project/types-toml/",
+    "platform": null,
+    "project_url": "https://pypi.org/project/types-toml/",
+    "project_urls": {
+      "Changes": "https://github.com/typeshed-internal/stub_uploader/blob/main/data/changelogs/toml.md",
+      "Chat": "https://gitter.im/python/typing",
+      "GitHub": "https://github.com/python/typeshed",
+      "Homepage": "https://github.com/python/typeshed",
+      "Issue tracker": "https://github.com/python/typeshed/issues"
+    },
+    "provides_extra": null,
+    "release_url": "https://pypi.org/project/types-toml/0.10.8.20240310/",
+    "requires_dist": null,
+    "requires_python": "\u003E=3.8",
+    "summary": "Typing stubs for toml",
+    "version": "0.10.8.20240310",
+    "yanked": false,
+    "yanked_reason": null
+  },
+  "last_serial": 22248574,
+  "releases": {
+    "0.1.0": [
+      {
+        "comment_text": "",
+        "digests": {
+          "blake2b_256": "64ed075d1a7df523d6cc6c8be8d3e9b39c54be6df6e45d1917fa73b7f555a0ed",
+          "md5": "1f92f0826a22f49292a942257939cccf",
+          "sha256": "eb0d9d5c3567ec0e716c0668b55720f12fc871b0725e7b054ede7ddb73209361"
+        },
+        "downloads": -1,
+        "filename": "types_toml-0.1.0-py2.py3-none-any.whl",
+        "has_sig": false,
+        "md5_digest": "1f92f0826a22f49292a942257939cccf",
+        "packagetype": "bdist_wheel",
+        "python_version": "py2.py3",
+        "requires_python": null,
+        "size": 1763,
+        "upload_time": "2021-01-26T15:14:27",
+        "upload_time_iso_8601": "2021-01-26T15:14:27.714982Z",
+        "url": "https://files.pythonhosted.org/packages/64/ed/075d1a7df523d6cc6c8be8d3e9b39c54be6df6e45d1917fa73b7f555a0ed/types_toml-0.1.0-py2.py3-none-any.whl",
+        "yanked": false,
+        "yanked_reason": null
+      }
+    ],
+    "0.1.1": [
+      {
+        "comment_text": "",
+        "digests": {
+          "blake2b_256": "de85764a937129fc78658a45596d5d923812c22744a2017d98cc8818c676aa1e",
+          "md5": "26ac2028928644b13d200f2d9e0cd730",
+          "sha256": "ccebb129f6d68f49fbeb0efd000d48098b3f62885f0dbe44ad001e8b9c0b62ff"
+        },
+        "downloads": -1,
+        "filename": "types_toml-0.1.1-py2.py3-none-any.whl",
+        "has_sig": false,
+        "md5_digest": "26ac2028928644b13d200f2d9e0cd730",
+        "packagetype": "bdist_wheel",
+        "python_version": "py2.py3",
+        "requires_python": null,
+        "size": 2040,
+        "upload_time": "2021-02-02T20:52:46",
+        "upload_time_iso_8601": "2021-02-02T20:52:46.396022Z",
+        "url": "https://files.pythonhosted.org/packages/de/85/764a937129fc78658a45596d5d923812c22744a2017d98cc8818c676aa1e/types_toml-0.1.1-py2.py3-none-any.whl",
+        "yanked": false,
+        "yanked_reason": null
+      }
+    ],
+    "0.1.2": [
+      {
+        "comment_text": "",
+        "digests": {
+          "blake2b_256": "f8c82d4df1a184f9280027c9a4471edc00779dc7d2aea9859ffa5457196e25fc",
+          "md5": "ff844358f9ecc34e6f2f520a3eac913e",
+          "sha256": "92fe51b57534bc5c16da2d5e2a712aa229c86f8872df95d5f58dcb6977a376ce"
+        },
+        "downloads": -1,
+        "filename": "types_toml-0.1.2-py2.py3-none-any.whl",
+        "has_sig": false,
+        "md5_digest": "ff844358f9ecc34e6f2f520a3eac913e",
+        "packagetype": "bdist_wheel",
+        "python_version": "py2.py3",
+        "requires_python": null,
+        "size": 2080,
+        "upload_time": "2021-06-13T00:56:12",
+        "upload_time_iso_8601": "2021-06-13T00:56:12.577268Z",
+        "url": "https://files.pythonhosted.org/packages/f8/c8/2d4df1a184f9280027c9a4471edc00779dc7d2aea9859ffa5457196e25fc/types_toml-0.1.2-py2.py3-none-any.whl",
+        "yanked": false,
+        "yanked_reason": null
+      }
+    ],
+    "0.1.3": [
+      {
+        "comment_text": "",
+        "digests": {
+          "blake2b_256": "e89b97adb9cf0b76b2f9f8a93d6f0e850bcfb1af1c358ec9f4188d3b83ea6755",
+          "md5": "9dbc523fb8dd1fe6329d175ed9ca5311",
+          "sha256": "d4add39a90993173d49ff0b069edd122c66ad4cf5c01082b590e380ca670ee1a"
+        },
+        "downloads": -1,
+        "filename": "types_toml-0.1.3-py2.py3-none-any.whl",
+        "has_sig": false,
+        "md5_digest": "9dbc523fb8dd1fe6329d175ed9ca5311",
+        "packagetype": "bdist_wheel",
+        "python_version": "py2.py3",
+        "requires_python": null,
+        "size": 2082,
+        "upload_time": "2021-06-17T15:02:48",
+        "upload_time_iso_8601": "2021-06-17T15:02:48.885715Z",
+        "url": "https://files.pythonhosted.org/packages/e8/9b/97adb9cf0b76b2f9f8a93d6f0e850bcfb1af1c358ec9f4188d3b83ea6755/types_toml-0.1.3-py2.py3-none-any.whl",
+        "yanked": false,
+        "yanked_reason": null
+      },
+      {
+        "comment_text": "",
+        "digests": {
+          "blake2b_256": "d877561ad81396093af160995a8abd7125821f3fd738606ca4a8ff9b304c1c49",
+          "md5": "ddcb8aba00d84d2ea519b69dab6f1271",
+          "sha256": "33ebe67bebaec55a123ecbaa2bd98fe588335d8d8dda2c7ac53502ef5a81a79a"
+        },
+        "downloads": -1,
+        "filename": "types-toml-0.1.3.tar.gz",
+        "has_sig": false,
+        "md5_digest": "ddcb8aba00d84d2ea519b69dab6f1271",
+        "packagetype": "sdist",
+        "python_version": "source",
+        "requires_python": null,
+        "size": 1721,
+        "upload_time": "2021-06-17T15:02:49",
+        "upload_time_iso_8601": "2021-06-17T15:02:49.783642Z",
+        "url": "https://files.pythonhosted.org/packages/d8/77/561ad81396093af160995a8abd7125821f3fd738606ca4a8ff9b304c1c49/types-toml-0.1.3.tar.gz",
+        "yanked": false,
+        "yanked_reason": null
+      }
+    ],
+    "0.1.4": [
+      {
+        "comment_text": "",
+        "digests": {
+          "blake2b_256": "960cff5cec883b027fdcf7fe91282631d103def99de9f399d636816df105a9d1",
+          "md5": "c999082e498df80511055c956cec22da",
+          "sha256": "dd40db89bd399a20d8a5c4e4c88b429f2f13843b40d8d6cedc3fe70f8f421c29"
+        },
+        "downloads": -1,
+        "filename": "types_toml-0.1.4-py3-none-any.whl",
+        "has_sig": false,
+        "md5_digest": "c999082e498df80511055c956cec22da",
+        "packagetype": "bdist_wheel",
+        "python_version": "py3",
+        "requires_python": null,
+        "size": 2071,
+        "upload_time": "2021-08-08T09:19:03",
+        "upload_time_iso_8601": "2021-08-08T09:19:03.488987Z",
+        "url": "https://files.pythonhosted.org/packages/96/0c/ff5cec883b027fdcf7fe91282631d103def99de9f399d636816df105a9d1/types_toml-0.1.4-py3-none-any.whl",
+        "yanked": false,
+        "yanked_reason": null
+      },
+      {
+        "comment_text": "",
+        "digests": {
+          "blake2b_256": "879d3cf4fb58ae8b0c969727449ae49a419fe88f2a853226b308e36dcb76c956",
+          "md5": "86e811e347e2c15709e06fd84dccf17d",
+          "sha256": "a886c68ea673e273e886f2de5c33b4c63638e628b38b86d963e14853a3470bf4"
+        },
+        "downloads": -1,
+        "filename": "types-toml-0.1.4.tar.gz",
+        "has_sig": false,
+        "md5_digest": "86e811e347e2c15709e06fd84dccf17d",
+        "packagetype": "sdist",
+        "python_version": "source",
+        "requires_python": null,
+        "size": 1710,
+        "upload_time": "2021-08-08T09:19:04",
+        "upload_time_iso_8601": "2021-08-08T09:19:04.546870Z",
+        "url": "https://files.pythonhosted.org/packages/87/9d/3cf4fb58ae8b0c969727449ae49a419fe88f2a853226b308e36dcb76c956/types-toml-0.1.4.tar.gz",
+        "yanked": false,
+        "yanked_reason": null
+      }
+    ],
+    "0.1.5": [
+      {
+        "comment_text": "",
+        "digests": {
+          "blake2b_256": "d8d17cd08fd610c8cecffc391ee1729cd0e413d58573cd3b6c82e05b2d4b10d8",
+          "md5": "451118a737e30783ae9d5a33619b4413",
+          "sha256": "dd00526680595aad0eade682bd8a9e9513e9b4b8932daed159925fe446fc90a9"
+        },
+        "downloads": -1,
+        "filename": "types_toml-0.1.5-py3-none-any.whl",
+        "has_sig": false,
+        "md5_digest": "451118a737e30783ae9d5a33619b4413",
+        "packagetype": "bdist_wheel",
+        "python_version": "py3",
+        "requires_python": null,
+        "size": 2071,
+        "upload_time": "2021-08-08T18:21:51",
+        "upload_time_iso_8601": "2021-08-08T18:21:51.790789Z",
+        "url": "https://files.pythonhosted.org/packages/d8/d1/7cd08fd610c8cecffc391ee1729cd0e413d58573cd3b6c82e05b2d4b10d8/types_toml-0.1.5-py3-none-any.whl",
+        "yanked": false,
+        "yanked_reason": null
+      },
+      {
+        "comment_text": "",
+        "digests": {
+          "blake2b_256": "31512f969e13d7b770eb7f4005cb0ca019878788e5cdafe70eb18549e89396e1",
+          "md5": "a030827052a4aae190446dc7739580d8",
+          "sha256": "fc5e1df92c245404e4360c63568e9f0e732b0cabea7a220a4788d52b78f5dc59"
+        },
+        "downloads": -1,
+        "filename": "types-toml-0.1.5.tar.gz",
+        "has_sig": false,
+        "md5_digest": "a030827052a4aae190446dc7739580d8",
+        "packagetype": "sdist",
+        "python_version": "source",
+        "requires_python": null,
+        "size": 1710,
+        "upload_time": "2021-08-08T18:21:52",
+        "upload_time_iso_8601": "2021-08-08T18:21:52.614291Z",
+        "url": "https://files.pythonhosted.org/packages/31/51/2f969e13d7b770eb7f4005cb0ca019878788e5cdafe70eb18549e89396e1/types-toml-0.1.5.tar.gz",
+        "yanked": false,
+        "yanked_reason": null
+      }
+    ],
+    "0.10.0": [
+      {
+        "comment_text": "",
+        "digests": {
+          "blake2b_256": "4809227daab877d1aad730a7c3c77ceeaa3af0afc3b06bfd7f09f94f7f1374f8",
+          "md5": "945d614bbe6f3ead132bff69e3b055b5",
+          "sha256": "c1bbb97ebe59593378769447343f78187017458cce8c3f1e76c80b9a930eef01"
+        },
+        "downloads": -1,
+        "filename": "types_toml-0.10.0-py3-none-any.whl",
+        "has_sig": false,
+        "md5_digest": "945d614bbe6f3ead132bff69e3b055b5",
+        "packagetype": "bdist_wheel",
+        "python_version": "py3",
+        "requires_python": null,
+        "size": 2081,
+        "upload_time": "2021-09-19T03:17:40",
+        "upload_time_iso_8601": "2021-09-19T03:17:40.911962Z",
+        "url": "https://files.pythonhosted.org/packages/48/09/227daab877d1aad730a7c3c77ceeaa3af0afc3b06bfd7f09f94f7f1374f8/types_toml-0.10.0-py3-none-any.whl",
+        "yanked": false,
+        "yanked_reason": null
+      },
+      {
+        "comment_text": "",
+        "digests": {
+          "blake2b_256": "cf4cb5df0f63dd79ab9e1d97959a879c968cf795e3dfa37fb434a4238df6ff21",
+          "md5": "c7f0b4ac906ab1b705c7abbe83739c00",
+          "sha256": "64f88a257dd62465b01fcf0d1ed4ffcaf19e320ee3e731c26a2e9dcc5090fdbb"
+        },
+        "downloads": -1,
+        "filename": "types-toml-0.10.0.tar.gz",
+        "has_sig": false,
+        "md5_digest": "c7f0b4ac906ab1b705c7abbe83739c00",
+        "packagetype": "sdist",
+        "python_version": "source",
+        "requires_python": null,
+        "size": 1818,
+        "upload_time": "2021-09-19T03:17:41",
+        "upload_time_iso_8601": "2021-09-19T03:17:41.713573Z",
+        "url": "https://files.pythonhosted.org/packages/cf/4c/b5df0f63dd79ab9e1d97959a879c968cf795e3dfa37fb434a4238df6ff21/types-toml-0.10.0.tar.gz",
+        "yanked": false,
+        "yanked_reason": null
+      }
+    ],
+    "0.10.1": [
+      {
+        "comment_text": "",
+        "digests": {
+          "blake2b_256": "8910b974802047d724e95f372c77de85f717c6a7a76e5d9774a9df8384e688ed",
+          "md5": "a2f916be456e315b68fa9276d8124629",
+          "sha256": "8cdfd2b7c89bed703158b042dd5cf04255dae77096db66f4a12ca0a93ccb07a5"
+        },
+        "downloads": -1,
+        "filename": "types_toml-0.10.1-py3-none-any.whl",
+        "has_sig": false,
+        "md5_digest": "a2f916be456e315b68fa9276d8124629",
+        "packagetype": "bdist_wheel",
+        "python_version": "py3",
+        "requires_python": null,
+        "size": 2084,
+        "upload_time": "2021-10-12T09:20:28",
+        "upload_time_iso_8601": "2021-10-12T09:20:28.492887Z",
+        "url": "https://files.pythonhosted.org/packages/89/10/b974802047d724e95f372c77de85f717c6a7a76e5d9774a9df8384e688ed/types_toml-0.10.1-py3-none-any.whl",
+        "yanked": false,
+        "yanked_reason": null
+      },
+      {
+        "comment_text": "",
+        "digests": {
+          "blake2b_256": "f69dbc293604d81db1500013bde95569ee532c1502da6bb3c703f3ed5ec52494",
+          "md5": "00c46c13d11048117fd1437a387119c0",
+          "sha256": "5c1f8f8d57692397c8f902bf6b4d913a0952235db7db17d2908cc110e70610cb"
+        },
+        "downloads": -1,
+        "filename": "types-toml-0.10.1.tar.gz",
+        "has_sig": false,
+        "md5_digest": "00c46c13d11048117fd1437a387119c0",
+        "packagetype": "sdist",
+        "python_version": "source",
+        "requires_python": null,
+        "size": 1853,
+        "upload_time": "2021-10-12T09:20:29",
+        "upload_time_iso_8601": "2021-10-12T09:20:29.567964Z",
+        "url": "https://files.pythonhosted.org/packages/f6/9d/bc293604d81db1500013bde95569ee532c1502da6bb3c703f3ed5ec52494/types-toml-0.10.1.tar.gz",
+        "yanked": false,
+        "yanked_reason": null
+      }
+    ],
+    "0.10.2": [
+      {
+        "comment_text": "",
+        "digests": {
+          "blake2b_256": "36d34626ab42f71d3a711e1ecb4803a3bcf63cf3119f666a2bcdd39d628aa530",
+          "md5": "7b58ea88a10a7a977799fa4e56fda54e",
+          "sha256": "8a72568466fd041c1b7481aa2bd8d81d4585017131d6b268de13d876da0827d7"
+        },
+        "downloads": -1,
+        "filename": "types_toml-0.10.2-py3-none-any.whl",
+        "has_sig": false,
+        "md5_digest": "7b58ea88a10a7a977799fa4e56fda54e",
+        "packagetype": "bdist_wheel",
+        "python_version": "py3",
+        "requires_python": null,
+        "size": 2086,
+        "upload_time": "2022-01-07T11:32:52",
+        "upload_time_iso_8601": "2022-01-07T11:32:52.367746Z",
+        "url": "https://files.pythonhosted.org/packages/36/d3/4626ab42f71d3a711e1ecb4803a3bcf63cf3119f666a2bcdd39d628aa530/types_toml-0.10.2-py3-none-any.whl",
+        "yanked": false,
+        "yanked_reason": null
+      },
+      {
+        "comment_text": "",
+        "digests": {
+          "blake2b_256": "6751a2e10a35b38bfb39c7fefd284dfcdd8736983dbeb48d3d5e069729c638b0",
+          "md5": "ed31504f02f7ec8756d52080303ef32f",
+          "sha256": "cd38b802e9c84c7a2e9b61e99a217e794bc01874586b292222e9764c6c7ca75c"
+        },
+        "downloads": -1,
+        "filename": "types-toml-0.10.2.tar.gz",
+        "has_sig": false,
+        "md5_digest": "ed31504f02f7ec8756d52080303ef32f",
+        "packagetype": "sdist",
+        "python_version": "source",
+        "requires_python": null,
+        "size": 1857,
+        "upload_time": "2022-01-07T11:32:53",
+        "upload_time_iso_8601": "2022-01-07T11:32:53.197423Z",
+        "url": "https://files.pythonhosted.org/packages/67/51/a2e10a35b38bfb39c7fefd284dfcdd8736983dbeb48d3d5e069729c638b0/types-toml-0.10.2.tar.gz",
+        "yanked": false,
+        "yanked_reason": null
+      }
+    ],
+    "0.10.3": [
+      {
+        "comment_text": "",
+        "digests": {
+          "blake2b_256": "ee9bb3842f13b52b8d178dbc9f7caf28f4691a78d4fb54abeddb2e006f7cee70",
+          "md5": "08afcb5ac87eaa9d54c1bd388d162eed",
+          "sha256": "988457744d9774d194e3539388772e3a685d8057b7c4a89407afeb0a6cbd1b14"
+        },
+        "downloads": -1,
+        "filename": "types_toml-0.10.3-py3-none-any.whl",
+        "has_sig": false,
+        "md5_digest": "08afcb5ac87eaa9d54c1bd388d162eed",
+        "packagetype": "bdist_wheel",
+        "python_version": "py3",
+        "requires_python": null,
+        "size": 2082,
+        "upload_time": "2022-01-08T15:20:41",
+        "upload_time_iso_8601": "2022-01-08T15:20:41.027242Z",
+        "url": "https://files.pythonhosted.org/packages/ee/9b/b3842f13b52b8d178dbc9f7caf28f4691a78d4fb54abeddb2e006f7cee70/types_toml-0.10.3-py3-none-any.whl",
+        "yanked": false,
+        "yanked_reason": null
+      },
+      {
+        "comment_text": "",
+        "digests": {
+          "blake2b_256": "503b35235a16f2710d0450c2e16861753e669c238bcb8c82afd4d959533d0dc1",
+          "md5": "b9b86ac7a5d56aad87fe46af5675be85",
+          "sha256": "215a7a79198651ec5bdfd66193c1e71eb681a42f3ef7226c9af3123ced62564a"
+        },
+        "downloads": -1,
+        "filename": "types-toml-0.10.3.tar.gz",
+        "has_sig": false,
+        "md5_digest": "b9b86ac7a5d56aad87fe46af5675be85",
+        "packagetype": "sdist",
+        "python_version": "source",
+        "requires_python": null,
+        "size": 1896,
+        "upload_time": "2022-01-08T15:20:41",
+        "upload_time_iso_8601": "2022-01-08T15:20:41.900713Z",
+        "url": "https://files.pythonhosted.org/packages/50/3b/35235a16f2710d0450c2e16861753e669c238bcb8c82afd4d959533d0dc1/types-toml-0.10.3.tar.gz",
+        "yanked": false,
+        "yanked_reason": null
+      }
+    ],
+    "0.10.4": [
+      {
+        "comment_text": "",
+        "digests": {
+          "blake2b_256": "8eea0e6679a88f851f25ac0ed6b35f1f5a95366c439f7c35d1f210b44457ad2f",
+          "md5": "c84dbc3f283156e6d2dd074e35da1ed3",
+          "sha256": "4a9ffd47bbcec49c6fde6351a889b2c1bd3c0ef309fa0eed60dc28e58c8b9ea6"
+        },
+        "downloads": -1,
+        "filename": "types_toml-0.10.4-py3-none-any.whl",
+        "has_sig": false,
+        "md5_digest": "c84dbc3f283156e6d2dd074e35da1ed3",
+        "packagetype": "bdist_wheel",
+        "python_version": "py3",
+        "requires_python": null,
+        "size": 4458,
+        "upload_time": "2022-02-10T18:19:19",
+        "upload_time_iso_8601": "2022-02-10T18:19:19.371007Z",
+        "url": "https://files.pythonhosted.org/packages/8e/ea/0e6679a88f851f25ac0ed6b35f1f5a95366c439f7c35d1f210b44457ad2f/types_toml-0.10.4-py3-none-any.whl",
+        "yanked": false,
+        "yanked_reason": null
+      },
+      {
+        "comment_text": "",
+        "digests": {
+          "blake2b_256": "daea2390796052b1608580ee483d7e8a7e345dd01d9a4149cb45d9467be6b8c0",
+          "md5": "60aba669d59d0559918b65b6f01d2e5e",
+          "sha256": "9340e7c1587715581bb13905b3af30b79fe68afaccfca377665d5e63b694129a"
+        },
+        "downloads": -1,
+        "filename": "types-toml-0.10.4.tar.gz",
+        "has_sig": false,
+        "md5_digest": "60aba669d59d0559918b65b6f01d2e5e",
+        "packagetype": "sdist",
+        "python_version": "source",
+        "requires_python": null,
+        "size": 3509,
+        "upload_time": "2022-02-10T18:19:20",
+        "upload_time_iso_8601": "2022-02-10T18:19:20.396066Z",
+        "url": "https://files.pythonhosted.org/packages/da/ea/2390796052b1608580ee483d7e8a7e345dd01d9a4149cb45d9467be6b8c0/types-toml-0.10.4.tar.gz",
+        "yanked": false,
+        "yanked_reason": null
+      }
+    ],
+    "0.10.5": [
+      {
+        "comment_text": "",
+        "digests": {
+          "blake2b_256": "4e6013d7b7da3322b5066196d6f41ddba11fe76b92c1533c492bec94de6b1a53",
+          "md5": "baf4df78a9c4c7767076c3e3ec3b5816",
+          "sha256": "c1bed5926538aa9c4725cd369c250c47310f16f47d20611b7baef5988fed8634"
+        },
+        "downloads": -1,
+        "filename": "types_toml-0.10.5-py3-none-any.whl",
+        "has_sig": false,
+        "md5_digest": "baf4df78a9c4c7767076c3e3ec3b5816",
+        "packagetype": "bdist_wheel",
+        "python_version": "py3",
+        "requires_python": null,
+        "size": 4477,
+        "upload_time": "2022-04-16T01:24:25",
+        "upload_time_iso_8601": "2022-04-16T01:24:25.940666Z",
+        "url": "https://files.pythonhosted.org/packages/4e/60/13d7b7da3322b5066196d6f41ddba11fe76b92c1533c492bec94de6b1a53/types_toml-0.10.5-py3-none-any.whl",
+        "yanked": false,
+        "yanked_reason": null
+      },
+      {
+        "comment_text": "",
+        "digests": {
+          "blake2b_256": "b035653f1e9dd61a6c1bf4383f7c15fe63156e6788448d1ad918dc9ee8a0fcf0",
+          "md5": "3882ec064b13a6816b69aaa18030e5f7",
+          "sha256": "f949463a388200be392ef9399dbad3e1e3bbe6d4543d84ad93d96c3fda028080"
+        },
+        "downloads": -1,
+        "filename": "types-toml-0.10.5.tar.gz",
+        "has_sig": false,
+        "md5_digest": "3882ec064b13a6816b69aaa18030e5f7",
+        "packagetype": "sdist",
+        "python_version": "source",
+        "requires_python": null,
+        "size": 3585,
+        "upload_time": "2022-04-16T01:24:27",
+        "upload_time_iso_8601": "2022-04-16T01:24:27.076046Z",
+        "url": "https://files.pythonhosted.org/packages/b0/35/653f1e9dd61a6c1bf4383f7c15fe63156e6788448d1ad918dc9ee8a0fcf0/types-toml-0.10.5.tar.gz",
+        "yanked": false,
+        "yanked_reason": null
+      }
+    ],
+    "0.10.6": [
+      {
+        "comment_text": "",
+        "digests": {
+          "blake2b_256": "7f228108fff64036f95c40e5d2015efe1bc3af00c2f74e8a544515226be06e5b",
+          "md5": "84e7f23e4f72bd84a55c7fa6ae75d8a6",
+          "sha256": "c1289e9fb748a6a1ed068694ded1eb16f83df22d58cc1abae8ef6262403545d8"
+        },
+        "downloads": -1,
+        "filename": "types_toml-0.10.6-py3-none-any.whl",
+        "has_sig": false,
+        "md5_digest": "84e7f23e4f72bd84a55c7fa6ae75d8a6",
+        "packagetype": "bdist_wheel",
+        "python_version": "py3",
+        "requires_python": null,
+        "size": 4422,
+        "upload_time": "2022-04-27T12:37:49",
+        "upload_time_iso_8601": "2022-04-27T12:37:49.342479Z",
+        "url": "https://files.pythonhosted.org/packages/7f/22/8108fff64036f95c40e5d2015efe1bc3af00c2f74e8a544515226be06e5b/types_toml-0.10.6-py3-none-any.whl",
+        "yanked": false,
+        "yanked_reason": null
+      },
+      {
+        "comment_text": "",
+        "digests": {
+          "blake2b_256": "1e601c41ead493d2735b8a9c928c7c30ede3e30c4aed9a1ae053aaa32a978b78",
+          "md5": "5f5d986d7ffed63b0db6157c7fcde433",
+          "sha256": "6aeb3ed7bfa869381551c774ed6a9142e3eed98a83efa5108a9632eafd56dcd3"
+        },
+        "downloads": -1,
+        "filename": "types-toml-0.10.6.tar.gz",
+        "has_sig": false,
+        "md5_digest": "5f5d986d7ffed63b0db6157c7fcde433",
+        "packagetype": "sdist",
+        "python_version": "source",
+        "requires_python": null,
+        "size": 3571,
+        "upload_time": "2022-04-27T12:37:50",
+        "upload_time_iso_8601": "2022-04-27T12:37:50.469165Z",
+        "url": "https://files.pythonhosted.org/packages/1e/60/1c41ead493d2735b8a9c928c7c30ede3e30c4aed9a1ae053aaa32a978b78/types-toml-0.10.6.tar.gz",
+        "yanked": false,
+        "yanked_reason": null
+      }
+    ],
+    "0.10.7": [
+      {
+        "comment_text": "",
+        "digests": {
+          "blake2b_256": "77028bb35dc27ea84f9ac5f4bf70a51ae5626734843ac73a117fd88888551069",
+          "md5": "8f84e34ec6638a9a629ef91d3b6a75a8",
+          "sha256": "05a8da4bfde2f1ee60e90c7071c063b461f74c63a9c3c1099470c08d6fa58615"
+        },
+        "downloads": -1,
+        "filename": "types_toml-0.10.7-py3-none-any.whl",
+        "has_sig": false,
+        "md5_digest": "8f84e34ec6638a9a629ef91d3b6a75a8",
+        "packagetype": "bdist_wheel",
+        "python_version": "py3",
+        "requires_python": null,
+        "size": 4459,
+        "upload_time": "2022-05-07T09:18:59",
+        "upload_time_iso_8601": "2022-05-07T09:18:59.577197Z",
+        "url": "https://files.pythonhosted.org/packages/77/02/8bb35dc27ea84f9ac5f4bf70a51ae5626734843ac73a117fd88888551069/types_toml-0.10.7-py3-none-any.whl",
+        "yanked": false,
+        "yanked_reason": null
+      },
+      {
+        "comment_text": "",
+        "digests": {
+          "blake2b_256": "c5daa5fb5c4eb663a1cd2d0c8ef619c42d51e6b8f55e155341e7b39b8c6c67b4",
+          "md5": "5c9217f550aa3723bff7379e9b9846c5",
+          "sha256": "a567fe2614b177d537ad99a661adc9bfc8c55a46f95e66370a4ed2dd171335f9"
+        },
+        "downloads": -1,
+        "filename": "types-toml-0.10.7.tar.gz",
+        "has_sig": false,
+        "md5_digest": "5c9217f550aa3723bff7379e9b9846c5",
+        "packagetype": "sdist",
+        "python_version": "source",
+        "requires_python": null,
+        "size": 3639,
+        "upload_time": "2022-05-07T09:19:00",
+        "upload_time_iso_8601": "2022-05-07T09:19:00.691567Z",
+        "url": "https://files.pythonhosted.org/packages/c5/da/a5fb5c4eb663a1cd2d0c8ef619c42d51e6b8f55e155341e7b39b8c6c67b4/types-toml-0.10.7.tar.gz",
+        "yanked": false,
+        "yanked_reason": null
+      }
+    ],
+    "0.10.8": [
+      {
+        "comment_text": "",
+        "digests": {
+          "blake2b_256": "ae2ca642f8cfa7f9e67c29316bf04b7675db292d006275c67ec07f0c0069cf91",
+          "md5": "fa385d668aa8d89229eec6cf29f0e76a",
+          "sha256": "8300fd093e5829eb9c1fba69cee38130347d4b74ddf32d0a7df650ae55c2b599"
+        },
+        "downloads": -1,
+        "filename": "types_toml-0.10.8-py3-none-any.whl",
+        "has_sig": false,
+        "md5_digest": "fa385d668aa8d89229eec6cf29f0e76a",
+        "packagetype": "bdist_wheel",
+        "python_version": "py3",
+        "requires_python": null,
+        "size": 4462,
+        "upload_time": "2022-07-12T15:26:53",
+        "upload_time_iso_8601": "2022-07-12T15:26:53.155362Z",
+        "url": "https://files.pythonhosted.org/packages/ae/2c/a642f8cfa7f9e67c29316bf04b7675db292d006275c67ec07f0c0069cf91/types_toml-0.10.8-py3-none-any.whl",
+        "yanked": false,
+        "yanked_reason": null
+      },
+      {
+        "comment_text": "",
+        "digests": {
+          "blake2b_256": "76d011897ab7b3b2211be5c733e241d83401f5d37473c961ea5c9460393c6f45",
+          "md5": "0f48714dc90f60050cbd10a6dff746d0",
+          "sha256": "b7e7ea572308b1030dc86c3ba825c5210814c2825612ec679eb7814f8dd9295a"
+        },
+        "downloads": -1,
+        "filename": "types-toml-0.10.8.tar.gz",
+        "has_sig": false,
+        "md5_digest": "0f48714dc90f60050cbd10a6dff746d0",
+        "packagetype": "sdist",
+        "python_version": "source",
+        "requires_python": null,
+        "size": 3683,
+        "upload_time": "2022-07-12T15:26:54",
+        "upload_time_iso_8601": "2022-07-12T15:26:54.243773Z",
+        "url": "https://files.pythonhosted.org/packages/76/d0/11897ab7b3b2211be5c733e241d83401f5d37473c961ea5c9460393c6f45/types-toml-0.10.8.tar.gz",
+        "yanked": false,
+        "yanked_reason": null
+      }
+    ],
+    "0.10.8.1": [
+      {
+        "comment_text": "",
+        "digests": {
+          "blake2b_256": "84e99569cdc5c54b7d36d36b2bacefeb01a1b2feb90c9fd18ee15797ad4fa67b",
+          "md5": "4c524e04299d154d9bdc9cec43c19bb5",
+          "sha256": "b7b5c4977f96ab7b5ac06d8a6590d17c0bf252a96efc03b109c2711fb3e0eafd"
+        },
+        "downloads": -1,
+        "filename": "types_toml-0.10.8.1-py3-none-any.whl",
+        "has_sig": false,
+        "md5_digest": "4c524e04299d154d9bdc9cec43c19bb5",
+        "packagetype": "bdist_wheel",
+        "python_version": "py3",
+        "requires_python": null,
+        "size": 4504,
+        "upload_time": "2022-11-13T12:36:19",
+        "upload_time_iso_8601": "2022-11-13T12:36:19.165556Z",
+        "url": "https://files.pythonhosted.org/packages/84/e9/9569cdc5c54b7d36d36b2bacefeb01a1b2feb90c9fd18ee15797ad4fa67b/types_toml-0.10.8.1-py3-none-any.whl",
+        "yanked": false,
+        "yanked_reason": null
+      },
+      {
+        "comment_text": "",
+        "digests": {
+          "blake2b_256": "c68ba8544990966e9b475c1767f21272cbbdc2b470d4e690e04b5510b129b311",
+          "md5": "4bc836feec71a46efbfb324f10c99087",
+          "sha256": "171bdb3163d79a520560f24ba916a9fc9bff81659c5448a9fea89240923722be"
+        },
+        "downloads": -1,
+        "filename": "types-toml-0.10.8.1.tar.gz",
+        "has_sig": false,
+        "md5_digest": "4bc836feec71a46efbfb324f10c99087",
+        "packagetype": "sdist",
+        "python_version": "source",
+        "requires_python": null,
+        "size": 3725,
+        "upload_time": "2022-11-13T12:36:20",
+        "upload_time_iso_8601": "2022-11-13T12:36:20.937921Z",
+        "url": "https://files.pythonhosted.org/packages/c6/8b/a8544990966e9b475c1767f21272cbbdc2b470d4e690e04b5510b129b311/types-toml-0.10.8.1.tar.gz",
+        "yanked": false,
+        "yanked_reason": null
+      }
+    ],
+    "0.10.8.2": [
+      {
+        "comment_text": "",
+        "digests": {
+          "blake2b_256": "a18d4244dc306e80bdaef80dc83c2101a889e7c278ea1b965ba0cd6de88e289a",
+          "md5": "d67cd2217883907342c4fc2bdfe311ee",
+          "sha256": "3cf6a09449527b087b6c800a9d6d2dd22faf15fd47006542da7c9c3d067a6ced"
+        },
+        "downloads": -1,
+        "filename": "types_toml-0.10.8.2-py3-none-any.whl",
+        "has_sig": false,
+        "md5_digest": "d67cd2217883907342c4fc2bdfe311ee",
+        "packagetype": "bdist_wheel",
+        "python_version": "py3",
+        "requires_python": null,
+        "size": 4544,
+        "upload_time": "2023-02-02T15:17:28",
+        "upload_time_iso_8601": "2023-02-02T15:17:28.582711Z",
+        "url": "https://files.pythonhosted.org/packages/a1/8d/4244dc306e80bdaef80dc83c2101a889e7c278ea1b965ba0cd6de88e289a/types_toml-0.10.8.2-py3-none-any.whl",
+        "yanked": false,
+        "yanked_reason": null
+      },
+      {
+        "comment_text": "",
+        "digests": {
+          "blake2b_256": "0159966378cfc0cb02e24ccaa7c1029cca5821f94f40a9c4649095b61890cd9a",
+          "md5": "26bf3b32f56d722a15124ab2eb4fa375",
+          "sha256": "51d428666b30e9cc047791f440d0f11a82205e789c40debbb86f3add7472cf3e"
+        },
+        "downloads": -1,
+        "filename": "types-toml-0.10.8.2.tar.gz",
+        "has_sig": false,
+        "md5_digest": "26bf3b32f56d722a15124ab2eb4fa375",
+        "packagetype": "sdist",
+        "python_version": "source",
+        "requires_python": null,
+        "size": 3869,
+        "upload_time": "2023-02-02T15:17:30",
+        "upload_time_iso_8601": "2023-02-02T15:17:30.037688Z",
+        "url": "https://files.pythonhosted.org/packages/01/59/966378cfc0cb02e24ccaa7c1029cca5821f94f40a9c4649095b61890cd9a/types-toml-0.10.8.2.tar.gz",
+        "yanked": false,
+        "yanked_reason": null
+      }
+    ],
+    "0.10.8.20240310": [
+      {
+        "comment_text": "",
+        "digests": {
+          "blake2b_256": "daa2d32ab58c0b216912638b140ab2170ee4b8644067c293b170e19fba340ccc",
+          "md5": "e355e535c85596df0b31b5664b614ed3",
+          "sha256": "627b47775d25fa29977d9c70dc0cbab3f314f32c8d8d0c012f2ef5de7aaec05d"
+        },
+        "downloads": -1,
+        "filename": "types_toml-0.10.8.20240310-py3-none-any.whl",
+        "has_sig": false,
+        "md5_digest": "e355e535c85596df0b31b5664b614ed3",
+        "packagetype": "bdist_wheel",
+        "python_version": "py3",
+        "requires_python": "\u003E=3.8",
+        "size": 4777,
+        "upload_time": "2024-03-10T02:18:36",
+        "upload_time_iso_8601": "2024-03-10T02:18:36.568092Z",
+        "url": "https://files.pythonhosted.org/packages/da/a2/d32ab58c0b216912638b140ab2170ee4b8644067c293b170e19fba340ccc/types_toml-0.10.8.20240310-py3-none-any.whl",
+        "yanked": false,
+        "yanked_reason": null
+      },
+      {
+        "comment_text": "",
+        "digests": {
+          "blake2b_256": "86473e4c75042792bff8e90d7991aa5c51812cc668828cc6cce711e97f63a607",
+          "md5": "04cdb67bc054c64da67b32093f77ae7f",
+          "sha256": "3d41501302972436a6b8b239c850b26689657e25281b48ff0ec06345b8830331"
+        },
+        "downloads": -1,
+        "filename": "types-toml-0.10.8.20240310.tar.gz",
+        "has_sig": false,
+        "md5_digest": "04cdb67bc054c64da67b32093f77ae7f",
+        "packagetype": "sdist",
+        "python_version": "source",
+        "requires_python": "\u003E=3.8",
+        "size": 4392,
+        "upload_time": "2024-03-10T02:18:37",
+        "upload_time_iso_8601": "2024-03-10T02:18:37.518202Z",
+        "url": "https://files.pythonhosted.org/packages/86/47/3e4c75042792bff8e90d7991aa5c51812cc668828cc6cce711e97f63a607/types-toml-0.10.8.20240310.tar.gz",
+        "yanked": false,
+        "yanked_reason": null
+      }
+    ],
+    "0.10.8.3": [
+      {
+        "comment_text": "",
+        "digests": {
+          "blake2b_256": "f23e4d1c9c57deb372311548e740ea1d12fcacf0e1612a23da0ea6f4e265a877",
+          "md5": "667245d4e68b29789ee1938de32baf72",
+          "sha256": "a2286a053aea6ab6ff814659272b1d4a05d86a1dd52b807a87b23511993b46c5"
+        },
+        "downloads": -1,
+        "filename": "types_toml-0.10.8.3-py3-none-any.whl",
+        "has_sig": false,
+        "md5_digest": "667245d4e68b29789ee1938de32baf72",
+        "packagetype": "bdist_wheel",
+        "python_version": "py3",
+        "requires_python": null,
+        "size": 4545,
+        "upload_time": "2023-02-07T01:21:37",
+        "upload_time_iso_8601": "2023-02-07T01:21:37.652596Z",
+        "url": "https://files.pythonhosted.org/packages/f2/3e/4d1c9c57deb372311548e740ea1d12fcacf0e1612a23da0ea6f4e265a877/types_toml-0.10.8.3-py3-none-any.whl",
+        "yanked": false,
+        "yanked_reason": null
+      },
+      {
+        "comment_text": "",
+        "digests": {
+          "blake2b_256": "792520a49e2c341b5438d46aea4f8cfa152bdebdd47385dfd8084a9682b90d8b",
+          "md5": "1585a6ac64602ac8257bd1578d3032a2",
+          "sha256": "f37244eff4cd7eace9cb70d0bac54d3eba77973aa4ef26c271ac3d1c6503a48e"
+        },
+        "downloads": -1,
+        "filename": "types-toml-0.10.8.3.tar.gz",
+        "has_sig": false,
+        "md5_digest": "1585a6ac64602ac8257bd1578d3032a2",
+        "packagetype": "sdist",
+        "python_version": "source",
+        "requires_python": null,
+        "size": 3894,
+        "upload_time": "2023-02-07T01:21:38",
+        "upload_time_iso_8601": "2023-02-07T01:21:38.760140Z",
+        "url": "https://files.pythonhosted.org/packages/79/25/20a49e2c341b5438d46aea4f8cfa152bdebdd47385dfd8084a9682b90d8b/types-toml-0.10.8.3.tar.gz",
+        "yanked": false,
+        "yanked_reason": null
+      }
+    ],
+    "0.10.8.4": [
+      {
+        "comment_text": "",
+        "digests": {
+          "blake2b_256": "5176fb02b8c63f998a77c576158af89c13b189015766295126a1446f8844c430",
+          "md5": "8105e5b4a11d6ced3cb57c72d485f6c9",
+          "sha256": "306b1bb8b5bbc5f1b60387dbcc4b489e79f8490ce20e93af5f422a68b470d94b"
+        },
+        "downloads": -1,
+        "filename": "types_toml-0.10.8.4-py3-none-any.whl",
+        "has_sig": false,
+        "md5_digest": "8105e5b4a11d6ced3cb57c72d485f6c9",
+        "packagetype": "bdist_wheel",
+        "python_version": "py3",
+        "requires_python": null,
+        "size": 4543,
+        "upload_time": "2023-02-15T12:35:21",
+        "upload_time_iso_8601": "2023-02-15T12:35:21.085631Z",
+        "url": "https://files.pythonhosted.org/packages/51/76/fb02b8c63f998a77c576158af89c13b189015766295126a1446f8844c430/types_toml-0.10.8.4-py3-none-any.whl",
+        "yanked": false,
+        "yanked_reason": null
+      },
+      {
+        "comment_text": "",
+        "digests": {
+          "blake2b_256": "70031f06c5352c042214dd06c5d0b5ed4e495e383d5cb7276e4e99243583ac05",
+          "md5": "957623bf8b64d50913a3dfa095681bfc",
+          "sha256": "c8748dd225b28eb80ce712e2d7d61b57599815e7b48d07ef53df51ed148fa6b1"
+        },
+        "downloads": -1,
+        "filename": "types-toml-0.10.8.4.tar.gz",
+        "has_sig": false,
+        "md5_digest": "957623bf8b64d50913a3dfa095681bfc",
+        "packagetype": "sdist",
+        "python_version": "source",
+        "requires_python": null,
+        "size": 3952,
+        "upload_time": "2023-02-15T12:35:22",
+        "upload_time_iso_8601": "2023-02-15T12:35:22.122807Z",
+        "url": "https://files.pythonhosted.org/packages/70/03/1f06c5352c042214dd06c5d0b5ed4e495e383d5cb7276e4e99243583ac05/types-toml-0.10.8.4.tar.gz",
+        "yanked": false,
+        "yanked_reason": null
+      }
+    ],
+    "0.10.8.5": [
+      {
+        "comment_text": "",
+        "digests": {
+          "blake2b_256": "5194791a6d93449dd108ea1e366ff9ea399c350f1a6aad2c44fcf4c116b22203",
+          "md5": "69aeb9a4b0ea65a786b3d022ca68549c",
+          "sha256": "2432017febe43174af0f3c65f03116e3d3cf43e7e1406b8200e106da8cf98992"
+        },
+        "downloads": -1,
+        "filename": "types_toml-0.10.8.5-py3-none-any.whl",
+        "has_sig": false,
+        "md5_digest": "69aeb9a4b0ea65a786b3d022ca68549c",
+        "packagetype": "bdist_wheel",
+        "python_version": "py3",
+        "requires_python": null,
+        "size": 4500,
+        "upload_time": "2023-02-21T01:27:51",
+        "upload_time_iso_8601": "2023-02-21T01:27:51.965707Z",
+        "url": "https://files.pythonhosted.org/packages/51/94/791a6d93449dd108ea1e366ff9ea399c350f1a6aad2c44fcf4c116b22203/types_toml-0.10.8.5-py3-none-any.whl",
+        "yanked": false,
+        "yanked_reason": null
+      },
+      {
+        "comment_text": "",
+        "digests": {
+          "blake2b_256": "cc25fc285fbd470559e775dad4990f99a52305976ed4dba299bd7e44ba6aaa71",
+          "md5": "b77b4d8e1195f0def70fb742c054aed0",
+          "sha256": "bf80fce7d2d74be91148f47b88d9ae5adeb1024abef22aa2fdbabc036d6b8b3c"
+        },
+        "downloads": -1,
+        "filename": "types-toml-0.10.8.5.tar.gz",
+        "has_sig": false,
+        "md5_digest": "b77b4d8e1195f0def70fb742c054aed0",
+        "packagetype": "sdist",
+        "python_version": "source",
+        "requires_python": null,
+        "size": 4071,
+        "upload_time": "2023-02-21T01:27:53",
+        "upload_time_iso_8601": "2023-02-21T01:27:53.087052Z",
+        "url": "https://files.pythonhosted.org/packages/cc/25/fc285fbd470559e775dad4990f99a52305976ed4dba299bd7e44ba6aaa71/types-toml-0.10.8.5.tar.gz",
+        "yanked": false,
+        "yanked_reason": null
+      }
+    ],
+    "0.10.8.6": [
+      {
+        "comment_text": "",
+        "digests": {
+          "blake2b_256": "813045b0447ffff6b390b315847e0aa7ae276350d67d8e1fcf85eb9b9a171941",
+          "md5": "609ca21698c1776aafdd8f53d653ffe6",
+          "sha256": "de7b2bb1831d6f7a4b554671ffe5875e729753496961b3e9b202745e4955dafa"
+        },
+        "downloads": -1,
+        "filename": "types_toml-0.10.8.6-py3-none-any.whl",
+        "has_sig": false,
+        "md5_digest": "609ca21698c1776aafdd8f53d653ffe6",
+        "packagetype": "bdist_wheel",
+        "python_version": "py3",
+        "requires_python": null,
+        "size": 4521,
+        "upload_time": "2023-03-28T12:33:17",
+        "upload_time_iso_8601": "2023-03-28T12:33:17.704838Z",
+        "url": "https://files.pythonhosted.org/packages/81/30/45b0447ffff6b390b315847e0aa7ae276350d67d8e1fcf85eb9b9a171941/types_toml-0.10.8.6-py3-none-any.whl",
+        "yanked": false,
+        "yanked_reason": null
+      },
+      {
+        "comment_text": "",
+        "digests": {
+          "blake2b_256": "7acc935b70ca52a18ef08dc77e0a622ac6b602bea52a794fe033e78b5c9e8e7e",
+          "md5": "211c922329cce24ecac5c3e4245871f9",
+          "sha256": "6d3ac79e36c9ee593c5d4fb33a50cca0e3adceb6ef5cff8b8e5aef67b4c4aaf2"
+        },
+        "downloads": -1,
+        "filename": "types-toml-0.10.8.6.tar.gz",
+        "has_sig": false,
+        "md5_digest": "211c922329cce24ecac5c3e4245871f9",
+        "packagetype": "sdist",
+        "python_version": "source",
+        "requires_python": null,
+        "size": 4107,
+        "upload_time": "2023-03-28T12:33:18",
+        "upload_time_iso_8601": "2023-03-28T12:33:18.750806Z",
+        "url": "https://files.pythonhosted.org/packages/7a/cc/935b70ca52a18ef08dc77e0a622ac6b602bea52a794fe033e78b5c9e8e7e/types-toml-0.10.8.6.tar.gz",
+        "yanked": false,
+        "yanked_reason": null
+      }
+    ],
+    "0.10.8.7": [
+      {
+        "comment_text": "",
+        "digests": {
+          "blake2b_256": "be0ecaa95b3a1ea0f9625c4dc980bfb0a1686529c6fbfa222fffc77c52918464",
+          "md5": "a3b21b0cbb3e871b6a72038f57734849",
+          "sha256": "61951da6ad410794c97bec035d59376ce1cbf4453dc9b6f90477e81e4442d631"
+        },
+        "downloads": -1,
+        "filename": "types_toml-0.10.8.7-py3-none-any.whl",
+        "has_sig": false,
+        "md5_digest": "a3b21b0cbb3e871b6a72038f57734849",
+        "packagetype": "bdist_wheel",
+        "python_version": "py3",
+        "requires_python": null,
+        "size": 4610,
+        "upload_time": "2023-07-20T15:19:42",
+        "upload_time_iso_8601": "2023-07-20T15:19:42.723636Z",
+        "url": "https://files.pythonhosted.org/packages/be/0e/caa95b3a1ea0f9625c4dc980bfb0a1686529c6fbfa222fffc77c52918464/types_toml-0.10.8.7-py3-none-any.whl",
+        "yanked": false,
+        "yanked_reason": null
+      },
+      {
+        "comment_text": "",
+        "digests": {
+          "blake2b_256": "0dc3290afb9e9263d6639fa60ac25d9c26fef86ea207fa9862a5a07afb6f2639",
+          "md5": "9a35470257ab36a63d6d28449f9f0584",
+          "sha256": "58b0781c681e671ff0b5c0319309910689f4ab40e8a2431e205d70c94bb6efb1"
+        },
+        "downloads": -1,
+        "filename": "types-toml-0.10.8.7.tar.gz",
+        "has_sig": false,
+        "md5_digest": "9a35470257ab36a63d6d28449f9f0584",
+        "packagetype": "sdist",
+        "python_version": "source",
+        "requires_python": null,
+        "size": 4222,
+        "upload_time": "2023-07-20T15:19:43",
+        "upload_time_iso_8601": "2023-07-20T15:19:43.614250Z",
+        "url": "https://files.pythonhosted.org/packages/0d/c3/290afb9e9263d6639fa60ac25d9c26fef86ea207fa9862a5a07afb6f2639/types-toml-0.10.8.7.tar.gz",
+        "yanked": false,
+        "yanked_reason": null
+      }
+    ]
+  },
+  "urls": [
+    {
+      "comment_text": "",
+      "digests": {
+        "blake2b_256": "daa2d32ab58c0b216912638b140ab2170ee4b8644067c293b170e19fba340ccc",
+        "md5": "e355e535c85596df0b31b5664b614ed3",
+        "sha256": "627b47775d25fa29977d9c70dc0cbab3f314f32c8d8d0c012f2ef5de7aaec05d"
+      },
+      "downloads": -1,
+      "filename": "types_toml-0.10.8.20240310-py3-none-any.whl",
+      "has_sig": false,
+      "md5_digest": "e355e535c85596df0b31b5664b614ed3",
+      "packagetype": "bdist_wheel",
+      "python_version": "py3",
+      "requires_python": "\u003E=3.8",
+      "size": 4777,
+      "upload_time": "2024-03-10T02:18:36",
+      "upload_time_iso_8601": "2024-03-10T02:18:36.568092Z",
+      "url": "https://files.pythonhosted.org/packages/da/a2/d32ab58c0b216912638b140ab2170ee4b8644067c293b170e19fba340ccc/types_toml-0.10.8.20240310-py3-none-any.whl",
+      "yanked": false,
+      "yanked_reason": null
+    },
+    {
+      "comment_text": "",
+      "digests": {
+        "blake2b_256": "86473e4c75042792bff8e90d7991aa5c51812cc668828cc6cce711e97f63a607",
+        "md5": "04cdb67bc054c64da67b32093f77ae7f",
+        "sha256": "3d41501302972436a6b8b239c850b26689657e25281b48ff0ec06345b8830331"
+      },
+      "downloads": -1,
+      "filename": "types-toml-0.10.8.20240310.tar.gz",
+      "has_sig": false,
+      "md5_digest": "04cdb67bc054c64da67b32093f77ae7f",
+      "packagetype": "sdist",
+      "python_version": "source",
+      "requires_python": "\u003E=3.8",
+      "size": 4392,
+      "upload_time": "2024-03-10T02:18:37",
+      "upload_time_iso_8601": "2024-03-10T02:18:37.518202Z",
+      "url": "https://files.pythonhosted.org/packages/86/47/3e4c75042792bff8e90d7991aa5c51812cc668828cc6cce711e97f63a607/types-toml-0.10.8.20240310.tar.gz",
+      "yanked": false,
+      "yanked_reason": null
+    }
+  ],
+  "vulnerabilities": []
+}
