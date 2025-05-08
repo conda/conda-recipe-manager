@@ -13,6 +13,7 @@ from conda_recipe_manager.fetcher.api._utils import check_for_empty_field, make_
 from conda_recipe_manager.types import JsonObjectType, JsonType, SchemaType
 from conda_recipe_manager.utils.cryptography import hashing
 from conda_recipe_manager.utils.meta import get_crm_version
+from conda_recipe_manager.utils.typing import optional_str
 
 # Logging object for this module
 log = logging.getLogger(__name__)
@@ -310,19 +311,19 @@ def _parse_package_info(data: JsonType) -> PackageInfo:
 
     info: Final[JsonObjectType] = cast(JsonObjectType, cast(JsonObjectType, data)["info"])
     parsed = PackageInfo(
-        description=str(info["description"] or ""),
-        description_content_type=str(info["description_content_type"] or ""),
-        docs_url=str(info["docs_url"] or ""),
-        license=str(info["license"]),
+        description=optional_str(info["description"]),
+        description_content_type=optional_str(info["description_content_type"]),
+        docs_url=optional_str(info["docs_url"]),
+        license=optional_str(info["license"]),
         name=str(info["name"]),
         package_url=str(info["package_url"]),
         project_url=str(info["project_url"]),
-        homepage_url=homepage_url,
-        source_url=source_url,
+        homepage_url=optional_str(homepage_url),
+        source_url=optional_str(source_url),
         release_url=str(info["release_url"]),
         # This field may be empty
         requires_python=str(info["requires_python"]),
-        summary=str(info["summary"] or ""),
+        summary=optional_str(info["summary"]),
         version=str(info["version"]),
         source_metadata=version_metadata,
     )
