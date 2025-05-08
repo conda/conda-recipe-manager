@@ -6,7 +6,7 @@
 import datetime
 import logging
 from dataclasses import dataclass
-from typing import Final, ItemsView, cast
+from typing import Final, ItemsView, Optional, cast
 
 from conda_recipe_manager.fetcher.api._types import BaseApiException
 from conda_recipe_manager.fetcher.api._utils import check_for_empty_field, make_request_and_validate
@@ -97,18 +97,18 @@ class PackageInfo:
       - We only store the `VersionMetadata` for variants labeled `source` as we don't care about PyPi's wheel packaging
     """
 
-    description: str
-    description_content_type: str
-    docs_url: str
-    license: str
+    description: Optional[str]
+    description_content_type: Optional[str]
+    docs_url: Optional[str]
+    license: Optional[str]
     name: str
     package_url: str
     project_url: str
-    homepage_url: str
-    source_url: str
+    homepage_url: Optional[str]
+    source_url: Optional[str]
     release_url: str
     requires_python: str
-    summary: str
+    summary: Optional[str]
     version: str
     source_metadata: VersionMetadata
 
@@ -145,15 +145,15 @@ class PackageInfo:
                         "description": {"type": ["string", "null"]},
                         "description_content_type": {"type": ["string", "null"]},
                         "docs_url": {"type": ["string", "null"]},
-                        "license": {"type": "string"},
+                        "license": {"type": ["string", "null"]},
                         "name": {"type": "string"},
                         "package_url": {"type": "string"},
                         "project_url": {"type": "string"},
                         "project_urls": {
                             "type": "object",
                             "properties": {
-                                "Homepage": {"type": "string"},
-                                "Source": {"type": "string"},
+                                "Homepage": {"type": ["string", "null"]},
+                                "Source": {"type": ["string", "null"]},
                             },
                         },
                         "release_url": {"type": "string"},
