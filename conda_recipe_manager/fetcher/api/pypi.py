@@ -13,7 +13,7 @@ from conda_recipe_manager.fetcher.api._utils import check_for_empty_field, make_
 from conda_recipe_manager.types import JsonObjectType, JsonType, SchemaType
 from conda_recipe_manager.utils.cryptography import hashing
 from conda_recipe_manager.utils.meta import get_crm_version
-from conda_recipe_manager.utils.typing import optional_str
+from conda_recipe_manager.utils.typing import optional_str_empty
 
 # Logging object for this module
 log = logging.getLogger(__name__)
@@ -310,27 +310,28 @@ def _parse_package_info(data: JsonType) -> PackageInfo:
         source_url = str(project_urls["Source"])
 
     info: Final[JsonObjectType] = cast(JsonObjectType, cast(JsonObjectType, data)["info"])
-    parsed = PackageInfo(
-        description=optional_str(info["description"]),
-        description_content_type=optional_str(info["description_content_type"]),
-        docs_url=optional_str(info["docs_url"]),
-        license=optional_str(info["license"]),
+    # NOTE: We interpret the empty string as `None` for the convenience of our callers so they may use the same handling
+    # to deal with missing information.
+    parsed: Final[PackageInfo] = PackageInfo(
+        description=optional_str_empty(info["description"]),
+        description_content_type=optional_str_empty(info["description_content_type"]),
+        docs_url=optional_str_empty(info["docs_url"]),
+        license=optional_str_empty(info["license"]),
         name=str(info["name"]),
         package_url=str(info["package_url"]),
         project_url=str(info["project_url"]),
-        homepage_url=optional_str(homepage_url),
-        source_url=optional_str(source_url),
+        homepage_url=optional_str_empty(homepage_url),
+        source_url=optional_str_empty(source_url),
         release_url=str(info["release_url"]),
         # This field may be empty
         requires_python=str(info["requires_python"]),
-        summary=optional_str(info["summary"]),
+        summary=optional_str_empty(info["summary"]),
         version=str(info["version"]),
         source_metadata=version_metadata,
     )
 
     # Validate the remaining critical values
     try:
-        check_for_empty_field("PackageInfo.license", parsed.license)
         check_for_empty_field("PackageInfo.name", parsed.name)
         check_for_empty_field("PackageInfo.package_url", parsed.package_url)
         check_for_empty_field("PackageInfo.project_url", parsed.project_url)

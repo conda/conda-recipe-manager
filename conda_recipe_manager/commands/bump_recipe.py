@@ -483,6 +483,7 @@ def _update_sha256_check_hash_var(
                         cli_args,
                     )
             except FetchError:
+                log.exception("Failed to update the SHA-256 variable.")
                 _exit_on_failed_fetch(recipe_parser, src_fetcher, cli_args)
             return True
 
@@ -585,6 +586,7 @@ def _update_sha256(recipe_parser: RecipeParser, cli_args: _CliArgs) -> None:
                 _exit_on_failed_patch(recipe_parser, {"op": url_patch_op, "path": url_path, "value": url}, cli_args)
 
             except FetchError:
+                log.exception("Failed to update SHA-256 from an artifact at %s", fetcher.get_archive_url())
                 _exit_on_failed_fetch(recipe_parser, fetcher, cli_args)
 
     log.info(
