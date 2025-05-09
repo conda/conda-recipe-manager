@@ -3,6 +3,16 @@ NOTES:
 - Version releases in the 0.x.y range may introduce breaking changes.
 - See the auto-generated release notes for more details.
 
+## 0.5.0
+- BREAKING CHANGE: `RecipeParser::search_and_patch()` has been replaced by `RecipeParser::search_and_patch_replace()`.
+- Adds some support for interpreting `split` and `join` JINJA functions.
+- Adds support for negative indexing in JINJA statements.
+- `crm bump-recipe` now attempts to correct PyPi URLs when the predicted source artifact URL cannot be found.
+  This is to counteract changes introduced in the last year where some PyPi tarballs may have switched from
+  using `_`s to `-`s. This comes from a PEP standard change for source artifacts.
+- `crm bump-recipe` now replaces all older PyPi URLs with `pypi.org` addresses.
+- Minor fixes for the `crm graph` command.
+
 ## 0.4.2
 - Various bug fixes and improvements related to `crm bump-recipe`
   - Introduces the new `--override-build-num` flag to allow bumped recipes to start counting

@@ -140,7 +140,9 @@ Here is a brief overview of our current release process:
 1. Update the version number in `pyproject.toml`, `docs/conf.py`, and `recipe/meta.yaml`
 1. Ensure `environment.yaml` is up to date with the latest dependencies
 1. Create a new release on GitHub with a version tag.
-1. Manage the conda-forge feedstock, as per [this doc](https://conda-forge.org/docs/maintainer/adding_pkgs/)
+1. Manage the conda-forge feedstock, as per [this doc](https://conda-forge.org/docs/maintainer/adding_pkgs/).
+
+Don't forget, you can use `crm bump-recipe -t <version> recipe/meta.yaml` to help update the recipe file!
 
 # Special Thanks
 - @cbouss for his work on the [Percy project](https://github.com/anaconda/percy) that originally inspired the recipe parser.
