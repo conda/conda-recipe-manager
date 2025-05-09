@@ -1,0 +1,11 @@
+schema_version: 1
+
+package:
+  name: test-use-keys
+  version: 1.0
+
+build:
+  number: 0
+  variant:
+    use_keys:
+      - mpi
