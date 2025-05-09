@@ -4,11 +4,15 @@
 
 from __future__ import annotations
 
+import re
+from collections.abc import Callable
+from typing import cast
+
 import pytest
 
 from conda_recipe_manager.parser.enums import SelectorConflictMode
 from conda_recipe_manager.parser.exceptions import JsonPatchValidationException
-from conda_recipe_manager.parser.recipe_parser import RecipeParser
+from conda_recipe_manager.parser.recipe_parser import RecipeParser, ReplacePatchFunc
 from conda_recipe_manager.parser.selector_parser import SelectorParser
 from conda_recipe_manager.parser.types import SchemaVersion
 from conda_recipe_manager.types import JsonType
@@ -1104,14 +1108,83 @@ def test_patch_copy() -> None:
     assert parser.render() == load_file("simple-recipe_test_patch_copy.yaml")
 
 
-def test_search_and_patch() -> None:
+@pytest.mark.parametrize(
+    "file,regex,patch_with,preserve,expected_file,expected_is_modified",
+    [
+        ("simple-recipe.yaml", re.compile(r"py.*"), "conda", False, "simple-recipe_test_search_and_patch.yaml", True),
+        (
+            "simple-recipe.yaml",
+            re.compile(r"py.*"),
+            "conda",
+            True,
+            "simple-recipe_test_search_and_patch_preserve_comments.yaml",
+            True,
+        ),
+        (
+            "simple-recipe.yaml",
+            re.compile(r"py.*"),
+            cast(Callable[[JsonType], str], lambda _: "con" + "da"),
+            False,
+            "simple-recipe_test_search_and_patch.yaml",
+            True,
+        ),
+        (
+            "simple-recipe.yaml",
+            re.compile(r"py.*"),
+            cast(Callable[[JsonType], str], lambda _: "con" + "da"),
+            True,
+            "simple-recipe_test_search_and_patch_preserve_comments.yaml",
+            True,
+        ),
+        (
+            "simple-recipe.yaml",
+            re.compile(r"REGEX DOES NOT EXIST IN FILE!!!"),
+            "conda",
+            False,
+            "simple-recipe.yaml",
+            False,
+        ),
+        (
+            "simple-recipe.yaml",
+            re.compile(r"REGEX DOES NOT EXIST IN FILE!!!"),
+            "conda",
+            True,
+            "simple-recipe.yaml",
+            False,
+        ),
+        (
+            "simple-recipe.yaml",
+            re.compile(r"REGEX DOES NOT EXIST IN FILE!!!"),
+            cast(Callable[[JsonType], str], lambda _: "con" + "da"),
+            False,
+            "simple-recipe.yaml",
+            False,
+        ),
+        (
+            "simple-recipe.yaml",
+            re.compile(r"REGEX DOES NOT EXIST IN FILE!!!"),
+            cast(Callable[[JsonType], str], lambda _: "con" + "da"),
+            True,
+            "simple-recipe.yaml",
+            False,
+        ),
+    ],
+)
+def test_search_and_patch_replace(
+    file: str,
+    regex: re.Pattern[str],
+    patch_with: JsonType | ReplacePatchFunc,
+    preserve: bool,
+    expected_file: str,
+    expected_is_modified: bool,
+) -> None:
     """
-    Tests searching for values and then patching them
+    Tests the ability for the `RecipeParser` to patch and replace values in a recipe file by regex-matching.
     """
-    parser = load_recipe("simple-recipe.yaml", RecipeParser)
-    assert parser.search_and_patch(r"py.*", {"op": "replace", "value": "conda"}, True)
-    assert parser.render() == load_file("simple-recipe_test_search_and_patch.yaml")
-    assert parser.is_modified()
+    parser = load_recipe(file, RecipeParser)
+    assert parser.search_and_patch_replace(regex, patch_with, preserve)
+    assert parser.render() == load_file(expected_file)
+    assert parser.is_modified() == expected_is_modified
 
 
 def test_diff() -> None:

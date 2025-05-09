@@ -18,7 +18,7 @@ requirements:
     - fakereq  # [unix] selector with comment
   empty_field2:  # [unix and win] # selector with comment with comment symbol
   run:
-    - conda
+    - conda  # not a selector
   empty_field3:
 
 about:

@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import hashlib
-from typing import Callable
+from collections.abc import Callable
 
 import pytest
 

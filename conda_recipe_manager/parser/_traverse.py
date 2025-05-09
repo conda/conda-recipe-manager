@@ -4,7 +4,8 @@
 
 from __future__ import annotations
 
-from typing import Callable, Final, Optional
+from collections.abc import Callable
+from typing import Final, Optional
 
 from conda_recipe_manager.parser._node import Node
 from conda_recipe_manager.parser._types import ROOT_NODE_VALUE, StrStack, StrStackImmutable

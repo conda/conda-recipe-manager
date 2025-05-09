@@ -6,13 +6,14 @@
 import datetime
 import logging
 from dataclasses import dataclass
-from typing import Final, ItemsView, cast
+from typing import Final, ItemsView, Optional, cast
 
 from conda_recipe_manager.fetcher.api._types import BaseApiException
 from conda_recipe_manager.fetcher.api._utils import check_for_empty_field, make_request_and_validate
 from conda_recipe_manager.types import JsonObjectType, JsonType, SchemaType
 from conda_recipe_manager.utils.cryptography import hashing
 from conda_recipe_manager.utils.meta import get_crm_version
+from conda_recipe_manager.utils.typing import optional_str_empty
 
 # Logging object for this module
 log = logging.getLogger(__name__)
@@ -97,18 +98,18 @@ class PackageInfo:
       - We only store the `VersionMetadata` for variants labeled `source` as we don't care about PyPi's wheel packaging
     """
 
-    description: str
-    description_content_type: str
-    docs_url: str
-    license: str
+    description: Optional[str]
+    description_content_type: Optional[str]
+    docs_url: Optional[str]
+    license: Optional[str]
     name: str
     package_url: str
     project_url: str
-    homepage_url: str
-    source_url: str
+    homepage_url: Optional[str]
+    source_url: Optional[str]
     release_url: str
     requires_python: str
-    summary: str
+    summary: Optional[str]
     version: str
     source_metadata: VersionMetadata
 
@@ -145,15 +146,15 @@ class PackageInfo:
                         "description": {"type": ["string", "null"]},
                         "description_content_type": {"type": ["string", "null"]},
                         "docs_url": {"type": ["string", "null"]},
-                        "license": {"type": "string"},
+                        "license": {"type": ["string", "null"]},
                         "name": {"type": "string"},
                         "package_url": {"type": "string"},
                         "project_url": {"type": "string"},
                         "project_urls": {
                             "type": "object",
                             "properties": {
-                                "Homepage": {"type": "string"},
-                                "Source": {"type": "string"},
+                                "Homepage": {"type": ["string", "null"]},
+                                "Source": {"type": ["string", "null"]},
                             },
                         },
                         "release_url": {"type": "string"},
@@ -309,27 +310,28 @@ def _parse_package_info(data: JsonType) -> PackageInfo:
         source_url = str(project_urls["Source"])
 
     info: Final[JsonObjectType] = cast(JsonObjectType, cast(JsonObjectType, data)["info"])
-    parsed = PackageInfo(
-        description=str(info["description"] or ""),
-        description_content_type=str(info["description_content_type"] or ""),
-        docs_url=str(info["docs_url"] or ""),
-        license=str(info["license"]),
+    # NOTE: We interpret the empty string as `None` for the convenience of our callers so they may use the same handling
+    # to deal with missing information.
+    parsed: Final[PackageInfo] = PackageInfo(
+        description=optional_str_empty(info["description"]),
+        description_content_type=optional_str_empty(info["description_content_type"]),
+        docs_url=optional_str_empty(info["docs_url"]),
+        license=optional_str_empty(info["license"]),
         name=str(info["name"]),
         package_url=str(info["package_url"]),
         project_url=str(info["project_url"]),
-        homepage_url=homepage_url,
-        source_url=source_url,
+        homepage_url=optional_str_empty(homepage_url),
+        source_url=optional_str_empty(source_url),
         release_url=str(info["release_url"]),
         # This field may be empty
         requires_python=str(info["requires_python"]),
-        summary=str(info["summary"] or ""),
+        summary=optional_str_empty(info["summary"]),
         version=str(info["version"]),
         source_metadata=version_metadata,
     )
 
     # Validate the remaining critical values
     try:
-        check_for_empty_field("PackageInfo.license", parsed.license)
         check_for_empty_field("PackageInfo.name", parsed.name)
         check_for_empty_field("PackageInfo.package_url", parsed.package_url)
         check_for_empty_field("PackageInfo.project_url", parsed.project_url)
