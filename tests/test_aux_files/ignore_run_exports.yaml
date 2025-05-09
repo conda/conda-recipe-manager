@@ -1,0 +1,10 @@
+package:
+  name: test-ignore-run-exports
+  version: 1.0
+
+build:
+  number: 0
+  ignore_run_exports:
+    - python
+  ignore_run_exports_from:
+    - gcc

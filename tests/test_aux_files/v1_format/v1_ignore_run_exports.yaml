@@ -1,0 +1,15 @@
+schema_version: 1
+
+package:
+  name: test-ignore-run-exports
+  version: 1.0
+
+build:
+  number: 0
+
+requirements:
+  ignore_run_exports:
+    by_name:
+      - python
+    from_package:
+      - gcc
