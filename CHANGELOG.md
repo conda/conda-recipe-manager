@@ -13,6 +13,7 @@ NOTES:
 - `crm bump-recipe` now replaces all older PyPi URLs with `pypi.org` addresses.
 - Minor fixes for the `crm graph` command.
 - Fixes risky threading behavior in `crm bump-recipe`.
+- Fixes for converting `/build/force_use_keys`, `/build/ignore_run_exports_from`, and `/build/ignore_run_exports` in `crm convert`.
 
 ## 0.4.2
 - Various bug fixes and improvements related to `crm bump-recipe`
