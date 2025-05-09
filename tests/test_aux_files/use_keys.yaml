@@ -1,0 +1,8 @@
+package:
+  name: test-use-keys
+  version: 1.0
+
+build:
+  number: 0
+  force_use_keys:
+    - mpi
