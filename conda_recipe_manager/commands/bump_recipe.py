@@ -21,9 +21,9 @@ from conda_recipe_manager.fetcher.base_artifact_fetcher import BaseArtifactFetch
 from conda_recipe_manager.fetcher.exceptions import FetchError
 from conda_recipe_manager.fetcher.http_artifact_fetcher import HttpArtifactFetcher
 from conda_recipe_manager.parser.enums import SchemaVersion
-from conda_recipe_manager.parser.recipe_parser import RecipeParser
+from conda_recipe_manager.parser.recipe_parser import RecipeParser, ReplacePatchFunc
 from conda_recipe_manager.parser.recipe_reader import RecipeReader
-from conda_recipe_manager.types import JsonPatchType
+from conda_recipe_manager.types import JsonPatchType, JsonType
 from conda_recipe_manager.utils.typing import optional_str
 
 # Truncates the `__name__` to the crm command name.
@@ -87,6 +87,11 @@ class _Regex:
     Namespace that contains all pre-compiled regular expressions used in this tool.
     """
 
+    # Matches strings that reference `pypi.io` so that we can transition them to use the preferred `pypi.org` TLD.
+    # Group 1 contains the protocol, group 2 is the deprecated domain, group 3 contains the rest of the URL to preserve.
+    PYPI_DEPRECATED_DOMAINS: Final[re.Pattern[str]] = re.compile(
+        r"(https?://)(pypi\.io|cheeseshop\.python\.org|pypi\.python\.org)(.*)"
+    )
     # Attempts to match PyPi source archive URLs by the start of the URL.
     PYPI_URL: Final[re.Pattern[str]] = re.compile(
         r"https?://pypi\.(?:io|org)/packages/source/[a-z]/|https?://files\.pythonhosted\.org/"
@@ -166,6 +171,34 @@ def _exit_on_failed_patch(recipe_parser: RecipeParser, patch_blob: JsonPatchType
     sys.exit(ExitCode.PATCH_ERROR)
 
 
+def _exit_on_failed_search_and_patch_replace(
+    recipe_parser: RecipeParser,
+    regex: str | re.Pattern[str],
+    patch_with: JsonType | ReplacePatchFunc,
+    cli_args: _CliArgs,
+) -> None:
+    """
+    Convenience function that exits the program when a search and patch-replace operation fails. This standardizes how
+    we handle search and patch-replace failures across all patch operations performed in this program.
+
+    :param recipe_parser: Recipe file to update.
+    :param regex: Regular expression to match with. This only matches values on patch-able paths.
+    :param patch_with: `JsonType` value to replace the matching value with directly or a callback that provides the
+        original value as a `JsonType` so the caller can manipulate what is being patched-in.
+    :param cli_args: Immutable CLI arguments from the user.
+    """
+    patch_type_str: Final[str] = "dynamic" if callable(patch_with) else "static"
+    if recipe_parser.search_and_patch_replace(regex, patch_with, preserve_comments_and_selectors=True):
+        log.debug("Executed a %s patch using this regular expression: %s", patch_type_str, regex)
+        return
+
+    if cli_args.save_on_failure:
+        _save_or_print(recipe_parser, cli_args)
+
+    log.error("Couldn't perform a %s patch using this regular expressions: %s", patch_type_str, regex)
+    sys.exit(ExitCode.PATCH_ERROR)
+
+
 def _exit_on_failed_fetch(recipe_parser: RecipeParser, fetcher: BaseArtifactFetcher, cli_args: _CliArgs) -> NoReturn:
     """
     Exits the script upon a failed fetch.
@@ -190,6 +223,22 @@ def _pre_process_cleanup(recipe_content: str) -> str:
     """
     # TODO delete unused variables? Unsure if that may be too prescriptive.
     return RecipeParser.pre_process_remove_hash_type(recipe_content)
+
+
+def _post_process_cleanup(recipe_parser: RecipeParser, cli_args: _CliArgs) -> None:
+    """
+    Performs global, less critical, recipe file clean-up tasks right after the initial parsing stage. We should take
+    great care as to what goes in this step. The work done here should have some impact to the other stages of recipe
+    editing but not enough to warrant being a separate stage.
+
+    :param recipe_parser: Recipe file to update.
+    """
+    _exit_on_failed_search_and_patch_replace(
+        recipe_parser,
+        _Regex.PYPI_DEPRECATED_DOMAINS,
+        lambda s: _Regex.PYPI_DEPRECATED_DOMAINS.sub(r"https://pypi.org\3", str(s)),
+        cli_args,
+    )
 
 
 def _update_build_num(recipe_parser: RecipeParser, cli_args: _CliArgs) -> None:
@@ -434,6 +483,7 @@ def _update_sha256_check_hash_var(
                         cli_args,
                     )
             except FetchError:
+                log.exception("Failed to update the SHA-256 variable.")
                 _exit_on_failed_fetch(recipe_parser, src_fetcher, cli_args)
             return True
 
@@ -553,6 +603,7 @@ def _update_sha256(recipe_parser: RecipeParser, cli_args: _CliArgs) -> None:
                 )
 
             except FetchError:
+                log.exception("Failed to update SHA-256 from an artifact at %s", fetcher.get_archive_url())
                 _exit_on_failed_fetch(recipe_parser, fetcher, cli_args)
 
     for patch in patches_to_apply:
@@ -695,6 +746,8 @@ def bump_recipe(
     except Exception:  # pylint: disable=broad-except
         log.error("An error occurred while parsing the recipe file contents.")
         sys.exit(ExitCode.PARSE_EXCEPTION)
+
+    _post_process_cleanup(recipe_parser, cli_args)
 
     # Attempt to update fields
     _update_build_num(recipe_parser, cli_args)

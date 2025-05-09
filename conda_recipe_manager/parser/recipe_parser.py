@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import difflib
 import re
+from collections.abc import Callable
 from typing import Final, Optional, TypeGuard, cast
 
 from jsonschema import validate as schema_validate
@@ -38,6 +39,9 @@ from conda_recipe_manager.parser.recipe_reader import RecipeReader
 from conda_recipe_manager.parser.selector_parser import SelectorParser
 from conda_recipe_manager.parser.types import JSON_PATCH_SCHEMA
 from conda_recipe_manager.types import PRIMITIVES_TUPLE, JsonPatchType, JsonType
+
+# Callback that allows the caller to perform custom replacements using `search_and_patch_replace()`.
+ReplacePatchFunc = Callable[[JsonType], JsonType]
 
 
 class RecipeParser(RecipeReader):
@@ -565,24 +569,90 @@ class RecipeParser(RecipeReader):
 
         return is_successful
 
-    def search_and_patch(
-        self, regex: str | re.Pattern[str], patch: JsonPatchType, include_comment: bool = False
+    def _render_patch_value(self, path: str, patch_with: JsonType | ReplacePatchFunc) -> JsonType:
+        """
+        Helper function for `RecipeParser::search_and_patch_replace()` that discerns between static and dynamic patches.
+
+        :param path: Path to the value to patch.
+        :param patch_with: `JsonType` value to replace the matching value with directly or a callback that provides the
+            original value as a `JsonType` so the caller can manipulate what is being patched-in.
+        :returns: Value to patch-in.
+        """
+        if not callable(patch_with):
+            return patch_with
+        # `RecipeReader::get_value()` should never throw UNLESS there is a bug in `RecipeParser::search()`. We
+        # do not want one fault to cause the other patches to fail.
+        return patch_with(self.get_value(path, sub_vars=False))
+
+    def _get_comment_selector(self, path: str, preserve_comments_and_selectors: bool) -> Optional[str]:
+        """
+        Helper function for `RecipeParser::search_and_patch_replace()` that records the pre-patched comment-state of the
+        target node in the tree. We go directly to the parse tree so that we don't have to make a distinction between
+        comments and selectors or worry about the ordering. If this function returns a string, we must attempt to add
+        the comment/selector post-patch.
+
+        :param path: Path to the value to patch.
+        :param preserve_comments_and_selectors: Flag indicating if this function should preserve any existing
+            comments or selectors that apply to the path provided.
+        :returns: A string if there is a comment/selector that needs to be preserved. Otherwise `None`.
+        """
+        if not preserve_comments_and_selectors:
+            return None
+
+        node = traverse(self._root, str_to_stack_path(path))
+        # Minor optimization, don't perform an update traversal on a comment/selector that doesn't exist.
+        if node is None or node.comment == "":
+            return None
+        return node.comment
+
+    def search_and_patch_replace(
+        self,
+        regex: str | re.Pattern[str],
+        patch_with: JsonType | ReplacePatchFunc,
+        preserve_comments_and_selectors: bool = True,
     ) -> bool:
         """
-        Given a regex string and a JSON patch, apply the patch to any values that match the search expression.
+        Given a regex string and a partial patch, replace values at every location that matches.
+        This function effectively replaces the previous `RecipeParser::search_and_patch()`
 
-        :param regex: Regular expression to match with
-        :param patch: JSON patch to perform. NOTE: The `path` field will be replaced with the path(s) found, so it does
-            not need to be provided.
-        :param include_comment: (Optional) If set to `True`, this function will execute the regular expression on values
-            WITH their comments provided. For example: `42  # This is a comment`
-        :returns: Returns a list of paths where the matched value was found.
+        :param regex: Regular expression to match with. This only matches values on patch-able paths.
+        :param patch_with: `JsonType` value to replace the matching value with directly or a callback that provides the
+            original value as a `JsonType` so the caller can manipulate what is being patched-in.
+        :param preserve_comments_and_selectors: (Optional) Flag indicating if this function should preserve any existing
+            comments or selectors that apply to the path provided.
+        :returns: Returns True if all patches were successful. Otherwise, False.
         """
-        paths = self.search(regex, include_comment)
+
+        paths = self.search(regex, include_comment=False)
         summation: bool = True
+
         for path in paths:
-            patch["path"] = path
-            summation = summation and self.patch(patch)
+            try:
+                comment_selector = self._get_comment_selector(path, preserve_comments_and_selectors)
+                summation = summation and self.patch(
+                    {"op": "replace", "path": path, "value": self._render_patch_value(path, patch_with)}
+                )
+                # Skip comment/selector preservation logic if it is not possible/not required.
+                if comment_selector is None:
+                    continue
+
+                # We must traverse again as the tree state has changed.
+                node = traverse(self._root, str_to_stack_path(path))
+                if node is None:
+                    # TODO Future Log this when CRM parsers have proper logging.
+                    summation = False
+                    continue
+
+                # The caller is unable to access the node and patch operations ignore comments/selectors.
+                node.comment = comment_selector
+                # When we add the comment back in, we MUST update the selector table.
+                self._rebuild_selectors()
+                self._is_modified = True
+            except KeyError:
+                # TODO Future Log this when CRM parsers have proper logging.
+                summation = False
+                continue
+
         return summation
 
     def diff(self) -> str:

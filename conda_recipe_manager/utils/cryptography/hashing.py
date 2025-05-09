@@ -6,8 +6,9 @@ from __future__ import annotations
 
 import hashlib
 import string
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Final
+from typing import Final
 
 # Default buffer size to use with hashing algorithms.
 _HASH_BUFFER_SIZE: Final[int] = 65536  # 64KiB
