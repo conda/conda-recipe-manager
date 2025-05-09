@@ -526,7 +526,7 @@ class RecipeParserConvert(RecipeParserDeps):
 
             # `build/entry_points` -> `build/python/entry_points`
             self._patch_move_new_path(build_path, "/entry_points", "/python")
-            
+
             # `build/force_use_keys` -> `build/variant/use_keys`
             self._patch_move_new_path(build_path, "/force_use_keys", "/variant", "use_keys")
 
