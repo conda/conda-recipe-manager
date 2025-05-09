@@ -28,7 +28,7 @@ dependencies:
   - types-requests
   - gitpython
   - networkx
-  - matplotlib
+  - matplotlib-base
   - pygraphviz
   - pre-commit
   - sphinx

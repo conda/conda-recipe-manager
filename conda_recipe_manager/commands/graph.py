@@ -9,7 +9,7 @@ import pickle
 import sys
 import time
 from pathlib import Path
-from typing import Final
+from typing import Final, Optional
 
 import click
 
@@ -18,6 +18,47 @@ from conda_recipe_manager.commands.utils.types import ExitCode
 from conda_recipe_manager.grapher.recipe_graph import PackageStats, RecipeGraph
 from conda_recipe_manager.grapher.recipe_graph_from_disk import RecipeGraphFromDisk
 from conda_recipe_manager.grapher.types import GraphDirection, GraphType, PackageStatsEncoder
+
+
+def _parse_plot_options(recipe_graph: RecipeGraph, g_type: str, dir_str: Optional[str], pkg: str) -> bool:
+    """
+    Helper function that checks positional arguments for the `plot` command.
+
+    :param recipe_graph: Instance of the recipe graph to render a plot with.
+    :param g_type: The type of graph to render.
+    :param dir_str: Optional graph direction string. Defaults to render a dependency graph.
+    :param pkg: Package name from the user or "all" to build a full graph.
+    :returns: True if the arguments are valid, false otherwise.
+    """
+    if g_type not in GraphType:
+        print(f"Unrecognized graph type: {g_type}")
+        return False
+
+    direction: GraphDirection
+    match dir_str:
+        # Default to a dependency graph
+        case None:
+            direction = GraphDirection.DEPENDS_ON
+        case "depends":
+            direction = GraphDirection.DEPENDS_ON
+        case "needed-by":
+            direction = GraphDirection.NEEDED_BY
+        case _:
+            print("Unrecognized graph direction.")
+            return False
+
+    # Special case
+    if pkg == "all":
+        print("This might take a while...")
+        recipe_graph.plot(GraphType(g_type), direction=direction)
+        return True
+
+    if not recipe_graph.contains_package_name(pkg):
+        print(f"Package not found: {pkg}")
+        return False
+
+    recipe_graph.plot(GraphType(g_type), direction=direction, package=pkg)
+    return True
 
 
 @click.command(short_help="Interactive CLI for examining recipe dependency graphs.")
@@ -67,35 +108,19 @@ def graph(path: Path) -> None:
                     "Commands:\n"
                     "  - plot (build|test) [depends|needed-by] (<package>|all)\n"
                     "    Generates a visual representation of the requested dependency graph.\n"
-                    "    Using `all` prints the entire graph (no direction required).\n"
+                    "    Defaults to `depends` for graph direction.\n"
+                    "    Using `all` prints the entire graph.\n"
                     "  - stats\n"
                     "    Prints graph construction statistics.\n"
                     "  - help\n"
                     "    Prints this help message.\n"
                 )
-            case ["plot", g_type, "all"]:
-                if g_type not in GraphType:
-                    print(f"Unrecognized graph type: {g_type}")
+            case ["plot", g_type, pkg]:
+                if not _parse_plot_options(recipe_graph, g_type, None, pkg):
                     continue
-                print("This might take a while...")
-                recipe_graph.plot(GraphType(g_type))
             case ["plot", g_type, dir_str, pkg]:
-                if g_type not in GraphType:
-                    print(f"Unrecognized graph type: {g_type}")
+                if not _parse_plot_options(recipe_graph, g_type, dir_str, pkg):
                     continue
-                direction: GraphDirection
-                match dir_str:
-                    case "depends":
-                        direction = GraphDirection.DEPENDS_ON
-                    case "needed-by":
-                        direction = GraphDirection.NEEDED_BY
-                    case _:
-                        print("Unrecognized graph direction.")
-                        continue
-                if not recipe_graph.contains_package_name(pkg):
-                    print(f"Package not found: {pkg}")
-                    continue
-                recipe_graph.plot(GraphType(g_type), direction, pkg)
             case ["stats"] | ["statistics"]:
                 print(
                     json.dumps(package_stats, indent=2, sort_keys=True, cls=PackageStatsEncoder)  # type: ignore[misc]
