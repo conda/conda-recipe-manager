@@ -105,7 +105,8 @@ outputs:
       run:
         - llvm-lto-tapi
       ignore_run_exports:
-        - zlib
+        by_name:
+          - zlib
     about:
       license: APSL-2.0
       license_file: cctools/APPLE_LICENSE
@@ -127,7 +128,8 @@ outputs:
         - if: osx
           then: libcxx
       ignore_run_exports:
-        - zlib
+        by_name:
+          - zlib
     about:
       license: APSL-2.0
       license_file: cctools/ld64/APPLE_LICENSE

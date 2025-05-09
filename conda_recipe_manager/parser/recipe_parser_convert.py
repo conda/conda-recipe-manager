@@ -501,13 +501,19 @@ class RecipeParserConvert(RecipeParserDeps):
                     self._patch_and_log({"op": "add", "path": requirements_path, "value": None})
                 self._patch_and_log({"op": "move", "from": old_re_path, "path": new_re_path})
             # `ignore_run_exports`
-            old_ire_path = RecipeParser.append_to_path(base_path, "/build/ignore_run_exports")
-            if self._v1_recipe.contains_value(old_ire_path):
-                requirements_path = RecipeParser.append_to_path(base_path, "/requirements")
-                new_ire_path = RecipeParser.append_to_path(base_path, "/requirements/ignore_run_exports")
-                if not self._v1_recipe.contains_value(requirements_path):
-                    self._patch_and_log({"op": "add", "path": requirements_path, "value": None})
-                self._patch_and_log({"op": "move", "from": old_ire_path, "path": new_ire_path})
+            for old_ire_name, new_ire_name in [
+                ("ignore_run_exports", "by_name"),
+                ("ignore_run_exports_from", "from_package"),
+            ]:
+                old_ire_path = RecipeParser.append_to_path(base_path, f"/build/{old_ire_name}")
+                if self._v1_recipe.contains_value(old_ire_path):
+                    self._patch_add_missing_path(base_path, "/requirements")
+                    self._patch_move_new_path(
+                        base_path,
+                        f"/build/{old_ire_name}",
+                        "/requirements/ignore_run_exports",
+                        new_ire_name,
+                    )
 
             # Perform internal section changes per `build/` section
             build_path = RecipeParser.append_to_path(base_path, "/build")
@@ -520,6 +526,9 @@ class RecipeParserConvert(RecipeParserDeps):
 
             # `build/entry_points` -> `build/python/entry_points`
             self._patch_move_new_path(build_path, "/entry_points", "/python")
+
+            # `build/force_use_keys` -> `build/variant/use_keys`
+            self._patch_move_new_path(build_path, "/force_use_keys", "/variant", "use_keys")
 
             # New `prefix_detection` section changes
             # NOTE: There is a new `force_file_type` field that may map to an unknown field that conda supports.

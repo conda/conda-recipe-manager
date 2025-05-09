@@ -180,6 +180,18 @@ def test_pre_process_recipe_text(input_file: str, expected_file: str) -> None:
             ],
             [],
         ),
+        # build/force_used_keys migration
+        (
+            "use_keys.yaml",
+            [],
+            [],
+        ),
+        # build/ignore_run_exports migration
+        (
+            "ignore_run_exports.yaml",
+            [],
+            [],
+        ),
         # Ensures that multiline summary sections that don't use | or > are converted correctly.
         (
             "non_marked_multiline_summary.yaml",
