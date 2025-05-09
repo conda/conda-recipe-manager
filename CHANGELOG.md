@@ -12,6 +12,7 @@ NOTES:
   using `_`s to `-`s. This comes from a PEP standard change for source artifacts.
 - `crm bump-recipe` now replaces all older PyPi URLs with `pypi.org` addresses.
 - Minor fixes for the `crm graph` command.
+- Fixes risky threading behavior in `crm bump-recipe`.
 
 ## 0.4.2
 - Various bug fixes and improvements related to `crm bump-recipe`
