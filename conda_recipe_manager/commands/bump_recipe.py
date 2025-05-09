@@ -492,28 +492,35 @@ def _update_sha256(recipe_parser: RecipeParser, cli_args: _CliArgs) -> None:
     if _update_sha256_check_hash_var(recipe_parser, fetcher_tbl, cli_args):
         return
 
+    # Filter-out artifacts that don't need a SHA-256 hash.
+    http_fetcher_tbl: Final[dict[str, HttpArtifactFetcher]] = {
+        k: v for k, v in fetcher_tbl.items() if isinstance(v, HttpArtifactFetcher)
+    }
+
     # NOTE: Each source _might_ have a different SHA-256 hash. This is the case for the `cctools-ld64` feedstock. That
     # project has a different implementation per architecture. However, in other circumstances, mirrored sources with
     # different hashes might imply there is a security threat. We will log some statistics so the user can best decide
     # what to do.
     unique_hashes: set[str] = set()
-
-    # TODO refactor this. The HTTP fetcher table needs to fetch all source files AND THEN process the SHA-256 hashes,
-    # post corrections.
-
-    # Filter-out artifacts that don't need a SHA-256 hash.
-    http_fetcher_tbl: Final[dict[str, HttpArtifactFetcher]] = {
-        k: v for k, v in fetcher_tbl.items() if isinstance(v, HttpArtifactFetcher)
-    }
     # Parallelize on acquiring multiple source artifacts on the network. In testing, using a process pool took
     # significantly more time and resources. That aligns with how I/O bound this process is. We use the
     # `ThreadPoolExecutor` class over a `ThreadPool` so the script may exit gracefully if we failed to acquire an
     # artifact.
     sha_cntr = 0
+    # Delay writing to the recipe until all threads have joined. This prevents us from performing write operations while
+    # other threads may be reading recipe data.
+    patches_to_apply: list[JsonPatchType] = []
+
     with cf.ThreadPoolExecutor() as executor:
         artifact_futures_tbl = {
             executor.submit(
-                _update_sha256_fetch_one, cast(RecipeReader, recipe_parser), src_path, fetcher, cli_args
+                # Use the static analyzer checks to enforce that only read-only operations are allowed in a threaded
+                # context.
+                _update_sha256_fetch_one,
+                cast(RecipeReader, recipe_parser),
+                src_path,
+                fetcher,
+                cli_args,
             ): fetcher
             for src_path, fetcher in http_fetcher_tbl.items()
         }
@@ -523,20 +530,33 @@ def _update_sha256(recipe_parser: RecipeParser, cli_args: _CliArgs) -> None:
                 sha_path, sha, url_tup = future.result()
                 sha_cntr += 1
                 unique_hashes.add(sha)
-                # Guard against the unlikely scenario that the `sha256` field is missing.
-                sha_patch_op = "replace" if recipe_parser.contains_value(sha_path) else "add"
-                _exit_on_failed_patch(recipe_parser, {"op": sha_patch_op, "path": sha_path, "value": sha}, cli_args)
+                patches_to_apply.append(
+                    {
+                        # Guard against the unlikely scenario that the `sha256` field is missing.
+                        "op": "replace" if recipe_parser.contains_value(sha_path) else "add",
+                        "path": sha_path,
+                        "value": sha,
+                    }
+                )
 
                 # Patch the URL if a new one has been provided.
                 if url_tup is None:
                     continue
                 url_path, url = url_tup
-                # Guard against the "should be impossible" scenario that the `url` field is missing.
-                url_patch_op = "replace" if recipe_parser.contains_value(url_path) else "add"
-                _exit_on_failed_patch(recipe_parser, {"op": url_patch_op, "path": url_path, "value": url}, cli_args)
+                patches_to_apply.append(
+                    {
+                        # Guard against the "should be impossible" scenario that the `url` field is missing.
+                        "op": "replace" if recipe_parser.contains_value(url_path) else "add",
+                        "path": url_path,
+                        "value": url,
+                    }
+                )
 
             except FetchError:
                 _exit_on_failed_fetch(recipe_parser, fetcher, cli_args)
+
+    for patch in patches_to_apply:
+        _exit_on_failed_patch(recipe_parser, patch, cli_args)
 
     log.info(
         "Found %d unique SHA-256 hash(es) out of a total of %d hash(es) in %d sources.",
