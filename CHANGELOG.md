@@ -3,6 +3,10 @@ NOTES:
 - Version releases in the 0.x.y range may introduce breaking changes.
 - See the auto-generated release notes for more details.
 
+## 0.5.1
+- Fixes a JINJA rendering bug for V0 recipes in `RecipeReader::get_value(..., sub_vars=True)` and
+  related functions.
+
 ## 0.5.0
 - BREAKING CHANGE: `RecipeParser::search_and_patch()` has been replaced by `RecipeParser::search_and_patch_replace()`.
 - Adds some support for interpreting `split` and `join` JINJA functions.
