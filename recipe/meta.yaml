@@ -24,7 +24,9 @@ requirements:
     - wheel
   run:
     - python >=3.11
-    - click >=8.1.7
+    # Version 8.2.0 introduces breaking changes around the `CliRunner` class, which breaks our
+    # automated tests. We can allow for this version when it becomes available on `defaults`.
+    - click <8.2.0
     - conda
     - jinja2
     - pyyaml
