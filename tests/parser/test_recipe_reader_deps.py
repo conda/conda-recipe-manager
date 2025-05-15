@@ -274,14 +274,14 @@ def test_get_package_names_to_path(file: str, expected: dict[str, str]) -> None:
                         "libprotobuf",
                         "/outputs/0/requirements/build/0",
                         DependencySection.BUILD,
-                        DependencyVariable("${{ compiler('c') }}"),
+                        DependencyVariable("{{ compiler('c') }}"),
                         selector=None,
                     ),
                     Dependency(
                         "libprotobuf",
                         "/outputs/0/requirements/build/1",
                         DependencySection.BUILD,
-                        DependencyVariable("${{ compiler('cxx') }}"),
+                        DependencyVariable("{{ compiler('cxx') }}"),
                         selector=None,
                     ),
                     Dependency(
@@ -381,14 +381,14 @@ def test_get_package_names_to_path(file: str, expected: dict[str, str]) -> None:
                         "libprotobuf-static",
                         "/outputs/1/requirements/build/0",
                         DependencySection.BUILD,
-                        DependencyVariable("${{ compiler('c') }}"),
+                        DependencyVariable("{{ compiler('c') }}"),
                         selector=None,
                     ),
                     Dependency(
                         "libprotobuf-static",
                         "/outputs/1/requirements/build/1",
                         DependencySection.BUILD,
-                        DependencyVariable("${{ compiler('cxx') }}"),
+                        DependencyVariable("{{ compiler('cxx') }}"),
                         selector=None,
                     ),
                     Dependency(
@@ -458,7 +458,7 @@ def test_get_package_names_to_path(file: str, expected: dict[str, str]) -> None:
                         "libprotobuf-static",
                         "/outputs/1/requirements/host/1",
                         DependencySection.HOST,
-                        DependencyVariable("${{ pin_subpackage('libprotobuf', exact=True) }}"),
+                        DependencyVariable("{{ pin_subpackage('libprotobuf', exact=True) }}"),
                         SelectorParser("[not win]", SchemaVersion.V0),
                     ),
                     Dependency(
@@ -472,7 +472,7 @@ def test_get_package_names_to_path(file: str, expected: dict[str, str]) -> None:
                         "libprotobuf-static",
                         "/outputs/1/requirements/run/1",
                         DependencySection.RUN,
-                        DependencyVariable("${{ pin_subpackage('libprotobuf', exact=True) }}"),
+                        DependencyVariable("{{ pin_subpackage('libprotobuf', exact=True) }}"),
                         SelectorParser("[not win]", SchemaVersion.V0),
                     ),
                     Dependency(
