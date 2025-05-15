@@ -47,8 +47,9 @@ jobs:
             source $CONDA/bin/activate
             conda create --name build-env -y python=3.11 conda-build
             conda activate build-env
-            conda build -c defaults -c conda-forge recipe/meta.yaml
+            conda build -c defaults recipe/meta.yaml
   # Eat our own dog food and build this project with rattler-build by converting our existing recipe.
+  # Remember, `rattler-build` will pull from the `conda-forge` channel, which may cause some version inconsistencies.
   build-recipe-rattler:
       runs-on: ubuntu-latest
       steps:
