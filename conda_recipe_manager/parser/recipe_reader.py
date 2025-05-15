@@ -414,12 +414,12 @@ class RecipeReader(IsModifiable):
                 if replace_match:
                     value = value.replace(replace_match.group(2), replace_match.group(3))
                 s = s.replace(match, value)
-            # $-Escaping the unresolved variable does a few things:
-            #   - Clearly identifies the value as an unresolved variable
-            #   - Normalizes the substitution syntax with V1
-            #   - Ensures the returned value is YAML-parsable
-            elif self._schema_version == SchemaVersion.V0 and s[:2] == "{{":
-                s = f"${s}"
+
+        # If there is leading V0 (unescaped) JINJA that was not able to be fully rendered, it will not be able to be
+        # parsed by PyYaml. So it is best to just return the value as a string, without evaluating the type (which, to
+        # be clear, should be a string).
+        if self._schema_version == SchemaVersion.V0 and s[:2] == "{{":
+            return s
         return cast(JsonType, yaml.load(s, Loader=SafeLoader))
 
     def _init_vars_tbl(self) -> None:
