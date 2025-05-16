@@ -758,8 +758,8 @@ def bump_recipe(
     if cli_args.target_version is not None:
         if cli_args.target_version == recipe_parser.get_value(_RecipePaths.VERSION, default=None, sub_vars=True):
             log.warning(
-                "The provided target version is the same value found in the recipe file: %s", cli_args.target_version
-            )
+                "The provided target version is the same value found in the recipe file: %s", cli_args.target_version)
+            sys.exit(ExitCode.PARSE_EXCEPTION)
 
         # Version must be updated before hash to ensure the correct artifact is hashed.
         _update_version(recipe_parser, cli_args)
