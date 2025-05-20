@@ -4,7 +4,7 @@
 
 /// Indicates the schema of the current recipe file.
 /// NOTE: The Rust parser only supports V1 recipes.
-enum SchemaVersion {
+pub enum SchemaVersion {
     V0,
     V1,
 }
