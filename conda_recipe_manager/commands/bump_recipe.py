@@ -747,7 +747,9 @@ def bump_recipe(
         log.error("An error occurred while parsing the recipe file contents.")
         sys.exit(ExitCode.PARSE_EXCEPTION)
 
-    if cli_args.target_version == recipe_parser.get_value(_RecipePaths.VERSION, default=None, sub_vars=True):
+    if cli_args.target_version is not None and cli_args.target_version == recipe_parser.get_value(
+        _RecipePaths.VERSION, default=None, sub_vars=True
+    ):
         log.error("The provided target version is the same value found in the recipe file: %s", cli_args.target_version)
         sys.exit(ExitCode.CLICK_USAGE)
 
