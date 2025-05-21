@@ -6,12 +6,14 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
+
 """
 conf.py file
 """
 project = "Conda Recipe Manager"
 author = "various"
-release = "0.5.0"
+# TODO make this automatic
+release = "0.5.1"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

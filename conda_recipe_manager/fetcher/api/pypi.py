@@ -108,7 +108,7 @@ class PackageInfo:
     homepage_url: Optional[str]
     source_url: Optional[str]
     release_url: str
-    requires_python: str
+    requires_python: Optional[str]
     summary: Optional[str]
     version: str
     source_metadata: VersionMetadata
@@ -158,7 +158,7 @@ class PackageInfo:
                             },
                         },
                         "release_url": {"type": "string"},
-                        "requires_python": {"type": "string"},
+                        "requires_python": {"type": ["string", "null"]},
                         "summary": {"type": ["string", "null"]},
                         "version": {"type": "string"},
                     },
@@ -323,8 +323,7 @@ def _parse_package_info(data: JsonType) -> PackageInfo:
         homepage_url=optional_str_empty(homepage_url),
         source_url=optional_str_empty(source_url),
         release_url=str(info["release_url"]),
-        # This field may be empty
-        requires_python=str(info["requires_python"]),
+        requires_python=optional_str_empty(info["requires_python"]),
         summary=optional_str_empty(info["summary"]),
         version=str(info["version"]),
         source_metadata=version_metadata,

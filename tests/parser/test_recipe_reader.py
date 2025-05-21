@@ -652,8 +652,8 @@ def test_contains_value(file: str, path: str, expected: bool) -> None:
         ("sub_vars.yaml", "/requirements/fake_run_constrained/20", True, "types_toml"),
         ("sub_vars.yaml", "/requirements/fake_run_constrained/21", True, "TYPES_TOML"),
         # Complex split and join cases. Note that we do not replace if split/join would result in a non-string value.
-        ("sub_vars.yaml", "/requirements/fake_run_constrained/22", True, "${{ name.split('-') }}"),
-        ("sub_vars.yaml", "/requirements/fake_run_constrained/23", True, "${{ '.'.join(name) }}"),
+        ("sub_vars.yaml", "/requirements/fake_run_constrained/22", True, "{{ name.split('-') }}"),
+        ("sub_vars.yaml", "/requirements/fake_run_constrained/23", True, "{{ '.'.join(name) }}"),
         ("sub_vars.yaml", "/requirements/fake_run_constrained/24", True, "TYPES.toml"),
         ("sub_vars.yaml", "/requirements/fake_run_constrained/25", True, "TYPES"),
         ("sub_vars.yaml", "/requirements/fake_run_constrained/26", True, "TYPES.toml"),

@@ -88,38 +88,38 @@ def test_pre_process_recipe_text(input_file: str, expected_file: str) -> None:
             [],
             [
                 "Recipe upgrades cannot currently upgrade ambiguous version constraints on "
-                "dependencies that use variables: ${{ compiler('c') }}",
+                "dependencies that use variables: {{ compiler('c') }}",
                 "Recipe upgrades cannot currently upgrade ambiguous version constraints on "
-                "dependencies that use variables: ${{ compiler('cxx') }}",
+                "dependencies that use variables: {{ compiler('cxx') }}",
                 "Recipe upgrades cannot currently upgrade ambiguous version constraints on "
-                "dependencies that use variables: ${{ compiler('c') }}",
+                "dependencies that use variables: {{ compiler('c') }}",
                 "Recipe upgrades cannot currently upgrade ambiguous version constraints on "
-                "dependencies that use variables: ${{ compiler('cxx') }}",
+                "dependencies that use variables: {{ compiler('cxx') }}",
                 "Recipe upgrades cannot currently upgrade ambiguous version constraints on "
-                "dependencies that use variables: ${{ compiler('c') }}",
+                "dependencies that use variables: {{ compiler('c') }}",
                 "Recipe upgrades cannot currently upgrade ambiguous version constraints on "
-                "dependencies that use variables: ${{ compiler('cxx') }}",
+                "dependencies that use variables: {{ compiler('cxx') }}",
                 "Recipe upgrades cannot currently upgrade ambiguous version constraints on "
-                "dependencies that use variables: ${{ compiler('c') }}",
+                "dependencies that use variables: {{ compiler('c') }}",
                 "Recipe upgrades cannot currently upgrade ambiguous version constraints on "
-                "dependencies that use variables: ${{ compiler('cxx') }}",
+                "dependencies that use variables: {{ compiler('cxx') }}",
                 "Recipe upgrades cannot currently upgrade ambiguous version constraints on "
-                'dependencies that use variables: ${{ pin_subpackage("libgoogle-cloud-all", '
+                'dependencies that use variables: {{ pin_subpackage("libgoogle-cloud-all", '
                 "exact=True) }}",
                 "Recipe upgrades cannot currently upgrade ambiguous version constraints on "
-                "dependencies that use variables: ${{ compiler('c') }}",
+                "dependencies that use variables: {{ compiler('c') }}",
                 "Recipe upgrades cannot currently upgrade ambiguous version constraints on "
-                "dependencies that use variables: ${{ compiler('cxx') }}",
+                "dependencies that use variables: {{ compiler('cxx') }}",
                 "Recipe upgrades cannot currently upgrade ambiguous version constraints on "
-                "dependencies that use variables: ${{ "
+                "dependencies that use variables: {{ "
                 'pin_subpackage("libgoogle-cloud-all-devel", exact=True) }}',
                 "Recipe upgrades cannot currently upgrade ambiguous version constraints on "
-                "dependencies that use variables: ${{ "
+                "dependencies that use variables: {{ "
                 'pin_subpackage("libgoogle-cloud-all-devel", exact=True) }}',
                 "Recipe upgrades cannot currently upgrade ambiguous version constraints on "
-                "dependencies that use variables: ${{ compiler('c') }}",
+                "dependencies that use variables: {{ compiler('c') }}",
                 "Recipe upgrades cannot currently upgrade ambiguous version constraints on "
-                "dependencies that use variables: ${{ compiler('cxx') }}",
+                "dependencies that use variables: {{ compiler('cxx') }}",
                 "A non-list item had a selector at: /outputs/0/script",
                 "A non-list item had a selector at: /outputs/1/script",
                 "A non-list item had a selector at: /outputs/0/script",
@@ -163,7 +163,7 @@ def test_pre_process_recipe_text(input_file: str, expected_file: str) -> None:
             [
                 (
                     "Recipe upgrades cannot currently upgrade ambiguous version constraints on dependencies that"
-                    ' use variables: ${{ pin_subpackage("libnvpl-fft" ~ somajor ) }}'
+                    ' use variables: {{ pin_subpackage("libnvpl-fft" ~ somajor ) }}'
                 ),
                 "The following key(s) contain unsupported syntax: soversion",
                 "No `license` provided in `/about`",
@@ -224,7 +224,7 @@ def test_pre_process_recipe_text(input_file: str, expected_file: str) -> None:
             [
                 (
                     "Recipe upgrades cannot currently upgrade ambiguous version constraints on dependencies that"
-                    " use variables: ${{ compiler('rust') }} >=1.65.0"
+                    " use variables: {{ compiler('rust') }} >=1.65.0"
                 ),
                 "Could not patch unrecognized license: `Apache-2.0 AND MIT`",
                 "Field at `/about/license_family` is no longer supported.",
@@ -257,11 +257,11 @@ def test_pre_process_recipe_text(input_file: str, expected_file: str) -> None:
             [],
             [
                 "Recipe upgrades cannot currently upgrade ambiguous version constraints on dependencies that"
-                " use variables: ${{ stdlib('c') }}",
+                " use variables: {{ stdlib('c') }}",
                 "Recipe upgrades cannot currently upgrade ambiguous version constraints on dependencies that"
-                " use variables: ${{ compiler('c') }}",
+                " use variables: {{ compiler('c') }}",
                 "Recipe upgrades cannot currently upgrade ambiguous version constraints on dependencies that"
-                " use variables: ${{ compiler('cxx') }}",
+                " use variables: {{ compiler('cxx') }}",
                 "Field at `/about/license_family` is no longer supported.",
             ],
         ),
