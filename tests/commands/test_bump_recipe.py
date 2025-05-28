@@ -192,36 +192,29 @@ def test_bump_recipe_cli(
 
 
 @pytest.mark.parametrize(
-    "recipe_file,version,expected_recipe_file",
+    "recipe_file,version",
     [
-        # ("bump_recipe/build_num_1.yaml", "0.10.8.6", "types-toml.yaml"),
-        # ("bump_recipe/build_num_1.yaml", "0.10.8.6", "types-toml.yaml"),
-        # ("bump_recipe/build_num_42.yaml", "0.10.8.6", "types-toml.yaml"),
-        # ("bump_recipe/build_num_-1.yaml", "0.10.8.6", "types-toml.yaml"),
+        ("bump_recipe/build_num_1.yaml", "0.10.8.6"),
+        ("bump_recipe/build_num_42.yaml", "0.10.8.6"),
+        ("bump_recipe/build_num_-1.yaml", "0.10.8.6"),
     ],
 )
-def test_bump_recipe_cli_with_version(
-    fs: FakeFilesystem, recipe_file: str, version: str, expected_recipe_file: str
-) -> None:
+def test_bump_recipe_cli_with_same_version(fs: FakeFilesystem, recipe_file: str, version: str) -> None:
     """
-    Test that the recipe file is successfully updated/bumped.
+    Test that the recipe can't be bumped to the same version.
+
+    :param fs: `pyfakefs` Fixture used to replace the file system
+    :param recipe_file: Target recipe file to update
+    :param version: Target version number
     """
     runner = CliRunner()
-    fs.add_real_directory(get_test_path(), read_only=False)
+    fs.add_real_directory(get_test_path(), read_only=True)
 
     recipe_file_path: Final[Path] = get_test_path() / recipe_file
-    expected_recipe_file_path: Final[Path] = get_test_path() / expected_recipe_file
-
-    cli_args: Final[list[str]] = (
-        # Only testing that target version that is already used
-        ["-t", version, str(recipe_file_path)]
-    )
 
     with patch("requests.get", new=mock_requests_get):
-        result = runner.invoke(bump_recipe.bump_recipe, cli_args)
+        result = runner.invoke(bump_recipe.bump_recipe, ["-t", version, str(recipe_file_path)])
 
-    assert recipe_file_path != expected_recipe_file_path
-    assert load_file(recipe_file_path) == load_file(expected_recipe_file_path)
     # testing that it exits with the correct error code
     assert result.exit_code == ExitCode.CLICK_USAGE
 
