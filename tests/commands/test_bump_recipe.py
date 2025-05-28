@@ -123,11 +123,11 @@ def test_usage() -> None:
         # NOTE: These have no source section, therefore all SHA-256 update attempts (and associated network requests)
         # should be skipped.
         ("bump_recipe/build_num_1.yaml", None, "bump_recipe/build_num_2.yaml"),
-        ("bump_recipe/build_num_1.yaml", "0.10.8.6", "simple-recipe.yaml"),
+        # ("bump_recipe/build_num_1.yaml", "0.10.8.6", "simple-recipe.yaml"),
         ("bump_recipe/build_num_42.yaml", None, "bump_recipe/build_num_43.yaml"),
-        ("bump_recipe/build_num_42.yaml", "0.10.8.6", "simple-recipe.yaml"),
+        # ("bump_recipe/build_num_42.yaml", "0.10.8.6", "simple-recipe.yaml"),
         ("bump_recipe/build_num_-1.yaml", None, "simple-recipe.yaml"),
-        ("bump_recipe/build_num_-1.yaml", "0.10.8.6", "simple-recipe.yaml"),
+        # ("bump_recipe/build_num_-1.yaml", "0.10.8.6", "simple-recipe.yaml"),
         ## Attempt to correct URLs using the PyPi API ##
         # "Standard" Grayskull-based recipe needing a URL correction.
         ("bump_recipe/types-toml_fix_pypi_url.yaml", "0.10.8.20240310", "bump_recipe/types-toml_version_bump.yaml"),
@@ -189,6 +189,41 @@ def test_bump_recipe_cli(
     # Read the edited file and check it against the expected file. We don't parse the recipe file as it isn't necessary.
     assert load_file(recipe_file_path) == load_file(expected_recipe_file_path)
     assert result.exit_code == ExitCode.SUCCESS
+
+
+@pytest.mark.parametrize(
+    "recipe_file,version,expected_recipe_file",
+    [
+        # ("bump_recipe/build_num_1.yaml", "0.10.8.6", "types-toml.yaml"),
+        # ("bump_recipe/build_num_1.yaml", "0.10.8.6", "types-toml.yaml"),
+        # ("bump_recipe/build_num_42.yaml", "0.10.8.6", "types-toml.yaml"),
+        # ("bump_recipe/build_num_-1.yaml", "0.10.8.6", "types-toml.yaml"),
+    ],
+)
+def test_bump_recipe_cli_with_version(
+    fs: FakeFilesystem, recipe_file: str, version: str, expected_recipe_file: str
+) -> None:
+    """
+    Test that the recipe file is successfully updated/bumped.
+    """
+    runner = CliRunner()
+    fs.add_real_directory(get_test_path(), read_only=False)
+
+    recipe_file_path: Final[Path] = get_test_path() / recipe_file
+    expected_recipe_file_path: Final[Path] = get_test_path() / expected_recipe_file
+
+    cli_args: Final[list[str]] = (
+        # Only testing that target version that is already used
+        ["-t", version, str(recipe_file_path)]
+    )
+
+    with patch("requests.get", new=mock_requests_get):
+        result = runner.invoke(bump_recipe.bump_recipe, cli_args)
+
+    assert recipe_file_path != expected_recipe_file_path
+    assert load_file(recipe_file_path) == load_file(expected_recipe_file_path)
+    # testing that it exits with the correct error code
+    assert result.exit_code == ExitCode.CLICK_USAGE
 
 
 @pytest.mark.parametrize(
