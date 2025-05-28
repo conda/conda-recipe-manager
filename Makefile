@@ -52,6 +52,7 @@ clean-build: ## Removes build and Python artifacts
 	find . -name '__pycache__' -exec rm -fr {} +
 
 clean-env:					## remove conda environment
+        # In `conda@v25.5.0`, deletion of a non-existent conda environment returns an error code.
 	if conda env list | grep -q "^$(CONDA_ENV_NAME) "; then \
 		conda remove -y -n $(CONDA_ENV_NAME) --all; \
 	fi
