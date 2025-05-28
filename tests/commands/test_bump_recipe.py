@@ -32,10 +32,12 @@ def mock_requests_get(*args: tuple[str], **_: dict[str, str | int]) -> MockHttpR
     default_artifact_set: Final[set[str]] = {
         # types-toml.yaml
         "https://pypi.io/packages/source/t/types-toml/types-toml-0.10.8.20240310.tar.gz",
+        "https://pypi.org/packages/source/t/types-toml/types-toml-0.10.8.20240310.tar.gz",
         # boto.yaml
         "https://pypi.org/packages/source/b/boto/boto-2.50.0.tar.gz",
         # huggingface_hub.yaml
         "https://pypi.io/packages/source/h/huggingface_hub/huggingface_hub-0.24.6.tar.gz",
+        "https://pypi.org/packages/source/h/huggingface_hub/huggingface_hub-0.24.6.tar.gz",
         # gsm-amzn2-aarch64.yaml
         "https://graviton-rpms.s3.amazonaws.com/amzn2-core_2021_01_26/amzn2-core/gsm-1.0.13-11.amzn2.0.2.aarch64.rpm",
         (
@@ -44,6 +46,7 @@ def mock_requests_get(*args: tuple[str], **_: dict[str, str | int]) -> MockHttpR
         ),
         # pytest-pep8.yaml
         "https://pypi.io/packages/source/p/pytest-pep8/pytest-pep8-1.0.7.tar.gz",
+        "https://pypi.org/packages/source/p/pytest-pep8/pytest-pep8-1.0.7.tar.gz",
         # google-cloud-cpp.yaml
         "https://github.com/googleapis/google-cloud-cpp/archive/v2.31.0.tar.gz",
         # x264
