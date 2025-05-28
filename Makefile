@@ -52,7 +52,9 @@ clean-build: ## Removes build and Python artifacts
 	find . -name '__pycache__' -exec rm -fr {} +
 
 clean-env:					## remove conda environment
-	conda remove -y -n $(CONDA_ENV_NAME) --all
+	if conda env list | grep -q "^$(CONDA_ENV_NAME) "; then \
+		conda remove -y -n $(CONDA_ENV_NAME) --all; \
+	fi
 
 clean-test: ## Removes test, coverage, and profiler artifacts
 	rm -fr .tox/
