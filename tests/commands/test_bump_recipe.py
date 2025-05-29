@@ -235,7 +235,6 @@ def test_bump_recipe_cli_with_same_version(
 @pytest.mark.parametrize(
     "recipe_file,version,build_num,expected_recipe_file",
     [
-        # "0.10.8.20240310", "bump_recipe/types-toml_version_bump.yaml
         ("types-toml.yaml", "0.10.8.20240310", "100", "bump_recipe/build_num_100_bumped.yaml"),
         ("types-toml.yaml", "0.10.8.20240310", "42", "bump_recipe//build_num_42_bumped.yaml"),
         ("types-toml.yaml", "0.10.8.20240310", "0", "bump_recipe/build_num_0_bumped.yaml"),
