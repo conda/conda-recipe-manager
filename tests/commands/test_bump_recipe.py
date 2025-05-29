@@ -211,14 +211,14 @@ def test_bump_recipe_cli_with_same_version(
     :param fs: `pyfakefs` Fixture used to replace the file system
     :param recipe_file: Target recipe file to update
     :param version: Target version number
-    :param user_override_flag: provides the `--override-build-num` flag
+    :param user_override_flag: Provides the `--override-build-num` flag
     """
     runner = CliRunner()
     fs.add_real_directory(get_test_path(), read_only=True)
 
     recipe_file_path: Final[Path] = get_test_path() / recipe_file
 
-    # setting a flag depending on weather it's true or false.
+    # Setting a flag depending on weather it's true or false.
     cli_args: Final[list[str]] = (
         ["--override-build-num", "100", "-t", version, str(recipe_file_path)]
         if user_override_flag
@@ -228,7 +228,7 @@ def test_bump_recipe_cli_with_same_version(
     with patch("requests.get", new=mock_requests_get):
         result = runner.invoke(bump_recipe.bump_recipe, cli_args)
 
-    # testing that it exits with the correct error code
+    # Testing that it exits with the correct error code
     assert result.exit_code == ExitCode.CLICK_USAGE
 
 
