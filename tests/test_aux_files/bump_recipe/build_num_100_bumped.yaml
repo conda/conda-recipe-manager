@@ -1,16 +1,16 @@
 {% set name = "types-toml" %}
-{% set version = "0.10.8.6" %}
+{% set version = "0.10.8.20240310" %}
 
 package:
   name: {{ name|lower }}
   version: {{ version }}
 
 source:
-  url: https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/types-toml-{{ version }}.tar.gz
-  sha256: 6d3ac79e36c9ee593c5d4fb33a50cca0e3adceb6ef5cff8b8e5aef67b4c4aaf2
+  url: https://pypi.org/packages/source/{{ name[0] }}/{{ name }}/types-toml-{{ version }}.tar.gz
+  sha256: e594f5bc141acabe4b0298d05234e80195116667edad3d6a9cd610cab36bc4e1
 
 build:
-  number: 42
+  number: 100
   skip: true  # [py<37]
   script: {{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
 
