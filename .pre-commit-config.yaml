@@ -51,7 +51,6 @@ repos:
 # `pre-commit` no longer provides a hook for `pytest`, by design
 - repo: local
   hooks:
-  # TODO Future: enable `mypy` on the full project. `make analyze` only checks some modules.
   - id: mypy
     language: system
     name: mypy
