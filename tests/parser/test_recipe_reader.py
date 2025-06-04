@@ -1491,11 +1491,11 @@ def test_search() -> None:
 @pytest.mark.parametrize(
     "file,expected",
     [
-        ("simple-recipe.yaml", "ffb3eba5cdbd950def9301bd7283c68ce002ab6f40de26d4d3c26f93eafd1e26"),
-        ("v1_format/v1_simple-recipe.yaml", "7a4c09fb7c7161a3d11f635e8ed74154dbfb4e28bd83aa7e03ad9d57d22810ab"),
-        ("types-toml.yaml", "d4c2fd9b24793a890e67dc58f5182981b4dd34c50967a8358de10eade8b2e415"),
-        ("v1_format/v1_types-toml.yaml", "9781d24867bc7e3b6e35aca84824c3139f64546b0792af59a361f20dc97a92fe"),
-        ("v1_format/v1_boto.yaml", "9b0f1ca532f4e94346fb69490ee69fb8505e6f76e317466f3b241c334fb4ff5c"),
+        ("simple-recipe.yaml", "359215c5ac3460d07470f2e3f524ed24154ff2eb7d274feb98149e6949c2ddbe"),
+        ("v1_format/v1_simple-recipe.yaml", "68c0b7fd829c17715b5b9941c882eda3bb70cb1dcef8cc08a55a9ee2b959fb7f"),
+        ("types-toml.yaml", "e117d210da9ea6507fdea856ee96407265aec40cbc58432aa6e1c7e31998a686"),
+        ("v1_format/v1_types-toml.yaml", "3474ed870eea9c8efbd248d24de8bdf54ad8651a7aed06d240f118272d8a3fd1"),
+        ("v1_format/v1_boto.yaml", "b42349254d020ffeda77f3068e8ad8804a92d1c7b89eb0f3d45632b38fc0a3bc"),
     ],
 )
 def test_calc_sha256(file: str, expected: str) -> None:

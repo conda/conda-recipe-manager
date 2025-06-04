@@ -793,10 +793,6 @@ class RecipeReader(IsModifiable):
         # implied.
         RecipeReader._render_tree(self._root, -1, lines)
 
-        # If present, redact a trailing blank line as it is preferred by some communities. See Issue #279
-        if lines and lines[-1] == "":
-            lines = lines[:-1]
-
         return "\n".join(lines)
 
     @no_type_check
