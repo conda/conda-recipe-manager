@@ -1,0 +1,69 @@
+{% set name = "types-toml" %}
+{% set version = "0.10.8.6" %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  url: https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/types-toml-{{ version }}.tar.gz
+  sha256: 6d3ac79e36c9ee593c5d4fb33a50cca0e3adceb6ef5cff8b8e5aef67b4c4aaf2
+
+build:
+  number: 0
+  skip: true  # [py<37]
+  script: {{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
+
+requirements:
+  outputs:
+    - name: libdb
+      build:
+        run_exports:
+          # OK for minor
+          # https://abi-laboratory.pro/?view=timeline&l=libdb
+          - bar
+      test:
+        commands:
+          - test -f ${PREFIX}/lib/libdb${SHLIB_EXT}  # [unix]
+          - if not exist %LIBRARY_BIN%\libdb%SHLIB_EXT%  # [win]
+    # metapackage for old anaconda name (only available on linux/mac)
+    - name: db
+      requirements:
+        build:
+          # compilers are to ensure that variants are captured
+          - foo3
+          - foo2
+          - {{ compiler('c') }}
+          - {{ compiler('cxx') }}
+        run:
+          - foo
+      test:
+        commands:
+          - db_archive -m hello
+
+test:
+  imports:
+    - types
+  requires:
+    - pip
+  commands:
+    - pip check
+    - test -f $SP_DIR/toml-stubs/__init__.pyi  # [unix]
+
+about:
+  home: https://github.com/python/typeshed
+  summary: Typing stubs for toml
+  description: |
+    This is a PEP 561 type stub package for the toml package.
+    It can be used by type-checking tools like mypy, pyright,
+    pytype, PyCharm, etc. to check code that uses toml.
+  license: Apache-2.0 AND MIT
+  license_file: LICENSE
+  license_family: OTHER
+  dev_url: https://github.com/python/typeshed
+  doc_url: https://pypi.org/project/types-toml/
+
+extra:
+  recipe-maintainers:
+    - fhoehle
+    - conda-forge/mypy
