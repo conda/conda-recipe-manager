@@ -42,7 +42,7 @@ class V0RecipeFormatter:
 
         :returns: V0 recipe file contents as a single string.
         """
-        return "\n".join(self._lines)
+        return "\n".join(self._lines) + "\n"
 
     def is_v0_recipe(self) -> bool:
         """

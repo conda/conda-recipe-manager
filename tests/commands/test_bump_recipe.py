@@ -478,3 +478,38 @@ def test_bump_recipe_save_on_failure(
     # Read the edited file and check it against the expected file. We don't parse the recipe file as it isn't necessary.
     assert load_file(recipe_file_path) == load_file(expected_recipe_file_path)
     assert result.exit_code != ExitCode.SUCCESS
+
+
+@pytest.mark.parametrize(
+    "recipe_file,expected_recipe_file",
+    [
+        ("bump_recipe/build_num_0.yaml", "bump_recipe/build_num_0_no_new_line.yaml"),
+        ("bump_recipe/types-toml-multi-output.yaml", "bump_recipe/types-toml-multi-output-no-new-line.yaml"),
+    ],
+)
+def test_new_line_removal(
+    fs: FakeFilesystem,
+    recipe_file: str,
+    expected_recipe_file: str,
+) -> None:
+    """
+    Test that new line removal works as expected.
+
+    :param fs: `pyfakefs` Fixture used to replace the file system
+    :param recipe_file: Target recipe file to update
+    :param expected_recipe_file: Expected resulting recipe file
+    """
+    runner = CliRunner()
+    fs.add_real_directory(get_test_path(), read_only=False)
+
+    recipe_file_path: Final[Path] = get_test_path() / recipe_file
+    expected_recipe_file_path: Final[Path] = get_test_path() / expected_recipe_file
+
+    cli_args: Final[list[str]] = ["--new-line-removal", str(recipe_file_path)]
+
+    with patch("requests.get", new=mock_requests_get):
+        result = runner.invoke(bump_recipe.bump_recipe, cli_args)
+
+    assert recipe_file_path != expected_recipe_file_path
+    assert load_file(recipe_file_path) == load_file(expected_recipe_file_path)
+    assert result.exit_code == ExitCode.SUCCESS
