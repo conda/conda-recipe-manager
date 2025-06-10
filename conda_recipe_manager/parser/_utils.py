@@ -22,7 +22,8 @@ from conda_recipe_manager.types import H, JsonType, SentinelType
 # Commonly used special characters that we need to ensure get quoted when rendered as a YAML string.
 # NOTE: `#`, `|`, `{`, `}`, `>`, and `<` are left out of this list as in our use case, they have specifics meaning that
 #       are already handled in the parser.
-_TO_QUOTE_SPECIAL_CHARS: Final[set[str]] = {"[", "]", ",", "&", ":", "*", "?", "-", "=", "!", "%", "@", "\\"}
+# TODO should we still do this???
+_TO_QUOTE_SPECIAL_CHARS: Final[set[str]] = {"[", "]", ",", "&", ":", "*", "?", "-", "=", "!", "%", "@", "\\"} # '"', "'"}
 
 
 def str_to_stack_path(path: str) -> StrStack:
@@ -106,10 +107,8 @@ def substitute_markers(s: str, subs: list[str]) -> str:
 
 def quote_special_strings(s: str, multiline_variant: MultilineVariant = MultilineVariant.NONE) -> str:
     """
-    Ensure string quote escaping if quote marks are present. Otherwise this has the unintended consequence of
-    quoting all YAML strings. Although not wrong, it does not follow our common practices. Quote escaping is not
-    required for multiline strings. We do not escape quotes for Jinja value statements. We make an exception for
-    strings containing the V1 recipe format syntax, ${{ }}, which is valid YAML.
+    Ensures string quote-escaping if quote marks are present at the start of the string and handles other problematic
+    starting characters for YAML parsing. This is not to be confused with other V0 JINJA handling processes.
 
     In addition, there are a handful of special cases that need to be quoted in order to produce valid YAML. PyYaml
     and Ruamel (in safe mode) will drop quotes found in the YAML. This means that round-tripping the YAML can break in
@@ -139,10 +138,21 @@ def quote_special_strings(s: str, multiline_variant: MultilineVariant = Multilin
     ):
         return s
 
-    # `*` is common enough that we query the set before checking every "startswith" option as a small optimization.
-    if s in _TO_QUOTE_SPECIAL_CHARS or ("${{" not in s and ("'" in s or '"' in s)) or _startswith_check_all():
+    # `*` is common enough that we query the set of special characters before checking every "startswith" option as a
+    # small short-circuit optimization.
+    # TODO quote-escape if YAML parser throws specific exception????
+    #if s in _TO_QUOTE_SPECIAL_CHARS or ("${{" not in s and ("'" in s or '"' in s)) or _startswith_check_all():
+    if s in _TO_QUOTE_SPECIAL_CHARS or _startswith_check_all():
         # The PyYaml equivalent function injects newlines, hence why we abuse the JSON library to write our YAML
         return json.dumps(s)
+
+    #print(f"TODO rm: {s}")
+    #import yaml
+    #from yaml import SafeLoader
+    #try:
+    #    yaml.load(s, Loader=SafeLoader)
+    #except (yaml.parser.ParserError, yaml.scanner.ScannerError):
+    #    return json.dumps(s)
     return s
 
 

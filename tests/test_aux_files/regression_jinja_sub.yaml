@@ -18,10 +18,11 @@ build:
 requirements:
   host:
     - python
+    
     - {{ pin_subpackage("libnvpl-fft" ~ somajor ) }}
   run:
     - python
 
 about:
   home: https://github.com/python/typeshed
-  summary: Simple egression test for various JINJA substitution errors
+  summary: Simple regression test for various JINJA substitution errors

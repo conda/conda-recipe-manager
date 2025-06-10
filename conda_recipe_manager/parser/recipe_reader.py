@@ -108,11 +108,27 @@ class RecipeReader(IsModifiable):
                 out, parser._render_jinja_vars  # pylint: disable=protected-access
             )
 
+        def _handle_unescaped_jinja(s: str) -> None:
+            # TODO complete
+            print(f"TODO rm JINJA parser error: {s}")
+            if s and s[:2] == "- ":
+                return [str(s[2:])]
+            TEMP_RE = re.compile(r"(\w+):\s+(.*)")
+            m = TEMP_RE.match(s)
+            if m:
+                return { str(m.group(1)) : str(m.group(2)) }
+
+            return str(s)
+
         # Our first attempt handles special string cases that require quotes that the YAML parser drops. If that fails,
         # then we fall back to performing JINJA substitutions.
         try:
             try:
                 output = _sub_jinja(cast(JsonType, yaml.load(s, Loader=SafeLoader)))
+            # TODO Complete docs
+            # See Issue #366 for more context.
+            except yaml.parser.ParserError:
+                output = _sub_jinja(_handle_unescaped_jinja(s))
             except yaml.scanner.ScannerError:
                 # We quote-escape here for problematic YAML strings that are non-JINJA, like `**/lib.so`. Parsing
                 # invalid YAML containing V0 JINJA statements should cause an exception and fallback to the other
@@ -436,10 +452,12 @@ class RecipeReader(IsModifiable):
                 for line in cast(list[str], Regex.JINJA_V0_SET_LINE.findall(self._init_content)):
                     key = line[line.find("set") + len("set") : line.find("=")].strip()
                     value = line[line.find("=") + len("=") : line.find("%}")].strip()
+                    # Fall-back to string interpretation.
                     try:
-                        self._vars_tbl[key] = ast.literal_eval(value)  # type: ignore[misc]
+                        self._vars_tbl[key] = RecipeReader._parse_yaml(value)
+                        #self._vars_tbl[key] = ast.literal_eval(value)
                     except Exception:  # pylint: disable=broad-exception-caught
-                        self._vars_tbl[key] = value
+                        self._vars_tbl[key] = str(value)
             case SchemaVersion.V1:
                 self._vars_tbl = cast(dict[str, JsonType], self.get_value("/context", {}))
 
@@ -783,7 +801,11 @@ class RecipeReader(IsModifiable):
             for key, val in self._vars_tbl.items():
                 # Double quote strings, except for when we detect a env.get() expression. See issue #271.
                 if isinstance(val, str) and not val.startswith("env.get("):
-                    val = f'"{val}"'
+                    if '"' in val:
+                        print("TODO got here!")
+                        val = f"'{val}'"
+                    else:
+                        val = f'"{val}"'
                 lines.append(f"{{% set {key} = {val} %}}")
             # Add spacing if variables have been set
             if len(self._vars_tbl):

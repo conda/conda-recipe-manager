@@ -110,7 +110,7 @@ about:
   license: BSD-3-Clause
   license_family: BSD
   license_file: LICENSE
-  summary: "Protocol Buffers - Google's data interchange format. C++ Libraries and protoc, the protobuf compiler."
+  summary: Protocol Buffers - Google's data interchange format. C++ Libraries and protoc, the protobuf compiler.
   description: |
     Protocol buffers are Google's language-neutral,
     platform-neutral, extensible mechanism for serializing structured data-

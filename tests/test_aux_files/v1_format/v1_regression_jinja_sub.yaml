@@ -3,7 +3,7 @@ schema_version: 1
 context:
   name: types-toml
   version: 0.10.8.6
-  soversion: "\"\".\".join(version.split(\".\")[:3])\""
+  soversion: ".".join(version.split(".")[:3])
 
 package:
   name: ${{ name|lower }}
@@ -26,5 +26,5 @@ requirements:
     - python
 
 about:
-  summary: Simple egression test for various JINJA substitution errors
+  summary: Simple regression test for various JINJA substitution errors
   homepage: https://github.com/python/typeshed
