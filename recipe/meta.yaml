@@ -23,7 +23,8 @@ requirements:
     - setuptools
     - wheel
   run:
-    - python >=3.11
+    # See Issue #369 for more details
+    - python ==3.11.11
     # Version 8.2.0 introduces breaking changes around the `CliRunner` class, which breaks our
     # automated tests. We can allow for this version when it becomes available on `defaults`.
     - click >=8.1.7,<8.2.0
