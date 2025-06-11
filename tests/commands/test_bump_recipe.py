@@ -493,7 +493,7 @@ def test_new_line_removal(
     expected_recipe_file: str,
 ) -> None:
     """
-    Test that new line removal works as expected.
+    Test that the --omit-trailing-newline flag removes trailing newlines from recipe files.
 
     :param fs: `pyfakefs` Fixture used to replace the file system
     :param recipe_file: Target recipe file to update
