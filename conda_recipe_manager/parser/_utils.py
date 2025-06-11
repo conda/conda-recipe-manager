@@ -23,7 +23,21 @@ from conda_recipe_manager.types import H, JsonType, SentinelType
 # NOTE: `#`, `|`, `{`, `}`, `>`, and `<` are left out of this list as in our use case, they have specifics meaning that
 #       are already handled in the parser.
 # TODO should we still do this???
-_TO_QUOTE_SPECIAL_CHARS: Final[set[str]] = {"[", "]", ",", "&", ":", "*", "?", "-", "=", "!", "%", "@", "\\"} # '"', "'"}
+_TO_QUOTE_SPECIAL_CHARS: Final[set[str]] = {
+    "[",
+    "]",
+    ",",
+    "&",
+    ":",
+    "*",
+    "?",
+    "-",
+    "=",
+    "!",
+    "%",
+    "@",
+    "\\",
+}  # '"', "'"}
 
 
 def str_to_stack_path(path: str) -> StrStack:
@@ -141,17 +155,17 @@ def quote_special_strings(s: str, multiline_variant: MultilineVariant = Multilin
     # `*` is common enough that we query the set of special characters before checking every "startswith" option as a
     # small short-circuit optimization.
     # TODO quote-escape if YAML parser throws specific exception????
-    #if s in _TO_QUOTE_SPECIAL_CHARS or ("${{" not in s and ("'" in s or '"' in s)) or _startswith_check_all():
+    # if s in _TO_QUOTE_SPECIAL_CHARS or ("${{" not in s and ("'" in s or '"' in s)) or _startswith_check_all():
     if s in _TO_QUOTE_SPECIAL_CHARS or _startswith_check_all():
         # The PyYaml equivalent function injects newlines, hence why we abuse the JSON library to write our YAML
         return json.dumps(s)
 
-    #print(f"TODO rm: {s}")
-    #import yaml
-    #from yaml import SafeLoader
-    #try:
+    # print(f"TODO rm: {s}")
+    # import yaml
+    # from yaml import SafeLoader
+    # try:
     #    yaml.load(s, Loader=SafeLoader)
-    #except (yaml.parser.ParserError, yaml.scanner.ScannerError):
+    # except (yaml.parser.ParserError, yaml.scanner.ScannerError):
     #    return json.dumps(s)
     return s
 

@@ -116,7 +116,7 @@ class RecipeReader(IsModifiable):
             TEMP_RE = re.compile(r"(\w+):\s+(.*)")
             m = TEMP_RE.match(s)
             if m:
-                return { str(m.group(1)) : str(m.group(2)) }
+                return {str(m.group(1)): str(m.group(2))}
 
             return str(s)
 
@@ -455,7 +455,7 @@ class RecipeReader(IsModifiable):
                     # Fall-back to string interpretation.
                     try:
                         self._vars_tbl[key] = RecipeReader._parse_yaml(value)
-                        #self._vars_tbl[key] = ast.literal_eval(value)
+                        # self._vars_tbl[key] = ast.literal_eval(value)
                     except Exception:  # pylint: disable=broad-exception-caught
                         self._vars_tbl[key] = str(value)
             case SchemaVersion.V1:
