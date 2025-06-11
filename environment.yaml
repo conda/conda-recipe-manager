@@ -7,7 +7,7 @@ dependencies:
   - isort
   - make
   - mypy
-  - python >=3.11
+  - python ==3.11.11
   - pytest
   - pytest-cov
   - pytest-socket
