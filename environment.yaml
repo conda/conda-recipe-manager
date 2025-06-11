@@ -8,7 +8,7 @@ dependencies:
   - make
   - mypy
   # This is a temporary workaround for a new test failure. See Issue #369 for more details.
-  - python ==3.11.11,!=3.11.13,<=3.12.9
+  - python ==3.11.11
   - pytest
   - pytest-cov
   - pytest-socket
