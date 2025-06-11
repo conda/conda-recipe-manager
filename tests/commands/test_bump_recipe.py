@@ -483,7 +483,7 @@ def test_bump_recipe_save_on_failure(
 @pytest.mark.parametrize(
     "recipe_file,expected_recipe_file",
     [
-        ("bump_recipe/build_num_0.yaml", "bump_recipe/build_num_0_no_new_line.yaml"),
+        ("bump_recipe/build_num_0.yaml", "bump_recipe/build_num_1_no_new_line.yaml"),
         ("bump_recipe/types-toml-multi-output.yaml", "bump_recipe/types-toml-multi-output-no-new-line.yaml"),
     ],
 )
@@ -505,7 +505,7 @@ def test_new_line_removal(
     recipe_file_path: Final[Path] = get_test_path() / recipe_file
     expected_recipe_file_path: Final[Path] = get_test_path() / expected_recipe_file
 
-    cli_args: Final[list[str]] = ["--new-line-removal", str(recipe_file_path)]
+    cli_args: Final[list[str]] = ["--omit-trailing-newline", "-b", str(recipe_file_path)]
 
     with patch("requests.get", new=mock_requests_get):
         result = runner.invoke(bump_recipe.bump_recipe, cli_args)

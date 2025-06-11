@@ -80,7 +80,7 @@ class _CliArgs(NamedTuple):
     target_version: Optional[str]
     retry_interval: float
     save_on_failure: bool
-    new_line_removal: bool
+    omit_trailing_newline: bool
 
 
 class _Regex:
@@ -146,19 +146,13 @@ def _save_or_print(recipe_parser: RecipeParser, cli_args: _CliArgs) -> None:
     :param recipe_parser: Recipe file to print/write-out.
     :param cli_args: Immutable CLI arguments from the user.
     """
-    content = recipe_parser.render()
-
-    if cli_args.new_line_removal:
-        # Split into lines and remove trailing empty lines
-        lines = content.splitlines()
-        while lines and lines[-1] == "":
-            lines = lines[:-1]
-        content = "\n".join(lines)
 
     if cli_args.dry_run:
-        print(recipe_parser.render())
+        print(recipe_parser.render(omit_trailing_newline=cli_args.omit_trailing_newline))
         return
-    Path(cli_args.recipe_file_path).write_text(content, encoding="utf-8")
+    Path(cli_args.recipe_file_path).write_text(
+        recipe_parser.render(omit_trailing_newline=cli_args.omit_trailing_newline), encoding="utf-8"
+    )
 
 
 def _exit_on_failed_patch(recipe_parser: RecipeParser, patch_blob: JsonPatchType, cli_args: _CliArgs) -> None:
@@ -627,9 +621,7 @@ def _update_sha256(recipe_parser: RecipeParser, cli_args: _CliArgs) -> None:
     )
 
 
-def _validate_interop_flags(
-    build_num: bool, override_build_num: Optional[int], target_version: Optional[str], new_line_removal: bool
-) -> None:
+def _validate_interop_flags(build_num: bool, override_build_num: Optional[int], target_version: Optional[str]) -> None:
     """
     Performs additional validation on CLI flags that interact with each other/are invalid in certain combinations.
     This function does call `sys.exit()` in the event of an error.
@@ -639,17 +631,13 @@ def _validate_interop_flags(
     :param override_build_num: Indicates if the user wants `bump-recipe` to reset the `/build/number` field to a custom
         value.
     :param target_version: Version of software that `bump-recipe` is upgrading too.
-    :param new_line_removal: Flag indicating if trailing newlines should be removed.
     """
     if override_build_num is not None and target_version is None:
         log.error("The `--target-version` option must be provided when using the `--override-build-num` flag.")
         sys.exit(ExitCode.CLICK_USAGE)
 
-    if not build_num and target_version is None and not new_line_removal:
-        log.error(
-            "The `--target-version` option must be provided if `--build-num` is not provided and "
-            "`--new-line-removal` is not provided."
-        )
+    if not build_num and target_version is None:
+        log.error("The `--target-version` option must be provided if `--build-num` is not provided.")
         sys.exit(ExitCode.CLICK_USAGE)
 
     if build_num and override_build_num is not None:
@@ -718,10 +706,9 @@ def _validate_interop_flags(
     ),
 )
 @click.option(
-    "-n",
-    "--new-line-removal",
+    "--omit-trailing-newline",
     is_flag=True,
-    help=("Removes newlines from the end of the recipe file."),
+    help=("Omits trailing newlines from the end of the recipe file."),
 )
 def bump_recipe(
     recipe_file_path: str,
@@ -731,7 +718,7 @@ def bump_recipe(
     target_version: Optional[str],
     retry_interval: float,
     save_on_failure: bool,
-    new_line_removal: bool,
+    omit_trailing_newline: bool,
 ) -> None:
     """
     Bumps a recipe to a new version.
@@ -739,7 +726,7 @@ def bump_recipe(
     RECIPE_FILE_PATH: Path to the target recipe file
     """
     # Ensure the user does not use flags in an invalid manner.
-    _validate_interop_flags(build_num, override_build_num, target_version, new_line_removal)
+    _validate_interop_flags(build_num, override_build_num, target_version)
 
     # Typed, immutable, convenience data structure that contains all CLI arguments for ease of passing new options
     # to existing functions.
@@ -753,7 +740,7 @@ def bump_recipe(
         target_version=target_version,
         retry_interval=retry_interval,
         save_on_failure=save_on_failure,
-        new_line_removal=new_line_removal,
+        omit_trailing_newline=omit_trailing_newline,
     )
 
     try:
