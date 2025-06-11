@@ -793,9 +793,8 @@ class RecipeReader(IsModifiable):
         # implied.
         RecipeReader._render_tree(self._root, -1, lines)
 
-        if omit_trailing_newline:
-            if lines and lines[-1] == "":
-                lines = lines[:-1]
+        if omit_trailing_newline and lines and lines[-1] == "":
+            lines = lines[:-1]
 
         return "\n".join(lines)
 

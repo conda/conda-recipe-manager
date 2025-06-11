@@ -42,6 +42,7 @@ class V0RecipeFormatter:
 
         :returns: V0 recipe file contents as a single string.
         """
+        # Adding new line to match the default behavior of render. We do not anticipate we need to omit the trailing
         return "\n".join(self._lines) + "\n"
 
     def is_v0_recipe(self) -> bool:
