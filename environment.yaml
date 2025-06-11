@@ -8,7 +8,8 @@ dependencies:
   - make
   - mypy
   # This is a temporary workaround for a new test failure. See Issue #369 for more details.
-  - python ==3.11.11
+  # We allow for some 3.12 versions so the pre-commit 3.12 test can pass.
+  - python >=3.11.11,!=3.11.13,<=3.12.9
   - pytest
   - pytest-cov
   - pytest-socket
