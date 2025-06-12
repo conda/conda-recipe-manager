@@ -1,5 +1,5 @@
 """
-:Description: Collection of smoke tests.
+:Description: Collection of smoke test utilities.
 """
 
 from click import Command
@@ -8,7 +8,7 @@ from click.testing import CliRunner
 
 def assert_cli_usage(command: Command) -> None:
     """
-    Smoke test that ensures rendering of the help menu
+    Helper smoke test that ensures rendering of the help menu. Called by other CLI tests.
 
     :param command: The `click` CLI `Command`.
     """
