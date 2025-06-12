@@ -787,7 +787,7 @@ class RecipeReader(IsModifiable):
             if depth < 0 and not child.is_comment():
                 lines.append("")
 
-    def render(self) -> str:
+    def render(self, omit_trailing_newline: bool = False) -> str:
         """
         Takes the current state of the parse tree and returns the recipe file as a string.
 
@@ -815,8 +815,7 @@ class RecipeReader(IsModifiable):
         # implied.
         RecipeReader._render_tree(self._root, -1, lines)
 
-        # If present, redact a trailing blank line as it is preferred by some communities. See Issue #279
-        if lines and lines[-1] == "":
+        if omit_trailing_newline and lines and lines[-1] == "":
             lines = lines[:-1]
 
         return "\n".join(lines)
