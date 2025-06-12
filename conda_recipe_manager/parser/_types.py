@@ -122,11 +122,12 @@ class Regex:
     Namespace used to organize all regular expressions used by the `parser` module.
     """
 
-    # Jinja syntax that is too complicated to convert
+    # Jinja syntax that is too complicated to fully convert
+    # TODO remove after supporting issue #368
     V0_UNSUPPORTED_JINJA: Final[list[re.Pattern[str]]] = [re.compile(r"\.join\(")]
 
     # Pattern to detect Jinja variable names and functions
-    _JINJA_VAR_FUNCTION_PATTERN: Final[str] = r"[a-zA-Z0-9_\|\'\"\(\)\[\]\, =\.\-~\+]*"
+    _JINJA_VAR_FUNCTION_PATTERN: Final[str] = r"[a-zA-Z0-9_\|\'\"\(\)\[\]\, =\.\-~\+:]*"
 
     ## V0 Formatter regular expressions ##
     V0_FMT_SECTION_HEADER: Final[re.Pattern[str]] = re.compile(r"^[\w|-]+:$")
@@ -220,11 +221,8 @@ class Regex:
         JINJA_FUNCTION_LOWER,
         JINJA_FUNCTION_UPPER,
         JINJA_FUNCTION_REPLACE,
-        # TODO FIX: Adding `split` and `join` to this list causes some odd bracket-escaping in the
-        # `regression_jinja_sub.yaml` upgrade test. This will require additional investigation, but for now, IMO the
-        # old behavior is a little less wrong, so we'll leave it as is.
-        # JINJA_FUNCTION_SPLIT,
-        # JINJA_FUNCTION_JOIN,
+        JINJA_FUNCTION_SPLIT,
+        JINJA_FUNCTION_JOIN,
         JINJA_FUNCTION_IDX_ACCESS,
         JINJA_FUNCTION_ADD_CONCAT,
         JINJA_FUNCTION_MATCH,

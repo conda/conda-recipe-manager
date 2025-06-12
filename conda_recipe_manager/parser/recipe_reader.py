@@ -802,7 +802,7 @@ class RecipeReader(IsModifiable):
                 # Double quote strings, except for when we detect a env.get() expression. See issue #271.
                 if isinstance(val, str) and not val.startswith("env.get("):
                     if '"' in val:
-                        print("TODO got here!")
+                        print("TODO rm got here!")
                         val = f"'{val}'"
                     else:
                         val = f'"{val}"'
