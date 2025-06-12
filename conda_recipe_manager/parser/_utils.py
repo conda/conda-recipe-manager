@@ -22,7 +22,6 @@ from conda_recipe_manager.types import H, JsonType, SentinelType
 # Commonly used special characters that we need to ensure get quoted when rendered as a YAML string.
 # NOTE: `#`, `|`, `{`, `}`, `>`, and `<` are left out of this list as in our use case, they have specifics meaning that
 #       are already handled in the parser.
-# TODO should we still do this???
 _TO_QUOTE_SPECIAL_CHARS: Final[set[str]] = {
     "[",
     "]",
@@ -154,12 +153,9 @@ def quote_special_strings(s: str, multiline_variant: MultilineVariant = Multilin
 
     # `*` is common enough that we query the set of special characters before checking every "startswith" option as a
     # small short-circuit optimization.
-    # TODO quote-escape if YAML parser throws specific exception????
-    # if s in _TO_QUOTE_SPECIAL_CHARS or ("${{" not in s and ("'" in s or '"' in s)) or _startswith_check_all():
     if s in _TO_QUOTE_SPECIAL_CHARS or _startswith_check_all():
         # The PyYaml equivalent function injects newlines, hence why we abuse the JSON library to write our YAML
         return json.dumps(s)
-
     return s
 
 
