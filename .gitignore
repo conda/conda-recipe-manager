@@ -166,8 +166,3 @@ cython_debug/
 # rattler-build with a recipe file converted from the v0-formatted recipe
 # format.
 recipe/recipe.yaml
-
-
-# Added by cargo
-
-/target
