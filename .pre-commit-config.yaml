@@ -24,6 +24,10 @@ repos:
   - id: end-of-file-fixer
   - id: mixed-line-ending
   - id: trailing-whitespace
+- repo: https://github.com/shellcheck-py/shellcheck-py
+  rev: v0.10.0.1
+  hooks:
+  - id: shellcheck
 - repo: https://github.com/python-jsonschema/check-jsonschema
   rev: 0.29.1
   hooks:
@@ -51,7 +55,6 @@ repos:
 # `pre-commit` no longer provides a hook for `pytest`, by design
 - repo: local
   hooks:
-  # TODO Future: enable `mypy` on the full project. `make analyze` only checks some modules.
   - id: mypy
     language: system
     name: mypy

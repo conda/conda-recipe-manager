@@ -123,11 +123,11 @@ def test_usage() -> None:
         # NOTE: These have no source section, therefore all SHA-256 update attempts (and associated network requests)
         # should be skipped.
         ("bump_recipe/build_num_1.yaml", None, "bump_recipe/build_num_2.yaml"),
-        ("bump_recipe/build_num_1.yaml", "0.10.8.6", "simple-recipe.yaml"),
+        ("bump_recipe/build_num_1.yaml", "0.10.8.20240310", "bump_recipe/types-toml_version_bump.yaml"),
         ("bump_recipe/build_num_42.yaml", None, "bump_recipe/build_num_43.yaml"),
-        ("bump_recipe/build_num_42.yaml", "0.10.8.6", "simple-recipe.yaml"),
-        ("bump_recipe/build_num_-1.yaml", None, "simple-recipe.yaml"),
-        ("bump_recipe/build_num_-1.yaml", "0.10.8.6", "simple-recipe.yaml"),
+        ("bump_recipe/build_num_42.yaml", "0.10.8.20240310", "bump_recipe/types-toml_version_bump.yaml"),
+        ("bump_recipe/build_num_-1.yaml", None, "bump_recipe/build_num_0.yaml"),
+        ("bump_recipe/build_num_-1.yaml", "0.10.8.20240310", "bump_recipe/types-toml_version_bump.yaml"),
         ## Attempt to correct URLs using the PyPi API ##
         # "Standard" Grayskull-based recipe needing a URL correction.
         ("bump_recipe/types-toml_fix_pypi_url.yaml", "0.10.8.20240310", "bump_recipe/types-toml_version_bump.yaml"),
@@ -192,11 +192,52 @@ def test_bump_recipe_cli(
 
 
 @pytest.mark.parametrize(
-    "recipe_file, version, build_num, expected_recipe_file",
+    "recipe_file,version,user_override_flag",
     [
-        ("simple-recipe.yaml", "0.10.8.6", "100", "bump_recipe/build_num_100.yaml"),
-        ("simple-recipe.yaml", "0.10.8.6", "42", "bump_recipe/build_num_42.yaml"),
-        ("simple-recipe.yaml", "0.10.8.6", "0", "bump_recipe/build_num_0.yaml"),
+        ("bump_recipe/build_num_1.yaml", "0.10.8.6", False),
+        ("bump_recipe/build_num_42.yaml", "0.10.8.6", False),
+        ("bump_recipe/build_num_-1.yaml", "0.10.8.6", False),
+        ("bump_recipe/build_num_1.yaml", "0.10.8.6", True),
+        ("bump_recipe/build_num_42.yaml", "0.10.8.6", True),
+        ("bump_recipe/build_num_-1.yaml", "0.10.8.6", True),
+    ],
+)
+def test_bump_recipe_cli_with_same_version(
+    fs: FakeFilesystem, recipe_file: str, version: str, user_override_flag: bool
+) -> None:
+    """
+    Test that the recipe can't be bumped to the same version.
+
+    :param fs: `pyfakefs` Fixture used to replace the file system
+    :param recipe_file: Target recipe file to update
+    :param version: Target version number
+    :param user_override_flag: Provides the `--override-build-num` flag
+    """
+    runner = CliRunner()
+    fs.add_real_directory(get_test_path(), read_only=True)
+
+    recipe_file_path: Final[Path] = get_test_path() / recipe_file
+
+    # Setting a flag depending on weather it's true or false.
+    cli_args: Final[list[str]] = (
+        ["--override-build-num", "100", "-t", version, str(recipe_file_path)]
+        if user_override_flag
+        else ["-t", version, str(recipe_file_path)]
+    )
+
+    with patch("requests.get", new=mock_requests_get):
+        result = runner.invoke(bump_recipe.bump_recipe, cli_args)
+
+    # Testing that it exits with the correct error code
+    assert result.exit_code == ExitCode.CLICK_USAGE
+
+
+@pytest.mark.parametrize(
+    "recipe_file,version,build_num,expected_recipe_file",
+    [
+        ("types-toml.yaml", "0.10.8.20240310", "100", "bump_recipe/build_num_100_bumped.yaml"),
+        ("types-toml.yaml", "0.10.8.20240310", "42", "bump_recipe//build_num_42_bumped.yaml"),
+        ("types-toml.yaml", "0.10.8.20240310", "0", "bump_recipe/build_num_0_bumped.yaml"),
     ],
 )
 def test_bump_recipe_override_build_num(
@@ -437,3 +478,38 @@ def test_bump_recipe_save_on_failure(
     # Read the edited file and check it against the expected file. We don't parse the recipe file as it isn't necessary.
     assert load_file(recipe_file_path) == load_file(expected_recipe_file_path)
     assert result.exit_code != ExitCode.SUCCESS
+
+
+@pytest.mark.parametrize(
+    "recipe_file,expected_recipe_file",
+    [
+        ("bump_recipe/build_num_0.yaml", "bump_recipe/build_num_1_no_new_line.yaml"),
+        ("bump_recipe/types-toml-multi-output.yaml", "bump_recipe/types-toml-multi-output-no-new-line.yaml"),
+    ],
+)
+def test_new_line_removal(
+    fs: FakeFilesystem,
+    recipe_file: str,
+    expected_recipe_file: str,
+) -> None:
+    """
+    Test that the --omit-trailing-newline flag removes trailing newlines from recipe files.
+
+    :param fs: `pyfakefs` Fixture used to replace the file system
+    :param recipe_file: Target recipe file to update
+    :param expected_recipe_file: Expected resulting recipe file
+    """
+    runner = CliRunner()
+    fs.add_real_directory(get_test_path(), read_only=False)
+
+    recipe_file_path: Final[Path] = get_test_path() / recipe_file
+    expected_recipe_file_path: Final[Path] = get_test_path() / expected_recipe_file
+
+    cli_args: Final[list[str]] = ["--omit-trailing-newline", "-b", str(recipe_file_path)]
+
+    with patch("requests.get", new=mock_requests_get):
+        result = runner.invoke(bump_recipe.bump_recipe, cli_args)
+
+    assert recipe_file_path != expected_recipe_file_path
+    assert load_file(recipe_file_path) == load_file(expected_recipe_file_path)
+    assert result.exit_code == ExitCode.SUCCESS

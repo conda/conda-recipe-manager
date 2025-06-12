@@ -80,6 +80,7 @@ class _CliArgs(NamedTuple):
     target_version: Optional[str]
     retry_interval: float
     save_on_failure: bool
+    omit_trailing_newline: bool
 
 
 class _Regex:
@@ -145,10 +146,13 @@ def _save_or_print(recipe_parser: RecipeParser, cli_args: _CliArgs) -> None:
     :param recipe_parser: Recipe file to print/write-out.
     :param cli_args: Immutable CLI arguments from the user.
     """
+
     if cli_args.dry_run:
-        print(recipe_parser.render())
+        print(recipe_parser.render(omit_trailing_newline=cli_args.omit_trailing_newline))
         return
-    Path(cli_args.recipe_file_path).write_text(recipe_parser.render(), encoding="utf-8")
+    Path(cli_args.recipe_file_path).write_text(
+        recipe_parser.render(omit_trailing_newline=cli_args.omit_trailing_newline), encoding="utf-8"
+    )
 
 
 def _exit_on_failed_patch(recipe_parser: RecipeParser, patch_blob: JsonPatchType, cli_args: _CliArgs) -> None:
@@ -701,6 +705,11 @@ def _validate_interop_flags(build_num: bool, override_build_num: Optional[int], 
         " In other words, the file may only contain some automated edits."
     ),
 )
+@click.option(
+    "--omit-trailing-newline",
+    is_flag=True,
+    help=("Omits trailing newlines from the end of the recipe file."),
+)
 def bump_recipe(
     recipe_file_path: str,
     build_num: bool,
@@ -709,6 +718,7 @@ def bump_recipe(
     target_version: Optional[str],
     retry_interval: float,
     save_on_failure: bool,
+    omit_trailing_newline: bool,
 ) -> None:
     """
     Bumps a recipe to a new version.
@@ -730,6 +740,7 @@ def bump_recipe(
         target_version=target_version,
         retry_interval=retry_interval,
         save_on_failure=save_on_failure,
+        omit_trailing_newline=omit_trailing_newline,
     )
 
     try:
@@ -747,6 +758,12 @@ def bump_recipe(
         log.error("An error occurred while parsing the recipe file contents.")
         sys.exit(ExitCode.PARSE_EXCEPTION)
 
+    if cli_args.target_version is not None and cli_args.target_version == recipe_parser.get_value(
+        _RecipePaths.VERSION, default=None, sub_vars=True
+    ):
+        log.error("The provided target version is the same value found in the recipe file: %s", cli_args.target_version)
+        sys.exit(ExitCode.CLICK_USAGE)
+
     _post_process_cleanup(recipe_parser, cli_args)
 
     # Attempt to update fields
@@ -756,11 +773,6 @@ def bump_recipe(
     # the `build_num` flag is invalidated if we are bumping to a new version. The build number must be reset to 0 in
     # this case.
     if cli_args.target_version is not None:
-        if cli_args.target_version == recipe_parser.get_value(_RecipePaths.VERSION, default=None, sub_vars=True):
-            log.warning(
-                "The provided target version is the same value found in the recipe file: %s", cli_args.target_version
-            )
-
         # Version must be updated before hash to ensure the correct artifact is hashed.
         _update_version(recipe_parser, cli_args)
         _update_sha256(recipe_parser, cli_args)
