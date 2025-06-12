@@ -24,7 +24,7 @@ requirements:
     - wheel
   run:
     # See Issue #369 for more details
-    - python ==3.11.11
+    - python >=3.11.11,!=3.11.13,<=3.12.9
     # Version 8.2.0 introduces breaking changes around the `CliRunner` class, which breaks our
     # automated tests. We can allow for this version when it becomes available on `defaults`.
     - click >=8.1.7,<8.2.0
@@ -42,6 +42,7 @@ test:
   imports:
     - conda_recipe_manager
   source_files:
+    - .pytest.ini
     - tests/
   requires:
     - pip
