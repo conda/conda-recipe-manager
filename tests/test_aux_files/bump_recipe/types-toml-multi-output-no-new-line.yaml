@@ -1,26 +1,45 @@
 {% set name = "types-toml" %}
+{% set version = "0.10.8.6" %}
 
 package:
   name: {{ name|lower }}
-  version: 0.10.8.6
+  version: {{ version }}
 
 source:
-  url: https://pypi.org/packages/source/{{ name[0] }}/{{ name }}/types_url_to_fix_toml-0.10.8.6.tar.gz
+  url: https://pypi.org/packages/source/{{ name[0] }}/{{ name }}/types-toml-{{ version }}.tar.gz
   sha256: 6d3ac79e36c9ee593c5d4fb33a50cca0e3adceb6ef5cff8b8e5aef67b4c4aaf2
 
 build:
-  number: 0
+  number: 1
   skip: true  # [py<37]
   script: {{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
 
 requirements:
-  host:
-    - setuptools
-    - wheel
-    - pip
-    - python
-  run:
-    - python
+  outputs:
+    - name: libdb
+      build:
+        run_exports:
+          # OK for minor
+          # https://abi-laboratory.pro/?view=timeline&l=libdb
+          - bar
+      test:
+        commands:
+          - test -f ${PREFIX}/lib/libdb${SHLIB_EXT}  # [unix]
+          - if not exist %LIBRARY_BIN%\libdb%SHLIB_EXT%  # [win]
+    # metapackage for old anaconda name (only available on linux/mac)
+    - name: db
+      requirements:
+        build:
+          # compilers are to ensure that variants are captured
+          - foo3
+          - foo2
+          - {{ compiler('c') }}
+          - {{ compiler('cxx') }}
+        run:
+          - foo
+      test:
+        commands:
+          - db_archive -m hello
 
 test:
   imports:
