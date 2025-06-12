@@ -108,27 +108,11 @@ class RecipeReader(IsModifiable):
                 out, parser._render_jinja_vars  # pylint: disable=protected-access
             )
 
-        def _handle_unescaped_jinja(s: str) -> None:
-            # TODO complete
-            print(f"TODO rm JINJA parser error: {s}")
-            if s and s[:2] == "- ":
-                return [str(s[2:])]
-            TEMP_RE = re.compile(r"(\w+):\s+(.*)")
-            m = TEMP_RE.match(s)
-            if m:
-                return {str(m.group(1)): str(m.group(2))}
-
-            return str(s)
-
         # Our first attempt handles special string cases that require quotes that the YAML parser drops. If that fails,
         # then we fall back to performing JINJA substitutions.
         try:
             try:
                 output = _sub_jinja(cast(JsonType, yaml.load(s, Loader=SafeLoader)))
-            # TODO Complete docs
-            # See Issue #366 for more context.
-            except yaml.parser.ParserError:
-                output = _sub_jinja(_handle_unescaped_jinja(s))
             except yaml.scanner.ScannerError:
                 # We quote-escape here for problematic YAML strings that are non-JINJA, like `**/lib.so`. Parsing
                 # invalid YAML containing V0 JINJA statements should cause an exception and fallback to the other
@@ -453,9 +437,13 @@ class RecipeReader(IsModifiable):
                     key = line[line.find("set") + len("set") : line.find("=")].strip()
                     value = line[line.find("=") + len("=") : line.find("%}")].strip()
                     # Fall-back to string interpretation.
+                    # TODO: Ideally we use `_parse_yaml()` in the future. However, as discovered in the work to solve
+                    # issue #366, that is easier said than done. `_parse_yaml()` was never expected to run on V0 JINJA
+                    # variable initialization lines. This causes a lot of conversion problems if the value being set is
+                    # a string that is invalid YAML.
+                    # Example: {% set soversion = ".".join(version.split(".")[:3]) %}
                     try:
-                        self._vars_tbl[key] = RecipeReader._parse_yaml(value)
-                        # self._vars_tbl[key] = ast.literal_eval(value)
+                        self._vars_tbl[key] = ast.literal_eval(value)  # type: ignore[misc]
                     except Exception:  # pylint: disable=broad-exception-caught
                         self._vars_tbl[key] = str(value)
             case SchemaVersion.V1:
@@ -503,7 +491,7 @@ class RecipeReader(IsModifiable):
         if fmt.is_v0_recipe():
             fmt.fmt_text()
         # Replace all Jinja lines. Then traverse line-by-line
-        sanitized_yaml = Regex.JINJA_V0_LINE.sub("", str(fmt))
+        sanitized_yaml: Final = Regex.JINJA_V0_LINE.sub("", str(fmt))
 
         # Read the YAML line-by-line, maintaining a stack to manage the last owning node in the tree.
         node_stack: list[Node] = [self._root]
@@ -513,8 +501,8 @@ class RecipeReader(IsModifiable):
 
         # Iterate with an index variable, so we can handle multiline values
         line_idx = 0
-        lines = sanitized_yaml.splitlines()
-        num_lines = len(lines)
+        lines: Final = sanitized_yaml.splitlines()
+        num_lines: Final = len(lines)
         while line_idx < num_lines:
             line = lines[line_idx]
             # Increment here, so that the inner multiline processing loop doesn't cause a skip of the line following the
@@ -801,11 +789,7 @@ class RecipeReader(IsModifiable):
             for key, val in self._vars_tbl.items():
                 # Double quote strings, except for when we detect a env.get() expression. See issue #271.
                 if isinstance(val, str) and not val.startswith("env.get("):
-                    if '"' in val:
-                        print("TODO rm got here!")
-                        val = f"'{val}'"
-                    else:
-                        val = f'"{val}"'
+                    val = f"'{val}'" if '"' in val else f'"{val}"'
                 lines.append(f"{{% set {key} = {val} %}}")
             # Add spacing if variables have been set
             if len(self._vars_tbl):

@@ -165,7 +165,7 @@ def test_pre_process_recipe_text(input_file: str, expected_file: str) -> None:
                     "Recipe upgrades cannot currently upgrade ambiguous version constraints on dependencies that"
                     ' use variables: {{ pin_subpackage("libnvpl-fft" ~ somajor ) }}'
                 ),
-                "The following key(s) contain unsupported syntax: soversion",
+                "The following key(s) contain partially unsupported syntax: soversion",
                 "No `license` provided in `/about`",
             ],
         ),

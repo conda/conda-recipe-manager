@@ -37,7 +37,7 @@ _TO_QUOTE_SPECIAL_CHARS: Final[set[str]] = {
     "%",
     "@",
     "\\",
-}  # '"', "'"}
+}
 
 
 def str_to_stack_path(path: str) -> StrStack:
@@ -160,13 +160,6 @@ def quote_special_strings(s: str, multiline_variant: MultilineVariant = Multilin
         # The PyYaml equivalent function injects newlines, hence why we abuse the JSON library to write our YAML
         return json.dumps(s)
 
-    # print(f"TODO rm: {s}")
-    # import yaml
-    # from yaml import SafeLoader
-    # try:
-    #    yaml.load(s, Loader=SafeLoader)
-    # except (yaml.parser.ParserError, yaml.scanner.ScannerError):
-    #    return json.dumps(s)
     return s
 
 

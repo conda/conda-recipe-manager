@@ -156,7 +156,8 @@ class RecipeParserConvert(RecipeParserDeps):
             if complex_jinja:
                 complex_jinja_display = ", ".join(complex_jinja)
                 self._msg_tbl.add_message(
-                    MessageCategory.WARNING, f"The following key(s) contain partially unsupported syntax: {complex_jinja_display}"
+                    MessageCategory.WARNING,
+                    f"The following key(s) contain partially unsupported syntax: {complex_jinja_display}",
                 )
 
             self._patch_and_log({"op": "add", "path": "/context", "value": cast(JsonType, context_obj)})
