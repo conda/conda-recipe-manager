@@ -4,6 +4,9 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+from typing import Final
+
 import pytest
 
 from conda_recipe_manager.parser.recipe_parser_convert import RecipeParserConvert
@@ -42,7 +45,7 @@ def test_pre_process_recipe_text(input_file: str, expected_file: str) -> None:
 
 
 @pytest.mark.parametrize(
-    "file_base,errors,warnings",
+    "file,errors,warnings",
     [
         (
             "simple-recipe.yaml",
@@ -158,7 +161,7 @@ def test_pre_process_recipe_text(input_file: str, expected_file: str) -> None:
         ),
         # Regression: Tests scenarios where the newer `${{ }}` substitutions got doubled up, causing: `$${{ foo }}`
         (
-            "regression_jinja_sub.yaml",
+            "parser_regressions/regression_jinja_sub.yaml",
             [],
             [
                 (
@@ -282,15 +285,16 @@ def test_pre_process_recipe_text(input_file: str, expected_file: str) -> None:
         # ),
     ],
 )
-def test_render_to_v1_recipe_format(file_base: str, errors: list[str], warnings: list[str]) -> None:
+def test_render_to_v1_recipe_format(file: str, errors: list[str], warnings: list[str]) -> None:
     """
     Validates rendering a recipe in the V1 format.
 
-    :param file_base: Base file name for both the input and the expected out
+    :param file: File path for the input that is also used to calculate the expected output, by convention.
     """
-    parser = load_recipe(file_base, RecipeParserConvert)
+    file_path: Final = Path(file)
+    parser = load_recipe(file_path, RecipeParserConvert)
     result, tbl, _ = parser.render_to_v1_recipe_format()
-    assert result == load_file(f"v1_format/v1_{file_base}")
+    assert result == load_file(f"{file_path.parent}/v1_format/v1_{file_path.name}")
     assert tbl.get_messages(MessageCategory.ERROR) == errors
     assert tbl.get_messages(MessageCategory.WARNING) == warnings
     # Ensure that the original file was untouched
