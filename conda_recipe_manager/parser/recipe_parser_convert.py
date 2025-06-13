@@ -130,7 +130,9 @@ class RecipeParserConvert(RecipeParserDeps):
         # Convert the JINJA variable table to a `context` section. Empty tables still add the `context` section for
         # future developers' convenience.
         context_obj: dict[str, Primitives] = {}
-        for name, value in self._v1_recipe._vars_tbl.items():  # pylint: disable=protected-access
+        # TODO Add selectors support? (I don't remember if V1 allows for selectors in `/context`)
+        for name, node_var in self._v1_recipe._vars_tbl.items():  # pylint: disable=protected-access
+            value: Final = node_var.get_value()
             # Filter-out any value not covered in the V1 format
             if not isinstance(value, (str, int, float, bool)):
                 self._msg_tbl.add_message(MessageCategory.WARNING, f"The variable `{name}` is an unsupported type.")

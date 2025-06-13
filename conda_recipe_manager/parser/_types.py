@@ -128,6 +128,8 @@ class Regex:
 
     # Pattern to detect Jinja variable names and functions
     _JINJA_VAR_FUNCTION_PATTERN: Final[str] = r"[a-zA-Z0-9_\|\'\"\(\)\[\]\, =\.\-~\+:]*"
+    # Pattern to detect optional
+    _JINJA_OPTIONAL_EOL_COMMENT: Final[str] = r"[ \t]*(#[ \t\w\[\]]*)?$"
 
     ## V0 Formatter regular expressions ##
     V0_FMT_SECTION_HEADER: Final[re.Pattern[str]] = re.compile(r"^[\w|-]+:$")
@@ -186,9 +188,12 @@ class Regex:
 
     ## Jinja regular expressions ##
     JINJA_V0_SUB: Final[re.Pattern[str]] = re.compile(r"{{\s*" + _JINJA_VAR_FUNCTION_PATTERN + r"\s*}}")
-    JINJA_V0_LINE: Final[re.Pattern[str]] = re.compile(r"({%.*%}|{#.*#})\n")
+    JINJA_V0_LINE: Final[re.Pattern[str]] = re.compile(
+        r"^({%.*%}|{#.*#})" + _JINJA_OPTIONAL_EOL_COMMENT, flags=re.MULTILINE
+    )
     JINJA_V0_SET_LINE: Final[re.Pattern[str]] = re.compile(
-        r"{%\s*set\s*" + _JINJA_VAR_FUNCTION_PATTERN + r"\s*=.*%}\s*\n"
+        r"^{%[ \t]*set[ \t]*" + _JINJA_VAR_FUNCTION_PATTERN + r"[ \t]*=.*%}" + _JINJA_OPTIONAL_EOL_COMMENT,
+        flags=re.MULTILINE,
     )
     # Useful for replacing the older `{{` JINJA substitution with the newer `${{` WITHOUT accidentally doubling-up the
     # newer syntax when multiple replacements are possible.

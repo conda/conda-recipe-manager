@@ -32,6 +32,7 @@ class Node:
     def __init__(
         self,
         value: NodeValue | SentinelType = _sentinel,
+        # TODO Future: Node comments should be Optional.
         comment: str = "",
         children: Optional[list["Node"]] = None,
         list_member_flag: bool = False,
@@ -57,7 +58,7 @@ class Node:
 
     def __eq__(self, other: object) -> bool:
         """
-        Determine if two nodes are equal. Useful for `assert` statements in tests.
+        Determine if two nodes are equal.
 
         :param other: Other object to check against
         :returns: True if the two nodes are identical. False otherwise.

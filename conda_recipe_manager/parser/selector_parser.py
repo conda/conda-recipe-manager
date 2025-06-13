@@ -8,6 +8,7 @@ from __future__ import annotations
 from typing import Final, Optional
 
 from conda_recipe_manager.parser._is_modifiable import IsModifiable
+from conda_recipe_manager.parser._types import Regex
 from conda_recipe_manager.parser.enums import ALL_LOGIC_OPS, LogicOp, SchemaVersion
 from conda_recipe_manager.parser.platform_types import (
     ALL_ARCHITECTURES,
@@ -87,6 +88,21 @@ class SelectorParser(IsModifiable):
     """
     Parses a selector statement
     """
+
+    @staticmethod
+    def _v0_extract_selector(comment: Optional[str]) -> Optional[str]:
+        """
+        Utility that extracts a selector from a V0 comment. Not to be used publicly/outside the `parser` module.
+
+        :param comment: Comment string to attempt to extract a V0 selector from.
+        :returns: A selector string, if one was found. Otherwise, `None`.
+        """
+        if not comment:
+            return None
+        match = Regex.SELECTOR.search(comment)
+        if not match:
+            return None
+        return match.group(0)
 
     @staticmethod
     def _process_postfix_stack(stack: list[_SelectorNode]) -> Optional[_SelectorNode]:

@@ -17,6 +17,7 @@ import yaml
 
 from conda_recipe_manager.parser._is_modifiable import IsModifiable
 from conda_recipe_manager.parser._node import Node
+from conda_recipe_manager.parser._node_var import NodeVar
 from conda_recipe_manager.parser._selector_info import SelectorInfo
 from conda_recipe_manager.parser._traverse import traverse, traverse_all
 from conda_recipe_manager.parser._types import (
@@ -42,6 +43,7 @@ from conda_recipe_manager.parser.dependency import (
     dependency_section_to_str,
 )
 from conda_recipe_manager.parser.enums import SchemaVersion
+from conda_recipe_manager.parser.selector_parser import SelectorParser
 from conda_recipe_manager.parser.types import TAB_AS_SPACES, TAB_SPACE_COUNT, MultilineVariant
 from conda_recipe_manager.parser.v0_recipe_formatter import V0RecipeFormatter
 from conda_recipe_manager.types import PRIMITIVES_TUPLE, JsonType, Primitives, SentinelType
@@ -53,6 +55,9 @@ try:
     from yaml import CSafeLoader as SafeLoader
 except ImportError:
     from yaml import SafeLoader  # type: ignore[assignment]
+
+# Type for the internal recipe variables table.
+_VarTable = dict[str, NodeVar]
 
 
 class RecipeReader(IsModifiable):
@@ -135,6 +140,23 @@ class RecipeReader(IsModifiable):
         return output
 
     @staticmethod
+    def _parse_trailing_comment(s: str) -> Optional[str]:
+        """
+        Helper function that parses a trailing comment on a line for `Node*`s classes.
+
+        :param s: Pre-stripped (no leading/trailing spaces), non-Jinja line of a recipe file
+        :returns: A comment string, including the `#` symbol, if a comment exists. `None` otherwise.
+        """
+        # There is a comment at the end of the line if a `#` symbol is found with leading whitespace before it. If it is
+        # "touching" a character on the left-side, it is just part of a string.
+        comment_re_result: Final = Regex.DETECT_TRAILING_COMMENT.search(s)
+        if comment_re_result is None:
+            return None
+
+        # Group 0 is the whole match, Group 1 is the leading whitespace, Group 2 locates the `#`
+        return s[comment_re_result.start(2) :].rstrip()
+
+    @staticmethod
     def _parse_line_node(s: str) -> Node:
         """
         Parses a line of conda-formatted YAML into a Node.
@@ -147,22 +169,20 @@ class RecipeReader(IsModifiable):
         # Use PyYaml to safely/easily/correctly parse single lines of YAML.
         output = RecipeReader._parse_yaml(s)
 
+        # The full line is a comment
+        if s.startswith("#"):
+            return Node(comment=s)
+
         # Attempt to parse-out comments. Fully commented lines are not ignored to preserve context when the text is
         # rendered. Their order in the list of child nodes will preserve their location. Fully commented lines just have
         # a value of "None".
         #
         # There is an open issue to PyYaml to support comment parsing:
         #   - https://github.com/yaml/pyyaml/issues/90
-        comment = ""
-        # The full line is a comment
-        if s.startswith("#"):
-            return Node(comment=s)
-        # There is a comment at the end of the line if a `#` symbol is found with leading whitespace before it. If it is
-        # "touching" a character on the left-side, it is just part of a string.
-        comment_re_result = Regex.DETECT_TRAILING_COMMENT.search(s)
-        if comment_re_result is not None:
-            # Group 0 is the whole match, Group 1 is the leading whitespace, Group 2 locates the `#`
-            comment = s[comment_re_result.start(2) :]
+        # TODO Future: Node comments should be Optional. That would simplify this logic and prevent empty string
+        # allocations.
+        opt_comment: Final = RecipeReader._parse_trailing_comment(s)
+        comment: Final = "" if opt_comment is None else opt_comment
 
         # If a dictionary is returned, we have a line containing a key and potentially a value. There should only be 1
         # key/value pairing in 1 line. Nodes representing keys should be flagged for handling edge cases.
@@ -335,7 +355,7 @@ class RecipeReader(IsModifiable):
         """
         # Variable
         if s in self._vars_tbl:
-            return self._vars_tbl[s]
+            return self._vars_tbl[s].get_value()
 
         # int
         if s.isdigit():
@@ -387,7 +407,7 @@ class RecipeReader(IsModifiable):
                 s = s.replace(match, value)
             elif key in self._vars_tbl:
                 # Replace value as a string. Re-interpret the entire value before returning.
-                value = str(self._vars_tbl[key])
+                value = str(self._vars_tbl[key].get_value())
                 if Regex.JINJA_VAR_VALUE_TERNARY.match(value):
                     value = "${{" + value + "}}"
                 if lower_match:
@@ -428,7 +448,7 @@ class RecipeReader(IsModifiable):
         Requires parse-tree and `_schema_version` to be initialized.
         """
         # Tracks Jinja variables set by the file
-        self._vars_tbl: dict[str, JsonType] = {}
+        self._vars_tbl: _VarTable = {}
 
         match self._schema_version:
             case SchemaVersion.V0:
@@ -443,11 +463,19 @@ class RecipeReader(IsModifiable):
                     # a string that is invalid YAML.
                     # Example: {% set soversion = ".".join(version.split(".")[:3]) %}
                     try:
-                        self._vars_tbl[key] = ast.literal_eval(value)  # type: ignore[misc]
+                        value = ast.literal_eval(value)  # type: ignore[misc]
                     except Exception:  # pylint: disable=broad-exception-caught
-                        self._vars_tbl[key] = str(value)
+                        value = str(value)
+                    self._vars_tbl[key] = NodeVar(value, RecipeReader._parse_trailing_comment(line))
             case SchemaVersion.V1:
-                self._vars_tbl = cast(dict[str, JsonType], self.get_value("/context", {}))
+                # Abuse the fact that the `/context` section is pure YAML.
+                context: Final = cast(dict[str, JsonType], self.get_value("/context", {}))
+                comments_tbl: Final = self.get_comments_table()
+                for key, value in context.items():
+                    # V1 only allows for scalar types as variables. So we should be able to recover all comments without
+                    # recursing through `/context`
+                    var_path = RecipeReader.append_to_path("/context", key)
+                    self._vars_tbl[key] = NodeVar(value, comments_tbl.get(var_path, None))
 
     def _rebuild_selectors(self) -> None:
         """
@@ -457,13 +485,9 @@ class RecipeReader(IsModifiable):
         self._selector_tbl: dict[str, list[SelectorInfo]] = {}
 
         def _collect_selectors(node: Node, path: StrStack) -> None:
-            # Ignore empty comments
-            if not node.comment:
+            selector: Final = SelectorParser._v0_extract_selector(node.comment)  # pylint: disable=protected-access
+            if selector is None:
                 return
-            match = Regex.SELECTOR.search(node.comment)
-            if not match:
-                return
-            selector = match.group(0)
             selector_info = SelectorInfo(node, list(path))
             self._selector_tbl.setdefault(selector, [])
             self._selector_tbl[selector].append(selector_info)
@@ -630,6 +654,7 @@ class RecipeReader(IsModifiable):
         s += "- Variables Table:\n"
         # If we run into an unserializable type (like data that might be interpreted as a date object), attempt to
         # the data render as a string
+        # TODO improve this
         s += json.dumps(self._vars_tbl, indent=TAB_AS_SPACES, default=str) + "\n"
         s += "- Selectors Table:\n"
         for key, val in self._selector_tbl.items():
@@ -787,10 +812,7 @@ class RecipeReader(IsModifiable):
         # `/context`.
         if self._schema_version == SchemaVersion.V0:
             for key, val in self._vars_tbl.items():
-                # Double quote strings, except for when we detect a env.get() expression. See issue #271.
-                if isinstance(val, str) and not val.startswith("env.get("):
-                    val = f"'{val}'" if '"' in val else f'"{val}"'
-                lines.append(f"{{% set {key} = {val} %}}")
+                lines.append(f"{{% set {key} = {val.render_v0_value()} %}}{val.render_comment()}")
             # Add spacing if variables have been set
             if len(self._vars_tbl):
                 lines.append("")
@@ -1175,7 +1197,7 @@ class RecipeReader(IsModifiable):
             if default == RecipeReader._sentinel or isinstance(default, SentinelType):
                 raise KeyError
             return default
-        return self._vars_tbl[var]
+        return self._vars_tbl[var].get_value()
 
     def get_variable_references(self, var: str) -> list[str]:
         """
