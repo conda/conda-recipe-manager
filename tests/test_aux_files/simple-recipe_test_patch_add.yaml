@@ -33,7 +33,7 @@ about:
 
 multi_level:
   list_1:
-    - "There's just one place to go for all your spatula needs!"
+    - There's just one place to go for all your spatula needs!
     - ken
     - foo
     # Ensure a comment in a list is supported
@@ -65,14 +65,14 @@ test_var_usage:
     - This {{ name }} is silly
     - last
   Stanley:
-    - "Oh, Joel Miller, you've just found the marble in the oatmeal."
-    - "You're a lucky, lucky, lucky little boy."
-    - "'Cause you know why?"
+    - Oh, Joel Miller, you've just found the marble in the oatmeal.
+    - You're a lucky, lucky, lucky little boy.
+    - 'Cause you know why?
     - You get to drink from... the FIRE HOOOOOSE!
 
 U62:
   George:
-    - "How'd you like your own TV show?"
-    - "You're on"
+    - How'd you like your own TV show?
+    - You're on
   Stanley:
     - Ok

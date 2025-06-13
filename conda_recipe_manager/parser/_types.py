@@ -122,11 +122,14 @@ class Regex:
     Namespace used to organize all regular expressions used by the `parser` module.
     """
 
-    # Jinja syntax that is too complicated to convert
+    # Jinja syntax that is too complicated to fully convert
+    # TODO remove after supporting issue #368
     V0_UNSUPPORTED_JINJA: Final[list[re.Pattern[str]]] = [re.compile(r"\.join\(")]
 
     # Pattern to detect Jinja variable names and functions
-    _JINJA_VAR_FUNCTION_PATTERN: Final[str] = r"[a-zA-Z0-9_\|\'\"\(\)\[\]\, =\.\-~\+]*"
+    _JINJA_VAR_FUNCTION_PATTERN: Final[str] = r"[a-zA-Z0-9_\|\'\"\(\)\[\]\, =\.\-~\+:]*"
+    # Pattern to detect optional
+    _JINJA_OPTIONAL_EOL_COMMENT: Final[str] = r"[ \t]*(#[ \t\w\[\]]*)?$"
 
     ## V0 Formatter regular expressions ##
     V0_FMT_SECTION_HEADER: Final[re.Pattern[str]] = re.compile(r"^[\w|-]+:$")
@@ -185,9 +188,12 @@ class Regex:
 
     ## Jinja regular expressions ##
     JINJA_V0_SUB: Final[re.Pattern[str]] = re.compile(r"{{\s*" + _JINJA_VAR_FUNCTION_PATTERN + r"\s*}}")
-    JINJA_V0_LINE: Final[re.Pattern[str]] = re.compile(r"({%.*%}|{#.*#})\n")
+    JINJA_V0_LINE: Final[re.Pattern[str]] = re.compile(
+        r"^({%.*%}|{#.*#})" + _JINJA_OPTIONAL_EOL_COMMENT, flags=re.MULTILINE
+    )
     JINJA_V0_SET_LINE: Final[re.Pattern[str]] = re.compile(
-        r"{%\s*set\s*" + _JINJA_VAR_FUNCTION_PATTERN + r"\s*=.*%}\s*\n"
+        r"^{%[ \t]*set[ \t]*" + _JINJA_VAR_FUNCTION_PATTERN + r"[ \t]*=.*%}" + _JINJA_OPTIONAL_EOL_COMMENT,
+        flags=re.MULTILINE,
     )
     # Useful for replacing the older `{{` JINJA substitution with the newer `${{` WITHOUT accidentally doubling-up the
     # newer syntax when multiple replacements are possible.
@@ -220,11 +226,8 @@ class Regex:
         JINJA_FUNCTION_LOWER,
         JINJA_FUNCTION_UPPER,
         JINJA_FUNCTION_REPLACE,
-        # TODO FIX: Adding `split` and `join` to this list causes some odd bracket-escaping in the
-        # `regression_jinja_sub.yaml` upgrade test. This will require additional investigation, but for now, IMO the
-        # old behavior is a little less wrong, so we'll leave it as is.
-        # JINJA_FUNCTION_SPLIT,
-        # JINJA_FUNCTION_JOIN,
+        JINJA_FUNCTION_SPLIT,
+        JINJA_FUNCTION_JOIN,
         JINJA_FUNCTION_IDX_ACCESS,
         JINJA_FUNCTION_ADD_CONCAT,
         JINJA_FUNCTION_MATCH,

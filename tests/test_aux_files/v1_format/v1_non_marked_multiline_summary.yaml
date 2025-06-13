@@ -28,7 +28,7 @@ about:
     Foo bar
     foo foo bar
     bar baz bar baz
-  description: "Tests recipes that contain multiline strings that don't use | or > characters, common in R-packages"
+  description: Tests recipes that contain multiline strings that don't use | or > characters, common in R-packages
   license: MIT
   license_file: LICENSE
   homepage: https://github.com/python/typeshed

@@ -130,19 +130,24 @@ class RecipeParserConvert(RecipeParserDeps):
         # Convert the JINJA variable table to a `context` section. Empty tables still add the `context` section for
         # future developers' convenience.
         context_obj: dict[str, Primitives] = {}
-        for name, value in self._v1_recipe._vars_tbl.items():  # pylint: disable=protected-access
+        # TODO Add selectors support? (I don't remember if V1 allows for selectors in `/context`)
+        for name, node_var in self._v1_recipe._vars_tbl.items():  # pylint: disable=protected-access
+            value: Final = node_var.get_value()
             # Filter-out any value not covered in the V1 format
             if not isinstance(value, (str, int, float, bool)):
                 self._msg_tbl.add_message(MessageCategory.WARNING, f"The variable `{name}` is an unsupported type.")
                 continue
             # Function calls need to preserve JINJA escaping or else they turn into unevaluated strings.
-            # See issue #271 for details about env.get( string here.
+            # See issue #271 for details about upgrading the `env.get(` function.
+            # See issue #366 for details and fixes around escaping complex JINJA functions.
+            # TODO Add support for #368
             if isinstance(value, str) and (
                 search_any_regex(Regex.JINJA_FUNCTIONS_SET, value) or value.startswith("env.get(")
             ):
-                value = "{{" + value + "}}"
+                value = "{{ " + value + " }}"
             context_obj[name] = value
         # Ensure that we do not include an empty context object (which is forbidden by the schema).
+        # TODO remove after supporting issue #368
         if context_obj:
             # Check for Jinja that is too complex to convert
             complex_jinja = [
@@ -153,7 +158,8 @@ class RecipeParserConvert(RecipeParserDeps):
             if complex_jinja:
                 complex_jinja_display = ", ".join(complex_jinja)
                 self._msg_tbl.add_message(
-                    MessageCategory.WARNING, f"The following key(s) contain unsupported syntax: {complex_jinja_display}"
+                    MessageCategory.WARNING,
+                    f"The following key(s) contain partially unsupported syntax: {complex_jinja_display}",
                 )
 
             self._patch_and_log({"op": "add", "path": "/context", "value": cast(JsonType, context_obj)})
@@ -161,7 +167,7 @@ class RecipeParserConvert(RecipeParserDeps):
         # Similarly, patch-in the new `schema_version` value to the top of the file
         self._patch_and_log({"op": "add", "path": "/schema_version", "value": CURRENT_RECIPE_SCHEMA_FORMAT})
 
-        # Swap all JINJA to use the new `${{ }}` format. A `set` is used as `str.replace()` will replace all instances
+        # Swap all JINJA to use the new `${{ }}` format. A regex is used as `str.replace()` will replace all instances
         # and a value containing multiple variables could be visited multiple times, causing multiple `${{}}`
         # encapsulations.
         jinja_sub_locations: Final[set[str]] = set(self._v1_recipe.search(Regex.JINJA_V0_SUB))
