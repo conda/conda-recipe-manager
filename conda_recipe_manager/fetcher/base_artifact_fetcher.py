@@ -40,6 +40,12 @@ class BaseArtifactFetcher(metaclass=ABCMeta):
         # Flag to track if `fetch()` has been called successfully once.
         self._successfully_fetched = False
 
+    def __del__(self) -> None:
+        """Removes the temporary directory and all contents on deletion.
+        Avoids resource warnings during implicit tempfile cleanup.
+        """
+        self._temp_dir.cleanup()
+
     def _fetch_guard(self, msg: str) -> None:
         """
         Convenience function that prevents executing functions that require the code to be downloaded or stored to the
