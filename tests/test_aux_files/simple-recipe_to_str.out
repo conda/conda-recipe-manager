@@ -2,11 +2,9 @@
 RecipeReader Instance
 - Schema Version: 0
 - Variables Table:
-{
-  "zz_non_alpha_first": 42,
-  "name": "types-toml",
-  "version": "0.10.8.6"
-}
+  - zz_non_alpha_first: 42  # foo
+  - name: "types-toml"
+  - version: "0.10.8.6"  # bar
 - Selectors Table:
   [unix]
     - name -> /package/name

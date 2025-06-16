@@ -43,7 +43,8 @@ class NodeVar:
 
     def __str__(self) -> str:
         """
-        Renders the node as a string. Useful for debugging purposes. This mimics the behavior of the `Node` class.
+        Renders the node as a string. Useful for debugging purposes. This mimics the behavior of the `Node` and
+        `RecipeReader` classes.
 
         :returns: The node, as a string
         """

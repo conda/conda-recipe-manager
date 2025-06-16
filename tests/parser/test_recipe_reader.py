@@ -1492,8 +1492,8 @@ def test_search() -> None:
 @pytest.mark.parametrize(
     "file,expected",
     [
-        ("simple-recipe.yaml", "359215c5ac3460d07470f2e3f524ed24154ff2eb7d274feb98149e6949c2ddbe"),
-        ("v1_format/v1_simple-recipe.yaml", "68c0b7fd829c17715b5b9941c882eda3bb70cb1dcef8cc08a55a9ee2b959fb7f"),
+        ("simple-recipe.yaml", "695b05c43362eb43c22eae23f0129f41f61413912225184cb7234a4d2c15f353"),
+        ("v1_format/v1_simple-recipe.yaml", "dfe5bb7ad4a0c9477d0bf0dc56219f2810d75d0e5aa72b12f7210ff9946d4ab7"),
         ("types-toml.yaml", "e117d210da9ea6507fdea856ee96407265aec40cbc58432aa6e1c7e31998a686"),
         ("v1_format/v1_types-toml.yaml", "3474ed870eea9c8efbd248d24de8bdf54ad8651a7aed06d240f118272d8a3fd1"),
         ("v1_format/v1_boto.yaml", "b42349254d020ffeda77f3068e8ad8804a92d1c7b89eb0f3d45632b38fc0a3bc"),

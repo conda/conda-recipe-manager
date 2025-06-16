@@ -2,9 +2,9 @@
 schema_version: 1
 
 context:
-  zz_non_alpha_first: 42
+  zz_non_alpha_first: 42  # foo
   name: types-toml
-  version: 0.10.8.6
+  version: 0.10.8.6  # bar
 
 package:
   name: ${{ name|lower }}
