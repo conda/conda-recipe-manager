@@ -57,6 +57,21 @@ class RecipeParserConvert(RecipeParserDeps):
             self._msg_tbl.add_message(MessageCategory.ERROR, f"Failed to patch: {patch}")
         return result
 
+    def _comment_and_log(self, path: str, comment: str) -> bool:
+        """
+        Convenience function that logs failed comment additions to the message table.
+
+        :param path: Path to apply the comment to.
+        :param comment: Comment to apply.
+        :returns: Forwards commenting results for further logging/error handling
+        """
+        try:
+            self._v1_recipe.add_comment(path, comment)
+        except (ValueError, KeyError):
+            self._msg_tbl.add_message(MessageCategory.ERROR, f"Failed to add comment on path {path}: {comment}")
+            return False
+        return True
+
     def _patch_add_missing_path(self, base_path: str, ext: str, value: JsonType = None) -> None:
         """
         Convenience function that constructs missing paths. Useful when you have to construct more than 1 path level at
@@ -130,6 +145,7 @@ class RecipeParserConvert(RecipeParserDeps):
         # Convert the JINJA variable table to a `context` section. Empty tables still add the `context` section for
         # future developers' convenience.
         context_obj: dict[str, Primitives] = {}
+        var_comments: dict[str, str] = {}
         # TODO Add selectors support? (I don't remember if V1 allows for selectors in `/context`)
         for name, node_var in self._v1_recipe._vars_tbl.items():  # pylint: disable=protected-access
             value: Final = node_var.get_value()
@@ -137,6 +153,13 @@ class RecipeParserConvert(RecipeParserDeps):
             if not isinstance(value, (str, int, float, bool)):
                 self._msg_tbl.add_message(MessageCategory.WARNING, f"The variable `{name}` is an unsupported type.")
                 continue
+
+            # Track comments
+            rendered_comment = node_var.render_comment()
+            # TODO Handle selectors in issue #383
+            if rendered_comment and not node_var.contains_selector():
+                var_comments[RecipeParser.append_to_path("/context", name)] = rendered_comment
+
             # Function calls need to preserve JINJA escaping or else they turn into unevaluated strings.
             # See issue #271 for details about upgrading the `env.get(` function.
             # See issue #366 for details and fixes around escaping complex JINJA functions.
@@ -146,10 +169,11 @@ class RecipeParserConvert(RecipeParserDeps):
             ):
                 value = "{{ " + value + " }}"
             context_obj[name] = value
+
         # Ensure that we do not include an empty context object (which is forbidden by the schema).
-        # TODO remove after supporting issue #368
         if context_obj:
             # Check for Jinja that is too complex to convert
+            # TODO remove after supporting issue #368
             complex_jinja = [
                 key
                 for key, value in context_obj.items()
@@ -163,6 +187,9 @@ class RecipeParserConvert(RecipeParserDeps):
                 )
 
             self._patch_and_log({"op": "add", "path": "/context", "value": cast(JsonType, context_obj)})
+            # Recover any comments associated with
+            for var_path, var_comment in var_comments.items():
+                self._comment_and_log(var_path, var_comment)
 
         # Similarly, patch-in the new `schema_version` value to the top of the file
         self._patch_and_log({"op": "add", "path": "/schema_version", "value": CURRENT_RECIPE_SCHEMA_FORMAT})

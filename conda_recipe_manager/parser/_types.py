@@ -127,9 +127,11 @@ class Regex:
     V0_UNSUPPORTED_JINJA: Final[list[re.Pattern[str]]] = [re.compile(r"\.join\(")]
 
     # Pattern to detect Jinja variable names and functions
-    _JINJA_VAR_FUNCTION_PATTERN: Final[str] = r"[a-zA-Z0-9_\|\'\"\(\)\[\]\, =\.\-~\+:]*"
-    # Pattern to detect optional
-    _JINJA_OPTIONAL_EOL_COMMENT: Final[str] = r"[ \t]*(#[ \t\w\[\]]*)?$"
+    _JINJA_VAR_FUNCTION_PATTERN: Final[str] = r"[a-zA-Z0-9_\|\'\"\(\)\[\]\, =\.\-~\+:]+"
+    # Pattern to detect optional comments or trailing whitespace. NOTE: The comment is marked as an optional matching
+    # group. Failure to mark this may cause `findall()` to return empty strings if no other group is present in the
+    # regex.
+    _JINJA_OPTIONAL_EOL_COMMENT: Final[str] = r"[ \t]*(?:#[ \t\w\[\]]*)?$"
 
     ## V0 Formatter regular expressions ##
     V0_FMT_SECTION_HEADER: Final[re.Pattern[str]] = re.compile(r"^[\w|-]+:$")
@@ -189,10 +191,10 @@ class Regex:
     ## Jinja regular expressions ##
     JINJA_V0_SUB: Final[re.Pattern[str]] = re.compile(r"{{\s*" + _JINJA_VAR_FUNCTION_PATTERN + r"\s*}}")
     JINJA_V0_LINE: Final[re.Pattern[str]] = re.compile(
-        r"^({%.*%}|{#.*#})" + _JINJA_OPTIONAL_EOL_COMMENT, flags=re.MULTILINE
+        r"^({%.+%}|{#.+#})" + _JINJA_OPTIONAL_EOL_COMMENT, flags=re.MULTILINE
     )
     JINJA_V0_SET_LINE: Final[re.Pattern[str]] = re.compile(
-        r"^{%[ \t]*set[ \t]*" + _JINJA_VAR_FUNCTION_PATTERN + r"[ \t]*=.*%}" + _JINJA_OPTIONAL_EOL_COMMENT,
+        r"^{%[ \t]*set[ \t]*" + _JINJA_VAR_FUNCTION_PATTERN + r"[ \t]*=.+%}" + _JINJA_OPTIONAL_EOL_COMMENT,
         flags=re.MULTILINE,
     )
     # Useful for replacing the older `{{` JINJA substitution with the newer `${{` WITHOUT accidentally doubling-up the
