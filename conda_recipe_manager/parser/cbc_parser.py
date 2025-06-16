@@ -50,6 +50,8 @@ class CbcParser(RecipeReader):
         #                selectors is available (so py>=38 and py<=310 wouldn't work). To be confirmed though."
 
         parsed_contents: Final[_CbcType] = cast(_CbcType, self.get_value("/"))
+        # NOTE: The comments table does not include selectors.
+        comments_tbl: Final = self.get_comments_table()
         for variable, value_list in parsed_contents.items():
             if not isinstance(value_list, list):
                 continue
@@ -59,10 +61,15 @@ class CbcParser(RecipeReader):
                 continue
 
             # TODO add V1 support for CBC files? Is there a V1 CBC format?
-            comments_tbl = self.get_comments_table()
             for i, value in enumerate(value_list):
                 path = f"/{variable}/{i}"
-                entry = NodeVar(value, comments_tbl.get(path, None))
+
+                # Re-assemble the comment components. If successful, append it to the node.
+                # TODO Improve: This is not very efficient.
+                selector_str = "" if not self.contains_selector_at_path(path) else self.get_selector_at_path(path)
+                proto_comment = f"{selector_str} {comments_tbl.get(path, "")}"
+                entry = NodeVar(value, f"# {proto_comment}" if proto_comment.strip() else None)
+
                 # TODO detect duplicates
                 if variable not in self._cbc_vars_tbl:
                     self._cbc_vars_tbl[variable] = [entry]
