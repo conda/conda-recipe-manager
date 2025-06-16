@@ -455,7 +455,7 @@ class RecipeReader(IsModifiable):
                 # Find all the set statements and record the values
                 for line in cast(list[str], Regex.JINJA_V0_SET_LINE.findall(self._init_content)):
                     key = line[line.find("set") + len("set") : line.find("=")].strip()
-                    value = line[line.find("=") + len("=") : line.find("%}")].strip()
+                    value: str | JsonType = line[line.find("=") + len("=") : line.find("%}")].strip()
                     # Fall-back to string interpretation.
                     # TODO: Ideally we use `_parse_yaml()` in the future. However, as discovered in the work to solve
                     # issue #366, that is easier said than done. `_parse_yaml()` was never expected to run on V0 JINJA
@@ -463,7 +463,7 @@ class RecipeReader(IsModifiable):
                     # a string that is invalid YAML.
                     # Example: {% set soversion = ".".join(version.split(".")[:3]) %}
                     try:
-                        value = ast.literal_eval(value)  # type: ignore[misc]
+                        value = cast(JsonType, ast.literal_eval(cast(str, value)))
                     except Exception:  # pylint: disable=broad-exception-caught
                         value = str(value)
                     self._vars_tbl[key] = NodeVar(value, RecipeReader._parse_trailing_comment(line))

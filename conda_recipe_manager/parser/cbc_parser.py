@@ -59,7 +59,7 @@ class CbcParser(RecipeReader):
                 continue
 
             # TODO add V1 support for CBC files? Is there a V1 CBC format?
-            comments_tbl: Final = self.get_comments_table()
+            comments_tbl = self.get_comments_table()
             for i, value in enumerate(value_list):
                 path = f"/{variable}/{i}"
                 entry = NodeVar(value, comments_tbl.get(path, None))
@@ -109,12 +109,13 @@ class CbcParser(RecipeReader):
         cbc_entries: Final = self._cbc_vars_tbl[variable]
 
         # Short-circuit on trivial case: one value, no selector
-        if len(cbc_entries) == 1 and cbc_entries[0].selector is None:
-            return cbc_entries[0].value
+        if len(cbc_entries) == 1 and cbc_entries[0].contains_selector():
+            return cbc_entries[0].get_value()
 
         for entry in cbc_entries:
-            if entry.selector is None or entry.selector.does_selector_apply(query):
-                return entry.value
+            selector = entry.get_selector()
+            if selector is None or selector.does_selector_apply(query):
+                return entry.get_value()
 
         # No applicable entries have been found to match any selector variant.
         if isinstance(default, SentinelType):

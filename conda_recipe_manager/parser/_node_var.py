@@ -5,9 +5,10 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Final, Optional
 
 from conda_recipe_manager.parser.selector_parser import SelectorParser
+from conda_recipe_manager.parser.types import SchemaVersion
 from conda_recipe_manager.types import JsonType
 
 
@@ -25,7 +26,8 @@ class NodeVar:
         # consistency (so this includes the leading `#`)
         self._comment = comment
         # TODO add V1 support
-        self._selector = SelectorParser._v0_extract_selector(comment)
+        selector_str: Final = SelectorParser._v0_extract_selector(comment)
+        self._selector: Final = SelectorParser(selector_str, SchemaVersion.V0) if selector_str else None
 
     def __eq__(self, other: object) -> bool:
         """
@@ -98,3 +100,12 @@ class NodeVar:
         """
         # TODO add V1 support
         return self._selector is not None
+
+    def get_selector(self) -> Optional[SelectorParser]:
+        """
+        Provides access to a `SelectorParser` instance, if a selector applies to this variable.
+
+        :returns: A `SelectorParser` instance, if one applies. Otherwise, `None`.
+        """
+        # TODO add V1 support
+        return self._selector

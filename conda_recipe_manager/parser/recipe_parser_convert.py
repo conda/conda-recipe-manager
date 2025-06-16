@@ -148,7 +148,7 @@ class RecipeParserConvert(RecipeParserDeps):
         var_comments: dict[str, str] = {}
         # TODO Add selectors support? (I don't remember if V1 allows for selectors in `/context`)
         for name, node_var in self._v1_recipe._vars_tbl.items():  # pylint: disable=protected-access
-            value: Final = node_var.get_value()
+            value = node_var.get_value()
             # Filter-out any value not covered in the V1 format
             if not isinstance(value, (str, int, float, bool)):
                 self._msg_tbl.add_message(MessageCategory.WARNING, f"The variable `{name}` is an unsupported type.")
