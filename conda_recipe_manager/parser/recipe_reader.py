@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import ast
 import hashlib
-import json
 import re
 import sys
 from collections.abc import Callable
