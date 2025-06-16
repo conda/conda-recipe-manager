@@ -67,8 +67,9 @@ class CbcParser(RecipeReader):
                 # Re-assemble the comment components. If successful, append it to the node.
                 # TODO Improve: This is not very efficient.
                 selector_str = "" if not self.contains_selector_at_path(path) else self.get_selector_at_path(path)
-                proto_comment = f"{selector_str} {comments_tbl.get(path, "")}"
-                entry = NodeVar(value, f"# {proto_comment}" if proto_comment.strip() else None)
+                comment_str = comments_tbl.get(path, "")
+                combined_comment = f"{selector_str} {comment_str}"
+                entry = NodeVar(value, f"# {combined_comment}" if combined_comment.strip() else None)
 
                 # TODO detect duplicates
                 if variable not in self._cbc_vars_tbl:
