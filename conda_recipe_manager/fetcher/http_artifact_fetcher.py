@@ -96,10 +96,7 @@ class HttpArtifactFetcher(BaseArtifactFetcher):
         # Buffered download approach
         # confirming that the path is lowercase
         try:
-            parsed_url = urlparse(self._archive_url)
-            path = parsed_url.path.lower()
-            modified_url = parsed_url._replace(path=path).geturl()
-            response = requests.get(modified_url, stream=True, timeout=_DOWNLOAD_TIMEOUT)
+            response = requests.get(str(self._archive_url), stream=True, timeout=_DOWNLOAD_TIMEOUT)
             with open(self._archive_path, "wb") as archive:
                 for chunk in cast(Iterator[bytes], response.iter_content(chunk_size=1024)):
                     if not chunk:
