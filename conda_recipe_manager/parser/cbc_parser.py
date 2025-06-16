@@ -4,13 +4,11 @@
 
 from __future__ import annotations
 
-from typing import Final, NamedTuple, Optional, cast
+from typing import Final, cast
 
 from conda_recipe_manager.parser._node_var import NodeVar
 from conda_recipe_manager.parser.recipe_reader import RecipeReader
-from conda_recipe_manager.parser.selector_parser import SelectorParser
 from conda_recipe_manager.parser.selector_query import SelectorQuery
-from conda_recipe_manager.parser.types import SchemaVersion
 from conda_recipe_manager.types import JsonType, SentinelType
 
 # Internal variable table type
