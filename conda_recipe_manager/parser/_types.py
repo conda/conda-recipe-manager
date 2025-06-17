@@ -133,6 +133,15 @@ class Regex:
     # regex.
     _JINJA_OPTIONAL_EOL_COMMENT: Final[str] = r"[ \t]*(?:#[ \t\w\[\]]*)?$"
 
+    # Pattern that attempts to identify YAML strings that need to be quote-escaped in the parsing process. Including:
+    #   - Strings that start with a quote marker, close the same quote marker, and then are trailed by characters.
+    # Examples:
+    #   'm2w64-' if win else ''
+    #   "" foo ""
+    #   "%R%" -e "library('RSQLite')"
+    #   "foo" bar # baz
+    YAML_TO_QUOTE_ESCAPE: Final[re.Pattern[str]] = re.compile(r"^('.*'|\".*\")(?![ \t]#.+).+")
+
     ## V0 Formatter regular expressions ##
     V0_FMT_SECTION_HEADER: Final[re.Pattern[str]] = re.compile(r"^[\w|-]+:$")
 

@@ -152,8 +152,9 @@ def quote_special_strings(s: str, multiline_variant: MultilineVariant = Multilin
         return s
 
     # `*` is common enough that we query the set of special characters before checking every "startswith" option as a
-    # small short-circuit optimization.
-    if s in _TO_QUOTE_SPECIAL_CHARS or _startswith_check_all():
+    # small short-circuit optimization. See the definition of `Regex.YAML_TO_QUOTE_ESCAPE` for details on some YAML
+    # quoting edge cases and issue #366 for other context.
+    if s in _TO_QUOTE_SPECIAL_CHARS or Regex.YAML_TO_QUOTE_ESCAPE.match(s) or _startswith_check_all():
         # The PyYaml equivalent function injects newlines, hence why we abuse the JSON library to write our YAML
         return json.dumps(s)
     return s
