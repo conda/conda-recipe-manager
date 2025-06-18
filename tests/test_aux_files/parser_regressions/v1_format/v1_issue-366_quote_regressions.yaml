@@ -1,5 +1,6 @@
 # Contains a number of regression issues found while working on Issue #366
 # We must preserve comments on variable assignment lines.
+# TODO FIX: When #384 is resolved, move the comments above the variable assignment
 # Using a fake section prevents attempts to parse garbage as dependencies
 schema_version: 1
 
@@ -44,7 +45,7 @@ fake_requirements:
   host:
     - python
     # From: conda-standalone (many special characters in a JINJA line)
-    - ${{ SRC_DIR | replace('\', '/') }}/src/conda_patches/0001-Rename-and-replace-entrypoint-stub-exe.patch
+    - ${{ SRC_DIR | replace('\\', '/') }}/src/conda_patches/0001-Rename-and-replace-entrypoint-stub-exe.patch
   run:
     - python
     - ${{ version.split(".")[0] }}
@@ -53,4 +54,4 @@ fake_requirements:
     - ${{ "".join(version.split(".")[0]) }}
     # YAML that becomes illegal if the outer quotes are stripped.
     - "'m2w64-' if win else ''"
-    - "\"\" foo \"\""
+    - '"" foo ""'

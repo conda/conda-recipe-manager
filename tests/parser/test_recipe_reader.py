@@ -137,6 +137,7 @@ def test_loading_obj_in_list() -> None:
         "h5py.yaml",  # `numpy {{ numpy }}` regression example.
         # TODO Fix: string quotes around concatenation are not correct when round-tripped.
         "x264.yaml",
+        "parser_regressions/issue-366_quote_regressions.yaml",
         # V1 Recipe Files
         "v1_format/v1_types-toml.yaml",
         "v1_format/v1_simple-recipe.yaml",
