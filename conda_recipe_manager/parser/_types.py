@@ -131,7 +131,7 @@ class Regex:
     # Pattern to detect optional comments or trailing whitespace. NOTE: The comment is marked as an optional matching
     # group. Failure to mark this may cause `findall()` to return empty strings if no other group is present in the
     # regex.
-    _JINJA_OPTIONAL_EOL_COMMENT: Final[str] = r"[ \t]*(?:#.*)?$"
+    _JINJA_OPTIONAL_EOL_COMMENT: Final[str] = r"[ \t]*(?:#[^\n]*)?$"
 
     # Pattern that attempts to identify YAML strings that need to be quote-escaped in the parsing process. Including:
     #   - Strings that start with a quote marker, close the same quote marker, and then are trailed by characters.
@@ -200,10 +200,10 @@ class Regex:
     ## Jinja regular expressions ##
     JINJA_V0_SUB: Final[re.Pattern[str]] = re.compile(r"{{\s*" + _JINJA_VAR_FUNCTION_PATTERN + r"\s*}}")
     JINJA_V0_LINE: Final[re.Pattern[str]] = re.compile(
-        r"^({%.+%}|{#.+#})" + _JINJA_OPTIONAL_EOL_COMMENT, flags=re.MULTILINE
+        r"^[ \t]*({%.+%}|{#.+#})" + _JINJA_OPTIONAL_EOL_COMMENT, flags=re.MULTILINE
     )
     JINJA_V0_SET_LINE: Final[re.Pattern[str]] = re.compile(
-        r"^{%[ \t]*set[ \t]*" + _JINJA_VAR_FUNCTION_PATTERN + r"[ \t]*=.+%}" + _JINJA_OPTIONAL_EOL_COMMENT,
+        r"^[ \t]*{%[ \t]*set[ \t]*" + _JINJA_VAR_FUNCTION_PATTERN + r"[ \t]*=.+%}" + _JINJA_OPTIONAL_EOL_COMMENT,
         flags=re.MULTILINE,
     )
     # Useful for replacing the older `{{` JINJA substitution with the newer `${{` WITHOUT accidentally doubling-up the
