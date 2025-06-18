@@ -251,8 +251,13 @@ class Regex:
     SELECTOR: Final[re.Pattern[str]] = re.compile(r"\[.*\]")
     # Detects the 6 common variants (3 |'s, 3 >'s). See this guide for more info:
     #   https://stackoverflow.com/questions/3790454/how-do-i-break-a-string-in-yaml-over-multiple-lines/21699210
-    MULTILINE: Final[re.Pattern[str]] = re.compile(r"^\s*.*:\s+(\||>)(\+|\-)?(\s*|\s+#.*)")
+    MULTILINE_VARIANT: Final[re.Pattern[str]] = re.compile(r"^[ \t]*.*:[ \t]+(\||>)(\+|\-)?([ \t]*|[ \t]+#.*)")
     # Group where the "variant" string is identified
     MULTILINE_VARIANT_CAPTURE_GROUP_CHAR: Final[int] = 1
     MULTILINE_VARIANT_CAPTURE_GROUP_SUFFIX: Final[int] = 2
-    DETECT_TRAILING_COMMENT: Final[re.Pattern[str]] = re.compile(r"(\s)+(#)")
+    # Detects the special "-backslash multiline string.
+    MULTILINE_BACKSLASH_QUOTE: Final[re.Pattern[str]] = re.compile(r"^[ \t]*(.*):[ \t]+(\".*\\)$")
+    MULTILINE_BACKSLASH_QUOTE_CAPTURE_GROUP_KEY: Final[int] = 1
+    MULTILINE_BACKSLASH_QUOTE_CAPTURE_GROUP_FIRST_VALUE: Final[int] = 2
+
+    DETECT_TRAILING_COMMENT: Final[re.Pattern[str]] = re.compile(r"([ \t])+(#)")

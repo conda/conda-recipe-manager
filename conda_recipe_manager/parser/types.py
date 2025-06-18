@@ -119,3 +119,6 @@ class MultilineVariant(StrEnum):
     L_ANGLE = "<"
     L_ANGLE_PLUS = "<+"
     L_ANGLE_MINUS = "<-"
+    # This variant works differently. The starting line must begin with a " and end with a \. Every subsequent line
+    # then must start with a \ until an unescaped-closing-" is found.
+    BACKSLASH_QUOTE = "\\"

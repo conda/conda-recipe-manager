@@ -205,6 +205,8 @@ def normalize_multiline_strings(val: NodeValue, variant: MultilineVariant) -> No
     # Prepend the multiline marker to the string to have PyYaml interpret how the whitespace should be handled. JINJA
     # substitutions in multi-line strings do not break the PyYaml parser.
     multiline_str = f"\n{TAB_AS_SPACES}".join(cast(list[str], val))
+    if variant == MultilineVariant.BACKSLASH_QUOTE:
+        return multiline_str
     return f"{variant}\n{TAB_AS_SPACES}{multiline_str}"
 
 

@@ -156,6 +156,79 @@ class RecipeReader(IsModifiable):
         return s[comment_re_result.start(2) :].rstrip()
 
     @staticmethod
+    def _parse_multiline_node(
+        line: str, lines: list[str], line_idx: int, new_indent: int, new_node: Optional[Node]
+    ) -> tuple[int, Optional[Node]]:
+        """
+        Parses a multiline string. This handles both quote-backslash and general variations.
+
+        :param line: Current line to scan/parse.
+        :param lines: Array of all lines in the file.
+        :param line_idx: Current index into the `lines` array, representing the current parser position. This may be
+            incremented by this function.
+        :param new_indent: Current indentation level to track.
+        :param new_node: Current parse-tree node to operate on. If this is not set, this function may initialize and
+            return this value if a quote-backslash multiline string is found.
+        :returns: A tuple containing the new `line_idx` value and reference to `new_node`. `new_node` may be initialized
+            if it is initially set to `None`.
+        """
+        # The backslash-quote syntax is special and requires us to bypass the usually Node initialization process. We
+        # store the initial state as a bool so that we can modify `new_node` later.
+        check_backslash_variant: Final[bool] = new_node is None
+
+        # Pick the applicable regular expression to match the starting line with.
+        multiline_re_match: Final = (
+            Regex.MULTILINE_BACKSLASH_QUOTE.match(line)
+            if check_backslash_variant
+            else Regex.MULTILINE_VARIANT.match(line)
+        )
+
+        if not multiline_re_match:
+            return line_idx, new_node
+
+        # Initialization of the child "multiline-node" differs between the two major multiline string forms.
+        # NOTE: We perform a redundant `new_node is None` check to help-out the type-checker.
+        multiline_node: Node
+        if new_node is None or check_backslash_variant:
+            new_node = Node(multiline_re_match.group(Regex.MULTILINE_BACKSLASH_QUOTE_CAPTURE_GROUP_KEY), key_flag=True)
+            multiline_node = Node(
+                # We do not need to increment `line_idx`. It is modified after the current line is read.
+                [multiline_re_match.group(Regex.MULTILINE_BACKSLASH_QUOTE_CAPTURE_GROUP_FIRST_VALUE)],
+                multiline_variant=MultilineVariant.BACKSLASH_QUOTE,
+            )
+        else:
+            # Calculate which multiline symbol is used. The first character must be matched, the second is optional.
+            variant_capture = cast(str, multiline_re_match.group(Regex.MULTILINE_VARIANT_CAPTURE_GROUP_CHAR))
+            variant_sign = cast(str | None, multiline_re_match.group(Regex.MULTILINE_VARIANT_CAPTURE_GROUP_SUFFIX))
+            if variant_sign is not None:
+                variant_capture += variant_sign
+            # Per YAML spec, multiline statements can't be commented. In other words, the `#` symbol is seen as a
+            # string character in multiline values.
+            multiline_node = Node(
+                [],
+                multiline_variant=MultilineVariant(variant_capture),
+            )
+
+        multiline = lines[line_idx]
+        multiline_indent = num_tab_spaces(multiline)
+        # Add the line to the list once it is verified to be the next line to capture in this node. This means that
+        # `line_idx` will point to the line of the next node, post-processing. Note that blank lines are valid in
+        # multi-line strings, occasionally found in `/about/summary` sections.
+        while (
+            multiline_indent > new_indent
+            or multiline == ""
+            or (check_backslash_variant and multiline and multiline[-1] == "\\")
+        ):
+            cast(list[str], multiline_node.value).append(multiline.strip())
+            line_idx += 1
+            multiline = lines[line_idx]
+            multiline_indent = num_tab_spaces(multiline)
+        # The previous level is the key to this multiline value, so we can safely reset it.
+        new_node.children = [multiline_node]
+
+        return line_idx, new_node
+
+    @staticmethod
     def _parse_line_node(s: str) -> Node:
         """
         Parses a line of conda-formatted YAML into a Node.
@@ -537,36 +610,17 @@ class RecipeReader(IsModifiable):
                 continue
 
             new_indent = num_tab_spaces(line)
-            new_node = RecipeReader._parse_line_node(clean_line)
-            # If the last node ended (pre-comments) with a |, >, or other multi-line character, reset the value to be a
-            # list of the following extra-indented strings
-            multiline_re_match = Regex.MULTILINE.match(line)
-            if multiline_re_match:
-                # Calculate which multiline symbol is used. The first character must be matched, the second is optional.
-                variant_capture = cast(str, multiline_re_match.group(Regex.MULTILINE_VARIANT_CAPTURE_GROUP_CHAR))
-                variant_sign = cast(str | None, multiline_re_match.group(Regex.MULTILINE_VARIANT_CAPTURE_GROUP_SUFFIX))
-                if variant_sign is not None:
-                    variant_capture += variant_sign
-                # Per YAML spec, multiline statements can't be commented. In other words, the `#` symbol is seen as a
-                # string character in multiline values.
-                multiline_node = Node(
-                    [],
-                    multiline_variant=MultilineVariant(variant_capture),
-                )
-                # Type narrow that we assigned `value` as a `list`
-                assert isinstance(multiline_node.value, list)
-                multiline = lines[line_idx]
-                multiline_indent = num_tab_spaces(multiline)
-                # Add the line to the list once it is verified to be the next line to capture in this node. This means
-                # that `line_idx` will point to the line of the next node, post-processing. Note that blank lines are
-                # valid in multi-line strings, occasionally found in `/about/summary` sections.
-                while multiline_indent > new_indent or multiline == "":
-                    multiline_node.value.append(multiline.strip())
-                    line_idx += 1
-                    multiline = lines[line_idx]
-                    multiline_indent = num_tab_spaces(multiline)
-                # The previous level is the key to this multi-line value, so we can safely reset it.
-                new_node.children = [multiline_node]
+
+            # Special multiline case. This will initialize `new_node` if the special "-backslash multiline pattern is
+            # found.
+            line_idx, new_node = RecipeReader._parse_multiline_node(clean_line, lines, line_idx, new_indent, None)
+            if new_node is None:
+                new_node = RecipeReader._parse_line_node(clean_line)
+                # In the general case (which does not create a new-node), we ignore the returned `new_node` value and
+                # rely on the object being modified by the reference we pass-in. As a small optimization, we only run
+                # checks on the other multiline variants if the special case fails.
+                line_idx, _ = RecipeReader._parse_multiline_node(clean_line, lines, line_idx, new_indent, new_node)
+
             if new_indent > cur_indent:
                 node_stack.append(last_node)
                 # Edge case: The first element of a list of objects that is NOT a 1-line key-value pair needs
@@ -741,9 +795,19 @@ class RecipeReader(IsModifiable):
             #
             # By the language spec, # symbols do not indicate comments on multiline strings.
             if node.children[0].multiline_variant != MultilineVariant.NONE:
+                # TODO should we even render comments in multi-line strings? I don't believe they are valid.
                 multi_variant: Final[MultilineVariant] = node.children[0].multiline_variant
-                lines.append(f"{spaces}{node.value}: {multi_variant}  {node.comment}".rstrip())
-                for val_line in cast(list[str], node.children[0].value):
+                start_idx = 0
+                # Quoted multiline strings with backslashes are special. They start by rendering on the same line as
+                # their key.
+                if multi_variant == MultilineVariant.BACKSLASH_QUOTE:
+                    start_idx = 1
+                    lines.append(
+                        f"{spaces}{node.value}: {cast(list[str], node.children[0].value)[0]} {node.comment}".rstrip()
+                    )
+                else:
+                    lines.append(f"{spaces}{node.value}: {multi_variant}  {node.comment}".rstrip())
+                for val_line in cast(list[str], node.children[0].value)[start_idx:]:
                     lines.append(
                         f"{spaces}{TAB_AS_SPACES}"
                         f"{stringify_yaml(val_line, multiline_variant=multi_variant)}".rstrip()
