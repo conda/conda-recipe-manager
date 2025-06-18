@@ -95,7 +95,7 @@ class _Regex:
     )
     # Attempts to match PyPi source archive URLs by the start of the URL.
     PYPI_URL: Final[re.Pattern[str]] = re.compile(
-        r"https?://(?:pypi\.(?:io|org)/packages/source/[a-zA-Z]/[^/]+/|files\.pythonhosted\.org/)"
+        r"https?://pypi\.(?:io|org)/packages/source/[a-zA-Z]/|https?://files\.pythonhosted\.org/"
     )
 
 
