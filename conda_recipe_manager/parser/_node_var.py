@@ -7,6 +7,8 @@ from __future__ import annotations
 
 from typing import Final, Optional
 
+from conda_recipe_manager.parser._types import Regex
+from conda_recipe_manager.parser._utils import search_any_regex
 from conda_recipe_manager.parser.selector_parser import SelectorParser
 from conda_recipe_manager.parser.types import SchemaVersion
 from conda_recipe_manager.types import JsonType
@@ -77,8 +79,13 @@ class NodeVar:
 
         :returns: A string representing how a variable appears in a V0 recipe.
         """
-        # Double quote strings, except for when we detect a env.get() expression. See issues #271, #366.
-        if isinstance(self._value, str) and not self._value.startswith("env.get("):
+        # Double quote strings, except for when we detect a env.get() expression or any JINJA functions.
+        # See issues #271, #366 for more details.
+        if (
+            isinstance(self._value, str)
+            and not self._value.startswith("env.get(")
+            and not search_any_regex(Regex.JINJA_FUNCTIONS_SET, self._value)
+        ):
             return f"'{self._value}'" if '"' in self._value else f'"{self._value}"'
         return str(self._value)
 

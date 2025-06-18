@@ -1,6 +1,6 @@
 {% set name = "types-toml" %}
 {% set version = "0.10.8.6" %}  # Foobar
-{% set soversion = '".".join(version.split(".")[:3])' %}
+{% set soversion = ".".join(version.split(".")[:3]) %}
 {% set native_compiler_subdir = "linux-64" %}  # [linux]
 {% set am_version = "1.15" %}  # keep synchronized with build.sh
 

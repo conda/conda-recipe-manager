@@ -1,8 +1,8 @@
 {% set so_number = "152" %}
 {% set epoch = "1" %}
-{% set version_prefix = "epoch + '!' + so_number" %}
+{% set version_prefix = epoch + '!' + so_number %}
 {% set release_date = "20180806" %}
-{% set version = "version_prefix + '.' + release_date" %}
+{% set version = version_prefix + '.' + release_date %}
 {% set sha256 = "958e78e7563f0018285ebdbff563fb22db89b0abf3649d7e914abd9d50785fc6" %}
 
 package:
