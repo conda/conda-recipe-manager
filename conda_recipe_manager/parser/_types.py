@@ -127,11 +127,11 @@ class Regex:
     V0_UNSUPPORTED_JINJA: Final[list[re.Pattern[str]]] = [re.compile(r"\.join\(")]
 
     # Pattern to detect Jinja variable names and functions
-    _JINJA_VAR_FUNCTION_PATTERN: Final[str] = r"[a-zA-Z0-9_\|\'\"\(\)\[\]\, =\.\-~\+:]+"
+    _JINJA_VAR_FUNCTION_PATTERN: Final[str] = r"[a-zA-Z0-9_\|\'\"\(\)\[\]\,\\\/ =\.\-~\+:]+"
     # Pattern to detect optional comments or trailing whitespace. NOTE: The comment is marked as an optional matching
     # group. Failure to mark this may cause `findall()` to return empty strings if no other group is present in the
     # regex.
-    _JINJA_OPTIONAL_EOL_COMMENT: Final[str] = r"[ \t]*(?:#[ \t\w\[\]]*)?$"
+    _JINJA_OPTIONAL_EOL_COMMENT: Final[str] = r"[ \t]*(?:#.*)?$"
 
     # Pattern that attempts to identify YAML strings that need to be quote-escaped in the parsing process. Including:
     #   - Strings that start with a quote marker, close the same quote marker, and then are trailed by characters.
