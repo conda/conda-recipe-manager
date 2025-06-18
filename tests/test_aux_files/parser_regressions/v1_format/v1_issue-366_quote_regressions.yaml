@@ -1,5 +1,6 @@
 # Contains a number of regression issues found while working on Issue #366
 # We must preserve comments on variable assignment lines.
+# {% set soversion_comment = ".".join(version.split(".")[:3]) %}
 # Using a fake section prevents attempts to parse garbage as dependencies
 schema_version: 1
 

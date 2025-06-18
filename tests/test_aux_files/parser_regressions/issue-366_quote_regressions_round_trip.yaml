@@ -4,6 +4,7 @@
 {% set native_compiler_subdir = "linux-64" %}  # [linux]
 {% set am_version = "1.15" %}  # keep synchronized with build.sh
 
+# {% set soversion_comment = ".".join(version.split(".")[:3]) %}
 # Contains a number of regression issues found while working on Issue #366, but is round-trip-able.
 # We must preserve comments on variable assignment lines.
 # TODO FIX: When #384 is resolved, move the comments above the variable assignment
