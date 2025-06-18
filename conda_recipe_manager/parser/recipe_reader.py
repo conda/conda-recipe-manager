@@ -211,6 +211,7 @@ class RecipeReader(IsModifiable):
 
         multiline = lines[line_idx]
         multiline_indent = num_tab_spaces(multiline)
+        lines_len: Final[int] = len(lines)
         # Add the line to the list once it is verified to be the next line to capture in this node. This means that
         # `line_idx` will point to the line of the next node, post-processing. Note that blank lines are valid in
         # multi-line strings, occasionally found in `/about/summary` sections.
@@ -221,6 +222,9 @@ class RecipeReader(IsModifiable):
         ):
             cast(list[str], multiline_node.value).append(multiline.strip())
             line_idx += 1
+            # Ensure we stop looking if we have reached the end of the file.
+            if line_idx >= lines_len:
+                break
             multiline = lines[line_idx]
             multiline_indent = num_tab_spaces(multiline)
         # The previous level is the key to this multiline value, so we can safely reset it.
