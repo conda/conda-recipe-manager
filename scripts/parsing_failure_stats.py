@@ -1,10 +1,11 @@
 # type: ignore
 """
-Script to analyze all conda recipes in a directory and collect parsing statistics.
+Script to analyze all conda recipes in a directory and collect parsing failure statistics.
 
 This script processes all feedstock directories, attempts to parse their meta.yaml files
 using RecipeReader, and generates reports and visualizations of success/failure statistics.
 """
+import argparse
 import os
 import sys
 from collections import Counter, defaultdict
@@ -114,25 +115,6 @@ def generate_histogram(exception_counter, success_count, output_dir="output"):
 
     plt.tight_layout()
 
-    # Save the plot
-    output_path = os.path.join(output_dir, "recipe_analysis_histogram.png")
-    plt.savefig(output_path, dpi=300, bbox_inches="tight")
-    print(f"Histogram saved to: {output_path}")
-
-    # Also save as text report
-    report_path = os.path.join(output_dir, "recipe_analysis_report.txt")
-    with open(report_path, "w", encoding="utf-8") as f:
-        f.write("Recipe Analysis Report\n")
-        f.write("=====================\n\n")
-        f.write(f"Total recipes analyzed: {sum(counts)}\n")
-        f.write(f"Successful: {success_count}\n")
-        f.write(f"Failed: {sum(counts) - success_count}\n\n")
-        f.write("Exception breakdown:\n")
-        for exception_type, count in exception_counter.most_common():
-            f.write(f"  {exception_type}: {count}\n")
-
-    print(f"Text report saved to: {report_path}")
-
     # Show the plot
     plt.show()
 
@@ -196,14 +178,25 @@ def print_detailed_report(exception_counter, success_count, recipe_details):
 
 def main():
     """Main function to run the recipe analysis."""
-    # Path to the recipes directory
-    recipes_dir = Path("recipes_v0/anaconda_recipes_01")
+    # Set up command line argument parsing
+    parser = argparse.ArgumentParser(
+        description="Analyze conda recipes and generate parsing statistics",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "recipes_dir",
+        type=str,
+        help="Path to the directory containing recipe feedstocks",
+    )
+
+    args = parser.parse_args()
+    recipes_dir = Path(args.recipes_dir)
 
     if not os.path.exists(recipes_dir):
         print(f"Error: Directory {recipes_dir} does not exist!")
         sys.exit(1)
 
-    print("Starting recipe analysis...")
+    print(f"Starting recipe analysis for directory: {recipes_dir}")
 
     # Analyze recipes
     exception_counter, success_count, recipe_details = analyze_recipes(recipes_dir)
