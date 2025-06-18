@@ -1,6 +1,5 @@
 # Contains a number of regression issues found while working on Issue #366
 # We must preserve comments on variable assignment lines.
-# TODO FIX: When #384 is resolved, move the comments above the variable assignment
 # Using a fake section prevents attempts to parse garbage as dependencies
 schema_version: 1
 
@@ -9,6 +8,7 @@ context:
   version: 0.10.8.6  # Foobar
   soversion: ${{ ".".join(version.split(".")[:3]) }}
   native_compiler_subdir: linux-64
+  am_version: 1.15  # keep synchronized with build.sh
 
 package:
   name: ${{ name|lower }}
