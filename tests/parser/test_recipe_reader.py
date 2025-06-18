@@ -148,6 +148,7 @@ def test_loading_obj_in_list() -> None:
         "v1_format/v1_google-cloud-cpp.yaml",
         "v1_format/v1_dynamic-linking.yaml",
         "v1_format/v1_sub_vars.yaml",
+        "parser_regressions/v1_format/v1_issue-366_quote_regressions.yaml",
     ],
 )
 def test_round_trip(file: str) -> None:
