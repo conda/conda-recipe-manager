@@ -172,6 +172,15 @@ def test_pre_process_recipe_text(input_file: str, expected_file: str) -> None:
                 "No `license` provided in `/about`",
             ],
         ),
+        # Regressions found and fixed while working on Issue #366
+        (
+            "parser_regressions/issue-366_quote_regressions.yaml",
+            [],
+            [
+                "The following key(s) contain partially unsupported syntax: soversion",
+                "No `license` provided in `/about`",
+            ],
+        ),
         # Tests upgrading the `/build/script` when `script_env` is present (this is essentially a test for
         # `_upgrade_build_script_section()`)
         (
@@ -256,7 +265,7 @@ def test_pre_process_recipe_text(input_file: str, expected_file: str) -> None:
         # Issue #289: Compiled projects that use Python are not "pure python" packages. Such packages should not receive
         # a Python section with a `pip_check: False` field
         (
-            "issue_289_regression.yaml",
+            "parser_regressions/issue-289_regression.yaml",
             [],
             [
                 "Recipe upgrades cannot currently upgrade ambiguous version constraints on dependencies that"
