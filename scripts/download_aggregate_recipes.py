@@ -87,7 +87,8 @@ def download_all_recipes(output_dir_path: str = "~/conda-recipe-manager-aggregat
 
     github_token = load_github_token()
     rate_limit = "5000" if github_token else "60"
-    print(f"Using {"authenticated" if github_token else "unauthenticated"} requests ({rate_limit} req/hour)")
+    auth_str = "authenticated" if github_token else "unauthenticated"
+    print(f"Using {auth_str} requests ({rate_limit} req/hour)")
 
     submodules = fetch_submodules(github_token)
     if not submodules:
