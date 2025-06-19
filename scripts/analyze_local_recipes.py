@@ -190,7 +190,8 @@ def print_detailed_report(exception_counter: Counter, success_count: int, recipe
 
             # Show examples
             examples = [d["feedstock"] for d in details_list[:5]]
-            print(f"     Examples: {", ".join(examples)}")
+            examples_str = ", ".join(examples)
+            print(f"     Examples: {examples_str}")
             if len(details_list) > 5:
                 print(f"     ... and {len(details_list) - 5} more")
 
