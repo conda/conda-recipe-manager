@@ -117,7 +117,7 @@ class CbcParser(RecipeReader):
         cbc_entries: Final = self._cbc_vars_tbl[variable]
 
         # Short-circuit on trivial case: one value, no selector
-        if len(cbc_entries) == 1 and cbc_entries[0].contains_selector():
+        if len(cbc_entries) == 1 and not cbc_entries[0].contains_selector():
             return cbc_entries[0].get_value()
 
         for entry in cbc_entries:
