@@ -1,6 +1,6 @@
-{% set zz_non_alpha_first = 42 %}
+{% set zz_non_alpha_first = 42 %}  # foo
 {% set name = "types-toml" %}
-{% set version = "0.10.8.6" %}
+{% set version = "0.10.8.6" %}  # bar
 
 package:
 

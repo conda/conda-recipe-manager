@@ -22,7 +22,21 @@ from conda_recipe_manager.types import H, JsonType, SentinelType
 # Commonly used special characters that we need to ensure get quoted when rendered as a YAML string.
 # NOTE: `#`, `|`, `{`, `}`, `>`, and `<` are left out of this list as in our use case, they have specifics meaning that
 #       are already handled in the parser.
-_TO_QUOTE_SPECIAL_CHARS: Final[set[str]] = {"[", "]", ",", "&", ":", "*", "?", "-", "=", "!", "%", "@", "\\"}
+_TO_QUOTE_SPECIAL_CHARS: Final[set[str]] = {
+    "[",
+    "]",
+    ",",
+    "&",
+    ":",
+    "*",
+    "?",
+    "-",
+    "=",
+    "!",
+    "%",
+    "@",
+    "\\",
+}
 
 
 def str_to_stack_path(path: str) -> StrStack:
@@ -106,10 +120,8 @@ def substitute_markers(s: str, subs: list[str]) -> str:
 
 def quote_special_strings(s: str, multiline_variant: MultilineVariant = MultilineVariant.NONE) -> str:
     """
-    Ensure string quote escaping if quote marks are present. Otherwise this has the unintended consequence of
-    quoting all YAML strings. Although not wrong, it does not follow our common practices. Quote escaping is not
-    required for multiline strings. We do not escape quotes for Jinja value statements. We make an exception for
-    strings containing the V1 recipe format syntax, ${{ }}, which is valid YAML.
+    Ensures string quote-escaping if quote marks are present at the start of the string and handles other problematic
+    starting characters for YAML parsing. This is not to be confused with other V0 JINJA handling processes.
 
     In addition, there are a handful of special cases that need to be quoted in order to produce valid YAML. PyYaml
     and Ruamel (in safe mode) will drop quotes found in the YAML. This means that round-tripping the YAML can break in
@@ -139,8 +151,15 @@ def quote_special_strings(s: str, multiline_variant: MultilineVariant = Multilin
     ):
         return s
 
-    # `*` is common enough that we query the set before checking every "startswith" option as a small optimization.
-    if s in _TO_QUOTE_SPECIAL_CHARS or ("${{" not in s and ("'" in s or '"' in s)) or _startswith_check_all():
+    # `*` is common enough that we query the set of special characters before checking every "startswith" option as a
+    # small short-circuit optimization. See the definition of `Regex.YAML_TO_QUOTE_ESCAPE` for details on some YAML
+    # quoting edge cases and issue #366 for other context.
+    if s in _TO_QUOTE_SPECIAL_CHARS or Regex.YAML_TO_QUOTE_ESCAPE.match(s) or _startswith_check_all():
+        # Prefer simpler usage of surrounding with "/' quotes if possible. Use JSON encoding as a fallback.
+        if '"' not in s:
+            return f'"{s}"'
+        if "'" not in s:
+            return f"'{s}'"
         # The PyYaml equivalent function injects newlines, hence why we abuse the JSON library to write our YAML
         return json.dumps(s)
     return s
@@ -191,6 +210,8 @@ def normalize_multiline_strings(val: NodeValue, variant: MultilineVariant) -> No
     # Prepend the multiline marker to the string to have PyYaml interpret how the whitespace should be handled. JINJA
     # substitutions in multi-line strings do not break the PyYaml parser.
     multiline_str = f"\n{TAB_AS_SPACES}".join(cast(list[str], val))
+    if variant == MultilineVariant.BACKSLASH_QUOTE:
+        return multiline_str
     return f"{variant}\n{TAB_AS_SPACES}{multiline_str}"
 
 

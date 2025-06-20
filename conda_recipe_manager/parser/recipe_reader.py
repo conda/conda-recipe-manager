@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import ast
 import hashlib
-import json
 import re
 import sys
 from collections.abc import Callable
@@ -17,6 +16,7 @@ import yaml
 
 from conda_recipe_manager.parser._is_modifiable import IsModifiable
 from conda_recipe_manager.parser._node import Node
+from conda_recipe_manager.parser._node_var import NodeVar
 from conda_recipe_manager.parser._selector_info import SelectorInfo
 from conda_recipe_manager.parser._traverse import traverse, traverse_all
 from conda_recipe_manager.parser._types import (
@@ -42,6 +42,7 @@ from conda_recipe_manager.parser.dependency import (
     dependency_section_to_str,
 )
 from conda_recipe_manager.parser.enums import SchemaVersion
+from conda_recipe_manager.parser.selector_parser import SelectorParser
 from conda_recipe_manager.parser.types import TAB_AS_SPACES, TAB_SPACE_COUNT, MultilineVariant
 from conda_recipe_manager.parser.v0_recipe_formatter import V0RecipeFormatter
 from conda_recipe_manager.types import PRIMITIVES_TUPLE, JsonType, Primitives, SentinelType
@@ -53,6 +54,9 @@ try:
     from yaml import CSafeLoader as SafeLoader
 except ImportError:
     from yaml import SafeLoader  # type: ignore[assignment]
+
+# Type for the internal recipe variables table.
+_VarTable = dict[str, NodeVar]
 
 
 class RecipeReader(IsModifiable):
@@ -135,6 +139,100 @@ class RecipeReader(IsModifiable):
         return output
 
     @staticmethod
+    def _parse_trailing_comment(s: str) -> Optional[str]:
+        """
+        Helper function that parses a trailing comment on a line for `Node*`s classes.
+
+        :param s: Pre-stripped (no leading/trailing spaces), non-Jinja line of a recipe file
+        :returns: A comment string, including the `#` symbol, if a comment exists. `None` otherwise.
+        """
+        # There is a comment at the end of the line if a `#` symbol is found with leading whitespace before it. If it is
+        # "touching" a character on the left-side, it is just part of a string.
+        comment_re_result: Final = Regex.DETECT_TRAILING_COMMENT.search(s)
+        if comment_re_result is None:
+            return None
+
+        # Group 0 is the whole match, Group 1 is the leading whitespace, Group 2 locates the `#`
+        return s[comment_re_result.start(2) :].rstrip()
+
+    @staticmethod
+    def _parse_multiline_node(
+        line: str, lines: list[str], line_idx: int, new_indent: int, new_node: Optional[Node]
+    ) -> tuple[int, Optional[Node]]:
+        """
+        Parses a multiline string. This handles both quote-backslash and general variations.
+
+        :param line: Current line to scan/parse.
+        :param lines: Array of all lines in the file.
+        :param line_idx: Current index into the `lines` array, representing the current parser position. This may be
+            incremented by this function.
+        :param new_indent: Current indentation level to track.
+        :param new_node: Current parse-tree node to operate on. If this is not set, this function may initialize and
+            return this value if a quote-backslash multiline string is found.
+        :returns: A tuple containing the new `line_idx` value and reference to `new_node`. `new_node` may be initialized
+            if it is initially set to `None`.
+        """
+        # The backslash-quote syntax is special and requires us to bypass the usually Node initialization process. We
+        # store the initial state as a bool so that we can modify `new_node` later.
+        check_backslash_variant: Final[bool] = new_node is None
+
+        # Pick the applicable regular expression to match the starting line with.
+        multiline_re_match: Final = (
+            Regex.MULTILINE_BACKSLASH_QUOTE.match(line)
+            if check_backslash_variant
+            else Regex.MULTILINE_VARIANT.match(line)
+        )
+
+        if not multiline_re_match:
+            return line_idx, new_node
+
+        # Initialization of the child "multiline-node" differs between the two major multiline string forms.
+        # NOTE: We perform a redundant `new_node is None` check to help-out the type-checker.
+        multiline_node: Node
+        if new_node is None or check_backslash_variant:
+            new_node = Node(multiline_re_match.group(Regex.MULTILINE_BACKSLASH_QUOTE_CAPTURE_GROUP_KEY), key_flag=True)
+            multiline_node = Node(
+                # We do not need to increment `line_idx`. It is modified after the current line is read.
+                [multiline_re_match.group(Regex.MULTILINE_BACKSLASH_QUOTE_CAPTURE_GROUP_FIRST_VALUE)],
+                multiline_variant=MultilineVariant.BACKSLASH_QUOTE,
+            )
+        else:
+            # Calculate which multiline symbol is used. The first character must be matched, the second is optional.
+            variant_capture = cast(str, multiline_re_match.group(Regex.MULTILINE_VARIANT_CAPTURE_GROUP_CHAR))
+            variant_sign = cast(str | None, multiline_re_match.group(Regex.MULTILINE_VARIANT_CAPTURE_GROUP_SUFFIX))
+            if variant_sign is not None:
+                variant_capture += variant_sign
+            # Per YAML spec, multiline statements can't be commented. In other words, the `#` symbol is seen as a
+            # string character in multiline values.
+            multiline_node = Node(
+                [],
+                multiline_variant=MultilineVariant(variant_capture),
+            )
+
+        multiline = lines[line_idx]
+        multiline_indent = num_tab_spaces(multiline)
+        lines_len: Final[int] = len(lines)
+        # Add the line to the list once it is verified to be the next line to capture in this node. This means that
+        # `line_idx` will point to the line of the next node, post-processing. Note that blank lines are valid in
+        # multi-line strings, occasionally found in `/about/summary` sections.
+        while (
+            multiline_indent > new_indent
+            or multiline == ""
+            or (check_backslash_variant and multiline and multiline[-1] == "\\")
+        ):
+            cast(list[str], multiline_node.value).append(multiline.strip())
+            line_idx += 1
+            # Ensure we stop looking if we have reached the end of the file.
+            if line_idx >= lines_len:
+                break
+            multiline = lines[line_idx]
+            multiline_indent = num_tab_spaces(multiline)
+        # The previous level is the key to this multiline value, so we can safely reset it.
+        new_node.children = [multiline_node]
+
+        return line_idx, new_node
+
+    @staticmethod
     def _parse_line_node(s: str) -> Node:
         """
         Parses a line of conda-formatted YAML into a Node.
@@ -147,22 +245,20 @@ class RecipeReader(IsModifiable):
         # Use PyYaml to safely/easily/correctly parse single lines of YAML.
         output = RecipeReader._parse_yaml(s)
 
+        # The full line is a comment
+        if s.startswith("#"):
+            return Node(comment=s)
+
         # Attempt to parse-out comments. Fully commented lines are not ignored to preserve context when the text is
         # rendered. Their order in the list of child nodes will preserve their location. Fully commented lines just have
         # a value of "None".
         #
         # There is an open issue to PyYaml to support comment parsing:
         #   - https://github.com/yaml/pyyaml/issues/90
-        comment = ""
-        # The full line is a comment
-        if s.startswith("#"):
-            return Node(comment=s)
-        # There is a comment at the end of the line if a `#` symbol is found with leading whitespace before it. If it is
-        # "touching" a character on the left-side, it is just part of a string.
-        comment_re_result = Regex.DETECT_TRAILING_COMMENT.search(s)
-        if comment_re_result is not None:
-            # Group 0 is the whole match, Group 1 is the leading whitespace, Group 2 locates the `#`
-            comment = s[comment_re_result.start(2) :]
+        # TODO Future: Node comments should be Optional. That would simplify this logic and prevent empty string
+        # allocations.
+        opt_comment: Final = RecipeReader._parse_trailing_comment(s)
+        comment: Final = "" if opt_comment is None else opt_comment
 
         # If a dictionary is returned, we have a line containing a key and potentially a value. There should only be 1
         # key/value pairing in 1 line. Nodes representing keys should be flagged for handling edge cases.
@@ -335,7 +431,7 @@ class RecipeReader(IsModifiable):
         """
         # Variable
         if s in self._vars_tbl:
-            return self._vars_tbl[s]
+            return self._vars_tbl[s].get_value()
 
         # int
         if s.isdigit():
@@ -387,7 +483,7 @@ class RecipeReader(IsModifiable):
                 s = s.replace(match, value)
             elif key in self._vars_tbl:
                 # Replace value as a string. Re-interpret the entire value before returning.
-                value = str(self._vars_tbl[key])
+                value = str(self._vars_tbl[key].get_value())
                 if Regex.JINJA_VAR_VALUE_TERNARY.match(value):
                     value = "${{" + value + "}}"
                 if lower_match:
@@ -428,20 +524,34 @@ class RecipeReader(IsModifiable):
         Requires parse-tree and `_schema_version` to be initialized.
         """
         # Tracks Jinja variables set by the file
-        self._vars_tbl: dict[str, JsonType] = {}
+        self._vars_tbl: _VarTable = {}
 
         match self._schema_version:
             case SchemaVersion.V0:
                 # Find all the set statements and record the values
                 for line in cast(list[str], Regex.JINJA_V0_SET_LINE.findall(self._init_content)):
                     key = line[line.find("set") + len("set") : line.find("=")].strip()
-                    value = line[line.find("=") + len("=") : line.find("%}")].strip()
+                    value: str | JsonType = line[line.find("=") + len("=") : line.find("%}")].strip()
+                    # Fall-back to string interpretation.
+                    # TODO: Ideally we use `_parse_yaml()` in the future. However, as discovered in the work to solve
+                    # issue #366, that is easier said than done. `_parse_yaml()` was never expected to run on V0 JINJA
+                    # variable initialization lines. This causes a lot of conversion problems if the value being set is
+                    # a string that is invalid YAML.
+                    # Example: {% set soversion = ".".join(version.split(".")[:3]) %}
                     try:
-                        self._vars_tbl[key] = ast.literal_eval(value)  # type: ignore[misc]
+                        value = cast(JsonType, ast.literal_eval(cast(str, value)))
                     except Exception:  # pylint: disable=broad-exception-caught
-                        self._vars_tbl[key] = value
+                        value = str(value)
+                    self._vars_tbl[key] = NodeVar(value, RecipeReader._parse_trailing_comment(line))
             case SchemaVersion.V1:
-                self._vars_tbl = cast(dict[str, JsonType], self.get_value("/context", {}))
+                # Abuse the fact that the `/context` section is pure YAML.
+                context: Final = cast(dict[str, JsonType], self.get_value("/context", {}))
+                comments_tbl: Final = self.get_comments_table()
+                for key, value in context.items():
+                    # V1 only allows for scalar types as variables. So we should be able to recover all comments without
+                    # recursing through `/context`
+                    var_path = RecipeReader.append_to_path("/context", key)
+                    self._vars_tbl[key] = NodeVar(value, comments_tbl.get(var_path, None))
 
     def _rebuild_selectors(self) -> None:
         """
@@ -451,13 +561,9 @@ class RecipeReader(IsModifiable):
         self._selector_tbl: dict[str, list[SelectorInfo]] = {}
 
         def _collect_selectors(node: Node, path: StrStack) -> None:
-            # Ignore empty comments
-            if not node.comment:
+            selector: Final = SelectorParser._v0_extract_selector(node.comment)  # pylint: disable=protected-access
+            if selector is None:
                 return
-            match = Regex.SELECTOR.search(node.comment)
-            if not match:
-                return
-            selector = match.group(0)
             selector_info = SelectorInfo(node, list(path))
             self._selector_tbl.setdefault(selector, [])
             self._selector_tbl[selector].append(selector_info)
@@ -485,7 +591,7 @@ class RecipeReader(IsModifiable):
         if fmt.is_v0_recipe():
             fmt.fmt_text()
         # Replace all Jinja lines. Then traverse line-by-line
-        sanitized_yaml = Regex.JINJA_V0_LINE.sub("", str(fmt))
+        sanitized_yaml: Final = Regex.JINJA_V0_LINE.sub("", str(fmt))
 
         # Read the YAML line-by-line, maintaining a stack to manage the last owning node in the tree.
         node_stack: list[Node] = [self._root]
@@ -495,8 +601,8 @@ class RecipeReader(IsModifiable):
 
         # Iterate with an index variable, so we can handle multiline values
         line_idx = 0
-        lines = sanitized_yaml.splitlines()
-        num_lines = len(lines)
+        lines: Final = sanitized_yaml.splitlines()
+        num_lines: Final = len(lines)
         while line_idx < num_lines:
             line = lines[line_idx]
             # Increment here, so that the inner multiline processing loop doesn't cause a skip of the line following the
@@ -508,36 +614,17 @@ class RecipeReader(IsModifiable):
                 continue
 
             new_indent = num_tab_spaces(line)
-            new_node = RecipeReader._parse_line_node(clean_line)
-            # If the last node ended (pre-comments) with a |, >, or other multi-line character, reset the value to be a
-            # list of the following extra-indented strings
-            multiline_re_match = Regex.MULTILINE.match(line)
-            if multiline_re_match:
-                # Calculate which multiline symbol is used. The first character must be matched, the second is optional.
-                variant_capture = cast(str, multiline_re_match.group(Regex.MULTILINE_VARIANT_CAPTURE_GROUP_CHAR))
-                variant_sign = cast(str | None, multiline_re_match.group(Regex.MULTILINE_VARIANT_CAPTURE_GROUP_SUFFIX))
-                if variant_sign is not None:
-                    variant_capture += variant_sign
-                # Per YAML spec, multiline statements can't be commented. In other words, the `#` symbol is seen as a
-                # string character in multiline values.
-                multiline_node = Node(
-                    [],
-                    multiline_variant=MultilineVariant(variant_capture),
-                )
-                # Type narrow that we assigned `value` as a `list`
-                assert isinstance(multiline_node.value, list)
-                multiline = lines[line_idx]
-                multiline_indent = num_tab_spaces(multiline)
-                # Add the line to the list once it is verified to be the next line to capture in this node. This means
-                # that `line_idx` will point to the line of the next node, post-processing. Note that blank lines are
-                # valid in multi-line strings, occasionally found in `/about/summary` sections.
-                while multiline_indent > new_indent or multiline == "":
-                    multiline_node.value.append(multiline.strip())
-                    line_idx += 1
-                    multiline = lines[line_idx]
-                    multiline_indent = num_tab_spaces(multiline)
-                # The previous level is the key to this multi-line value, so we can safely reset it.
-                new_node.children = [multiline_node]
+
+            # Special multiline case. This will initialize `new_node` if the special "-backslash multiline pattern is
+            # found.
+            line_idx, new_node = RecipeReader._parse_multiline_node(clean_line, lines, line_idx, new_indent, None)
+            if new_node is None:
+                new_node = RecipeReader._parse_line_node(clean_line)
+                # In the general case (which does not create a new-node), we ignore the returned `new_node` value and
+                # rely on the object being modified by the reference we pass-in. As a small optimization, we only run
+                # checks on the other multiline variants if the special case fails.
+                line_idx, _ = RecipeReader._parse_multiline_node(clean_line, lines, line_idx, new_indent, new_node)
+
             if new_indent > cur_indent:
                 node_stack.append(last_node)
                 # Edge case: The first element of a list of objects that is NOT a 1-line key-value pair needs
@@ -622,9 +709,8 @@ class RecipeReader(IsModifiable):
         s += f"{self.__class__.__name__} Instance\n"
         s += f"- Schema Version: {self._schema_version}\n"
         s += "- Variables Table:\n"
-        # If we run into an unserializable type (like data that might be interpreted as a date object), attempt to
-        # the data render as a string
-        s += json.dumps(self._vars_tbl, indent=TAB_AS_SPACES, default=str) + "\n"
+        for key, node_var in self._vars_tbl.items():
+            s += f"{TAB_AS_SPACES}- {key}: {node_var.render_v0_value()}{node_var.render_comment()}\n"
         s += "- Selectors Table:\n"
         for key, val in self._selector_tbl.items():
             s += f"{TAB_AS_SPACES}{key}\n"
@@ -713,9 +799,19 @@ class RecipeReader(IsModifiable):
             #
             # By the language spec, # symbols do not indicate comments on multiline strings.
             if node.children[0].multiline_variant != MultilineVariant.NONE:
+                # TODO should we even render comments in multi-line strings? I don't believe they are valid.
                 multi_variant: Final[MultilineVariant] = node.children[0].multiline_variant
-                lines.append(f"{spaces}{node.value}: {multi_variant}  {node.comment}".rstrip())
-                for val_line in cast(list[str], node.children[0].value):
+                start_idx = 0
+                # Quoted multiline strings with backslashes are special. They start by rendering on the same line as
+                # their key.
+                if multi_variant == MultilineVariant.BACKSLASH_QUOTE:
+                    start_idx = 1
+                    lines.append(
+                        f"{spaces}{node.value}: {cast(list[str], node.children[0].value)[0]} {node.comment}".rstrip()
+                    )
+                else:
+                    lines.append(f"{spaces}{node.value}: {multi_variant}  {node.comment}".rstrip())
+                for val_line in cast(list[str], node.children[0].value)[start_idx:]:
                     lines.append(
                         f"{spaces}{TAB_AS_SPACES}"
                         f"{stringify_yaml(val_line, multiline_variant=multi_variant)}".rstrip()
@@ -781,10 +877,7 @@ class RecipeReader(IsModifiable):
         # `/context`.
         if self._schema_version == SchemaVersion.V0:
             for key, val in self._vars_tbl.items():
-                # Double quote strings, except for when we detect a env.get() expression. See issue #271.
-                if isinstance(val, str) and not val.startswith("env.get("):
-                    val = f'"{val}"'
-                lines.append(f"{{% set {key} = {val} %}}")
+                lines.append(f"{{% set {key} = {val.render_v0_value()} %}}{val.render_comment()}")
             # Add spacing if variables have been set
             if len(self._vars_tbl):
                 lines.append("")
@@ -1169,7 +1262,7 @@ class RecipeReader(IsModifiable):
             if default == RecipeReader._sentinel or isinstance(default, SentinelType):
                 raise KeyError
             return default
-        return self._vars_tbl[var]
+        return self._vars_tbl[var].get_value()
 
     def get_variable_references(self, var: str) -> list[str]:
         """

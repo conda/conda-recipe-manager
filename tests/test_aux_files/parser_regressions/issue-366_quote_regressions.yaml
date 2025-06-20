@@ -1,0 +1,54 @@
+# Contains a number of regression issues found while working on Issue #366
+# We must preserve comments on variable assignment lines.
+{% set name = "types-toml" %}
+{% set version = "0.10.8.6" %}  # Foobar
+{% set soversion = ".".join(version.split(".")[:3]) %}
+{% set native_compiler_subdir = "linux-64" %}  # [linux]
+# {% set soversion_comment = ".".join(version.split(".")[:3]) %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  url: https://pypi.io/packages/{{name}}/source/{{version}}/{{version}}/{{version}}
+  sha256: 6d3ac79e36c9ee593c5d4fb33a50cca0e3adceb6ef5cff8b8e5aef67b4c4aaf2
+  fn: ${{ name }}-${{ version }}.tar.gz
+
+build:
+  number: 0
+  merge_build_host: true  # [win]
+
+# Using a fake section prevents attempts to parse garbage as dependencies
+fake_requirements:
+  host:
+    - python
+    # From: conda-standalone (many special characters in a JINJA line)
+    - {{ SRC_DIR | replace('\\', '/') }}/src/conda_patches/0001-Rename-and-replace-entrypoint-stub-exe.patch
+  run:
+    - python
+    - {{ version.split(".")[0] }}
+    - {{ version.split(".") }}
+    - {{ "".join(version.split(".")[0]) }}
+    - {{ "".join(version.split(".")[0]) }}
+    # YAML that becomes illegal if the outer quotes are stripped.
+    - "'m2w64-' if win else ''"
+    - '"" foo ""'
+
+test:
+  # From: libxcb-feedstock (spaces before set, in the middle of the file)
+  {% set am_version = "1.15" %} # keep synchronized with build.sh
+  imports:
+    - huggingface_hub
+    - huggingface_hub.commands
+  requires:
+    - pip
+  commands:
+    - huggingface-cli --help
+
+about:
+  home: https://github.com/python/typeshed
+  summary: Simple regression test for various JINJA substitution errors
+  # From: r-cli-feedstock (quote-backslash multiline YAML string). Hard mode: multiline string is at the end of the file
+  description: "A suite of tools to build attractive command line interfaces ('CLIs'), from semantic elements: headings, lists, alerts, paragraphs, etc. Supports custom themes via a 'CSS'-like language. It also contains a number of lower level 'CLI' elements: rules, boxes, trees, and 'Unicode' symbols with 'ASCII' alternatives.\
+    \ It support ANSI colors and text styles as well."
