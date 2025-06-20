@@ -81,6 +81,9 @@ jobs:
     runs-on: ubuntu-latest
     name: Integration Testing Final Report
     needs: [integration-rattler]
+    # Aggregate the states into a final report, even if the individual jobs fail. This makes it easier to check against
+    # previously working iterations of this workflow.
+    if: success() || failure()
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
