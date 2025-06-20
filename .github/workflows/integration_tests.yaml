@@ -30,23 +30,23 @@ jobs:
           - bioconda_recipes_04
         include:
           - test-directory: anaconda_recipes_01
-            convert-success: 0.90
+            convert-success: 0.93
             rattler-success: 0.75
           - test-directory: bioconda_recipes_01
-            convert-success: 0.85
+            convert-success: 0.95
             rattler-success: 0.70
           - test-directory: bioconda_recipes_02
-            convert-success: 0.85
-            rattler-success: 0.75
+            convert-success: 0.90
+            rattler-success: 0.70
           - test-directory: bioconda_recipes_03
-            convert-success: 0.85
+            convert-success: 0.90
             rattler-success: 0.55
           - test-directory: bioconda_recipes_04
-            convert-success: 0.85
+            convert-success: 0.95
             rattler-success: 0.60
           # 2,000 randomly selected conda-forge recipes
           - test-directory: conda_forge_recipes_01
-            convert-success: 0.90
+            convert-success: 0.95
             rattler-success: 0.70
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
