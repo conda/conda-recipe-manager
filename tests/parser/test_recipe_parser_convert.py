@@ -181,6 +181,14 @@ def test_pre_process_recipe_text(input_file: str, expected_file: str) -> None:
                 "No `license` provided in `/about`",
             ],
         ),
+        # Regressions found and fixed while working on Issue #378
+        (
+            "parser_regressions/issue-378_colon_quote_regression.yaml",
+            [
+                "Could not parse dependencies when attempting to upgrade ambiguous version numbers.",
+            ],
+            ["Field at `/about/license_family` is no longer supported."],
+        ),
         # Tests upgrading the `/build/script` when `script_env` is present (this is essentially a test for
         # `_upgrade_build_script_section()`)
         (

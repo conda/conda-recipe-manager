@@ -1,0 +1,15 @@
+schema_version: 1
+
+about:
+  license: BSD-3-Clause
+  license_file: LICENSE.txtAdd commentMore actions
+  summary: "Param: Make your Python code clearer and more reliable by declaring Parameters"
+  description: |
+    Param is a library providing Parameters: Python attributesAdd commentMore actions
+    extended to have features such as type and range checking,
+    dynamically generated values, documentation strings, default
+    values, etc., each of which is inherited from parent classes
+    if not specified in a subclass.
+  homepage: https://param.holoviz.org/
+  repository: https://github.com/holoviz/param
+  documentation: https://param.holoviz.org/
