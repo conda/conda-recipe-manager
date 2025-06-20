@@ -22,7 +22,7 @@ from conda_recipe_manager.types import H, JsonType, SentinelType
 # Commonly used special characters that we need to ensure get quoted when rendered as a YAML string.
 # NOTE: `#`, `|`, `{`, `}`, `>`, and `<` are left out of this list as in our use case, they have specifics meaning that
 #       are already handled in the parser.
-_TO_QUOTE_SPECIAL_CHARS: Final[set[str]] = {
+_TO_QUOTE_SPECIAL_STARTING_CHARS: Final[set[str]] = {
     "[",
     "]",
     ",",
@@ -36,6 +36,14 @@ _TO_QUOTE_SPECIAL_CHARS: Final[set[str]] = {
     "%",
     "@",
     "\\",
+}
+# If a string contains this substring, then it MUST be quoted. This is reserved for characters used in the YAML grammar.
+_TO_QUOTE_SPECIAL_CONTAINS_SUBSTR: Final[set[str]] = {
+    # NOTE:
+    #   - We don't match `:` directly as `:<non_whitespace_char>` is acceptable. Example: `https://pypi.org`.
+    #   - From some very brief testing, there is not an equivalent risk with `- `
+    ": ",
+    ":\t",
 }
 
 
@@ -118,6 +126,32 @@ def substitute_markers(s: str, subs: list[str]) -> str:
     return s
 
 
+def _quote_special_str_startswith_check_all(s: str) -> bool:
+    """
+    Checks if a string contains a starting character that will require the string to be quoted.
+
+    :param s: String to check
+    :returns: True if the string will need to be quoted. Otherwise, False.
+    """
+    for char in _TO_QUOTE_SPECIAL_STARTING_CHARS:
+        if s.startswith(char):
+            return True
+    return False
+
+
+def _quote_special_str_contains_check_all(s: str) -> bool:
+    """
+    Checks if a string contains a substring that will require the string to be quoted.
+
+    :param s: String to check
+    :returns: True if the string will need to be quoted. Otherwise, False.
+    """
+    for substr in _TO_QUOTE_SPECIAL_CONTAINS_SUBSTR:
+        if substr in s:
+            return True
+    return False
+
+
 def quote_special_strings(s: str, multiline_variant: MultilineVariant = MultilineVariant.NONE) -> str:
     """
     Ensures string quote-escaping if quote marks are present at the start of the string and handles other problematic
@@ -134,12 +168,6 @@ def quote_special_strings(s: str, multiline_variant: MultilineVariant = Multilin
     :returns: YAML version of a value, as a string.
     """
 
-    def _startswith_check_all() -> bool:
-        for char in _TO_QUOTE_SPECIAL_CHARS:
-            if s.startswith(char):
-                return True
-        return False
-
     # Do not mess with quotes in multiline strings or strings containing JINJA substitutions or JINJA functions used
     # without substitution markers (like `match()`)
     if (
@@ -154,7 +182,12 @@ def quote_special_strings(s: str, multiline_variant: MultilineVariant = Multilin
     # `*` is common enough that we query the set of special characters before checking every "startswith" option as a
     # small short-circuit optimization. See the definition of `Regex.YAML_TO_QUOTE_ESCAPE` for details on some YAML
     # quoting edge cases and issue #366 for other context.
-    if s in _TO_QUOTE_SPECIAL_CHARS or Regex.YAML_TO_QUOTE_ESCAPE.match(s) or _startswith_check_all():
+    if (
+        s in _TO_QUOTE_SPECIAL_STARTING_CHARS
+        or Regex.YAML_TO_QUOTE_ESCAPE.match(s)
+        or _quote_special_str_contains_check_all(s)
+        or _quote_special_str_startswith_check_all(s)
+    ):
         # Prefer simpler usage of surrounding with "/' quotes if possible. Use JSON encoding as a fallback.
         if '"' not in s:
             return f'"{s}"'
