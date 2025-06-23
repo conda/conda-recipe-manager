@@ -5,8 +5,7 @@ inputs:
   python-version:
     description: "Version of python to use in the conda environment."
     required: false
-    # See Issue #369 for details
-    default: "3.11.11"
+    default: "3.11"
 
 runs:
   using: "composite"
