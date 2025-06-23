@@ -274,7 +274,7 @@ class RecipeReader(IsModifiable):
             if output[key] is not None:
                 # As the line is shared by both parent and child, the comment gets tagged to both.
                 children.append(Node(value=cast(Primitives, output[key]), comment=comment))
-            return Node(key, comment, children, key_flag=True)
+            return Node(value=key, comment=comment, children=children, key_flag=True)
         # If a list is returned, then this line is a listed member of the parent Node
         if isinstance(output, list):
             # The full line is a comment
@@ -609,6 +609,7 @@ class RecipeReader(IsModifiable):
         lines: Final = sanitized_yaml.splitlines()
         num_lines: Final = len(lines)
         # One-time-set flag to track if comments should go at the start of the file (before the V0 JINJA section)
+        # TODO improve initialization so we can more accurately flip the comment toggle
         only_seen_comments = True
         while line_idx < num_lines:
             line = lines[line_idx]
@@ -762,7 +763,9 @@ class RecipeReader(IsModifiable):
         raise NotImplementedError
 
     @staticmethod
-    def _render_tree(node: Node, depth: int, lines: list[str], parent: Optional[Node] = None) -> None:
+    def _render_tree(
+        node: Node, depth: int, lines: list[str], schema_version: SchemaVersion, parent: Optional[Node] = None
+    ) -> None:
         # pylint: disable=too-complex
         # TODO Refactor and simplify ^
         """
@@ -771,6 +774,7 @@ class RecipeReader(IsModifiable):
         :param node: Current node in the tree
         :param depth: Current depth of the recursion
         :param lines: Accumulated list of lines in the recipe file
+        :param schema_version: Target recipe schema version
         :param parent: (Optional) Parent node to the current node. Set by recursive calls only.
         """
         spaces = TAB_AS_SPACES * depth
@@ -859,7 +863,11 @@ class RecipeReader(IsModifiable):
             # Top-level empty-key edge case: Top level keys should have no additional indentation.
             extra_tab = "" if depth < 0 else TAB_AS_SPACES
             # Comments in a list are indented to list-level, but do not include a list `-` mark
-            if child.is_comment() and not child.is_tof_comment():
+            if child.is_comment():
+                # Top-of-file comments are rendered at the top-level `render()` call in V0. We skip them here to prevent
+                # duplicating comments and accidentally rendering values on a comment block.
+                if schema_version == SchemaVersion.V0 and child.is_tof_comment():
+                    continue
                 lines.append(f"{spaces}{extra_tab}" f"{child.comment}".rstrip())
             # Empty keys can be easily confused for leaf nodes. The difference is these nodes render with a "dangling"
             # `:` mark
@@ -869,7 +877,7 @@ class RecipeReader(IsModifiable):
             elif child.is_leaf():
                 lines.append(f"{spaces}{extra_tab}- " f"{stringify_yaml(child.value)}  " f"{child.comment}".rstrip())
             else:
-                RecipeReader._render_tree(child, depth + depth_delta, lines, node)
+                RecipeReader._render_tree(child, depth + depth_delta, lines, schema_version, node)
             # By tradition, recipes have a blank line after every top-level section, unless they are a comment. Comments
             # should be left where they are.
             if depth < 0 and not child.is_comment():
@@ -902,7 +910,7 @@ class RecipeReader(IsModifiable):
 
         # Render parse-tree, -1 is passed in as the "root-level" is not directly rendered in a YAML file; it is merely
         # implied.
-        RecipeReader._render_tree(self._root, -1, lines)
+        RecipeReader._render_tree(self._root, -1, lines, self._schema_version)
 
         if omit_trailing_newline and lines and lines[-1] == "":
             lines = lines[:-1]
@@ -1062,7 +1070,7 @@ class RecipeReader(IsModifiable):
             # NOTE: Traversing the tree and generating our own data structures will be more efficient than rendering and
             # leveraging the YAML parser, BUT this method re-uses code and is easier to maintain.
             lst: list[str] = []
-            RecipeReader._render_tree(node, -1, lst)
+            RecipeReader._render_tree(node, -1, lst, self._schema_version)
             return_value = "\n".join(lst)
 
         # Collection types are transformed into strings above and will need to be transformed into a proper data type.
