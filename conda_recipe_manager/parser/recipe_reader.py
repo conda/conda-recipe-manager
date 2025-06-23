@@ -251,7 +251,7 @@ class RecipeReader(IsModifiable):
         # The full line is a comment
         if s.startswith("#"):
             return Node(
-                comment=s, comment_pos=CommentPosition.TopOfFile if only_seen_comments else CommentPosition.Default
+                comment=s, comment_pos=CommentPosition.TOP_OF_FILE if only_seen_comments else CommentPosition.DEFAULT
             )
 
         # Attempt to parse-out comments. Fully commented lines are not ignored to preserve context when the text is
@@ -595,8 +595,18 @@ class RecipeReader(IsModifiable):
         fmt: Final[V0RecipeFormatter] = V0RecipeFormatter(self._init_content)
         if fmt.is_v0_recipe():
             fmt.fmt_text()
+        # Calculate the string equivalent once.
+        fmt_str: Final = str(fmt)
+
+        # For V0 recipe files, count the number of comment-only lines at the start, before the canonical "variables
+        # section"
+        tof_comment_cntr = 0
+        if fmt.is_v0_recipe():
+            while fmt_str.splitlines()[tof_comment_cntr].startswith("#"):
+                tof_comment_cntr += 1
+
         # Replace all Jinja lines. Then traverse line-by-line
-        sanitized_yaml: Final = Regex.JINJA_V0_LINE.sub("", str(fmt))
+        sanitized_yaml: Final = Regex.JINJA_V0_LINE.sub("", fmt_str)
 
         # Read the YAML line-by-line, maintaining a stack to manage the last owning node in the tree.
         node_stack: list[Node] = [self._root]
@@ -608,9 +618,6 @@ class RecipeReader(IsModifiable):
         line_idx = 0
         lines: Final = sanitized_yaml.splitlines()
         num_lines: Final = len(lines)
-        # One-time-set flag to track if comments should go at the start of the file (before the V0 JINJA section)
-        # TODO improve initialization so we can more accurately flip the comment toggle
-        only_seen_comments = True
         while line_idx < num_lines:
             line = lines[line_idx]
             # Increment here, so that the inner multiline processing loop doesn't cause a skip of the line following the
@@ -627,14 +634,16 @@ class RecipeReader(IsModifiable):
             # found.
             line_idx, new_node = RecipeReader._parse_multiline_node(clean_line, lines, line_idx, new_indent, None)
             if new_node is None:
-                new_node = RecipeReader._parse_line_node(clean_line, only_seen_comments)
+                new_node = RecipeReader._parse_line_node(clean_line, tof_comment_cntr > 0)
+                tof_comment_cntr -= 1
                 # In the general case (which does not create a new-node), we ignore the returned `new_node` value and
                 # rely on the object being modified by the reference we pass-in. As a small optimization, we only run
                 # checks on the other multiline variants if the special case fails.
                 line_idx, _ = RecipeReader._parse_multiline_node(clean_line, lines, line_idx, new_indent, new_node)
 
-            if not new_node.is_comment():
-                only_seen_comments = False
+            # Insurance policy: If we miscounted, force-drop the ToF-comment state.
+            if tof_comment_cntr > 0 and not new_node.is_comment():
+                tof_comment_cntr = -1
 
             if new_indent > cur_indent:
                 node_stack.append(last_node)

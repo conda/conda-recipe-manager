@@ -18,9 +18,9 @@ class CommentPosition(Enum):
     """
 
     # "Default" comment position algorithm. In other words, what `render()` would show prior to this enum's creation.
-    Default = auto()
+    DEFAULT = auto()
     # Indicates the comment should be at the top of the file.
-    TopOfFile = auto()
+    TOP_OF_FILE = auto()
 
 
 class Node:
@@ -46,7 +46,7 @@ class Node:
         value: NodeValue | SentinelType = _sentinel,
         # TODO Future: Node comments should be Optional.
         comment: str = "",
-        comment_pos: CommentPosition = CommentPosition.Default,
+        comment_pos: CommentPosition = CommentPosition.DEFAULT,
         children: Optional[list["Node"]] = None,
         list_member_flag: bool = False,
         multiline_variant: MultilineVariant = MultilineVariant.NONE,
@@ -59,6 +59,7 @@ class Node:
 
         :param value:               Value of the current node
         :param comment:             Comment on the line this node was found on
+        :param comment_pos:         Special enum indicating full-line comment positioning.
         :param children:            List of children nodes, descendants of this node
         :param list_member_flag:    Indicates if this node is part of a list
         :param multiline_variant:   Indicates if the node represents a multiline value AND which syntax variant is used
@@ -153,7 +154,7 @@ class Node:
 
         :returns: True if the node represents only a comment. False otherwise.
         """
-        return self.is_comment() and self.comment_pos == CommentPosition.TopOfFile
+        return self.is_comment() and self.comment_pos == CommentPosition.TOP_OF_FILE
 
     def is_empty_key(self) -> bool:
         """
