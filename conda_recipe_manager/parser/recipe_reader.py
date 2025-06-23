@@ -15,7 +15,7 @@ from typing import Final, Optional, cast, no_type_check
 import yaml
 
 from conda_recipe_manager.parser._is_modifiable import IsModifiable
-from conda_recipe_manager.parser._node import Node
+from conda_recipe_manager.parser._node import CommentPosition, Node
 from conda_recipe_manager.parser._node_var import NodeVar
 from conda_recipe_manager.parser._selector_info import SelectorInfo
 from conda_recipe_manager.parser._traverse import traverse, traverse_all
@@ -190,10 +190,12 @@ class RecipeReader(IsModifiable):
         # NOTE: We perform a redundant `new_node is None` check to help-out the type-checker.
         multiline_node: Node
         if new_node is None or check_backslash_variant:
-            new_node = Node(multiline_re_match.group(Regex.MULTILINE_BACKSLASH_QUOTE_CAPTURE_GROUP_KEY), key_flag=True)
+            new_node = Node(
+                value=multiline_re_match.group(Regex.MULTILINE_BACKSLASH_QUOTE_CAPTURE_GROUP_KEY), key_flag=True
+            )
             multiline_node = Node(
                 # We do not need to increment `line_idx`. It is modified after the current line is read.
-                [multiline_re_match.group(Regex.MULTILINE_BACKSLASH_QUOTE_CAPTURE_GROUP_FIRST_VALUE)],
+                value=[multiline_re_match.group(Regex.MULTILINE_BACKSLASH_QUOTE_CAPTURE_GROUP_FIRST_VALUE)],
                 multiline_variant=MultilineVariant.BACKSLASH_QUOTE,
             )
         else:
@@ -205,7 +207,7 @@ class RecipeReader(IsModifiable):
             # Per YAML spec, multiline statements can't be commented. In other words, the `#` symbol is seen as a
             # string character in multiline values.
             multiline_node = Node(
-                [],
+                value=[],
                 multiline_variant=MultilineVariant(variant_capture),
             )
 
@@ -233,13 +235,14 @@ class RecipeReader(IsModifiable):
         return line_idx, new_node
 
     @staticmethod
-    def _parse_line_node(s: str) -> Node:
+    def _parse_line_node(s: str, only_seen_comments: bool) -> Node:
         """
         Parses a line of conda-formatted YAML into a Node.
 
         Latest YAML spec can be found here: https://yaml.org/spec/1.2.2/
 
-        :param s: Pre-stripped (no leading/trailing spaces), non-Jinja line of a recipe file
+        :param s: Pre-stripped (no leading/trailing spaces), non-Jinja line of a recipe file.
+        :param only_seen_comments: Flag indicating if only comments have been seen at the top of the file thus far.
         :returns: A Node representing a line of the conda-formatted YAML.
         """
         # Use PyYaml to safely/easily/correctly parse single lines of YAML.
@@ -247,7 +250,9 @@ class RecipeReader(IsModifiable):
 
         # The full line is a comment
         if s.startswith("#"):
-            return Node(comment=s)
+            return Node(
+                comment=s, comment_pos=CommentPosition.TopOfFile if only_seen_comments else CommentPosition.Default
+            )
 
         # Attempt to parse-out comments. Fully commented lines are not ignored to preserve context when the text is
         # rendered. Their order in the list of child nodes will preserve their location. Fully commented lines just have
@@ -268,7 +273,7 @@ class RecipeReader(IsModifiable):
             # If the value returned is None, there is no leaf node to set
             if output[key] is not None:
                 # As the line is shared by both parent and child, the comment gets tagged to both.
-                children.append(Node(cast(Primitives, output[key]), comment))
+                children.append(Node(value=cast(Primitives, output[key]), comment=comment))
             return Node(key, comment, children, key_flag=True)
         # If a list is returned, then this line is a listed member of the parent Node
         if isinstance(output, list):
@@ -289,15 +294,15 @@ class RecipeReader(IsModifiable):
                 key = list(output[0].keys())[0]
                 if output[0][key] is not None:
                     key_children.append(Node(cast(Primitives, output[0][key]), comment))
-                key_node = Node(key, comment, key_children, key_flag=True)
+                key_node = Node(value=key, comment=comment, children=key_children, key_flag=True)
 
                 elem_node = Node(comment=comment, list_member_flag=True)
                 elem_node.children.append(key_node)
                 return elem_node
-            return Node(cast(Primitives, output[0]), comment, list_member_flag=True)
+            return Node(value=cast(Primitives, output[0]), comment=comment, list_member_flag=True)
         # Other types are just leaf nodes. This is scenario should likely not be triggered given our recipe files don't
         # have single valid lines of YAML, but we cover this case for the sake of correctness.
-        return Node(output, comment)
+        return Node(value=output, comment=comment)
 
     @staticmethod
     def _generate_subtree(value: JsonType) -> list[Node]:
@@ -583,7 +588,7 @@ class RecipeReader(IsModifiable):
         self._init_content: Final[str] = content
 
         # Root of the parse tree
-        self._root = Node(ROOT_NODE_VALUE)
+        self._root = Node(value=ROOT_NODE_VALUE)
 
         # Format the text for V0 recipe files in an attempt to improve compatibility with our whitespace-delimited
         # parser.
@@ -603,6 +608,8 @@ class RecipeReader(IsModifiable):
         line_idx = 0
         lines: Final = sanitized_yaml.splitlines()
         num_lines: Final = len(lines)
+        # One-time-set flag to track if comments should go at the start of the file (before the V0 JINJA section)
+        only_seen_comments = True
         while line_idx < num_lines:
             line = lines[line_idx]
             # Increment here, so that the inner multiline processing loop doesn't cause a skip of the line following the
@@ -619,11 +626,14 @@ class RecipeReader(IsModifiable):
             # found.
             line_idx, new_node = RecipeReader._parse_multiline_node(clean_line, lines, line_idx, new_indent, None)
             if new_node is None:
-                new_node = RecipeReader._parse_line_node(clean_line)
+                new_node = RecipeReader._parse_line_node(clean_line, only_seen_comments)
                 # In the general case (which does not create a new-node), we ignore the returned `new_node` value and
                 # rely on the object being modified by the reference we pass-in. As a small optimization, we only run
                 # checks on the other multiline variants if the special case fails.
                 line_idx, _ = RecipeReader._parse_multiline_node(clean_line, lines, line_idx, new_indent, new_node)
+
+            if not new_node.is_comment():
+                only_seen_comments = False
 
             if new_indent > cur_indent:
                 node_stack.append(last_node)
@@ -849,7 +859,7 @@ class RecipeReader(IsModifiable):
             # Top-level empty-key edge case: Top level keys should have no additional indentation.
             extra_tab = "" if depth < 0 else TAB_AS_SPACES
             # Comments in a list are indented to list-level, but do not include a list `-` mark
-            if child.is_comment():
+            if child.is_comment() and not child.is_tof_comment():
                 lines.append(f"{spaces}{extra_tab}" f"{child.comment}".rstrip())
             # Empty keys can be easily confused for leaf nodes. The difference is these nodes render with a "dangling"
             # `:` mark
@@ -876,6 +886,14 @@ class RecipeReader(IsModifiable):
         # Render variable set section for V0 recipes. V1 recipes have variables stored in the parse tree under
         # `/context`.
         if self._schema_version == SchemaVersion.V0:
+            # Rendering comments before the variable table is not an issue in V1 as variables are inherently part of the
+            # tree structure.
+            for root_child in self._root.children:
+                if not root_child.is_tof_comment():
+                    break
+                # NOTE: Top of file comments must be owned by the root level and, therefore, do not need indentation.
+                lines.append(root_child.comment.rstrip())
+
             for key, val in self._vars_tbl.items():
                 lines.append(f"{{% set {key} = {val.render_v0_value()} %}}{val.render_comment()}")
             # Add spacing if variables have been set

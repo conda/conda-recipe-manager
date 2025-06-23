@@ -4,11 +4,23 @@
 
 from __future__ import annotations
 
+from enum import Enum, auto
 from typing import Optional
 
 from conda_recipe_manager.parser._types import ROOT_NODE_VALUE
 from conda_recipe_manager.parser.types import MultilineVariant, NodeValue
 from conda_recipe_manager.types import SentinelType
+
+
+class CommentPosition(Enum):
+    """
+    Enumerations
+    """
+
+    # "Default" comment position algorithm. In other words, what `render()` would show prior to this enum's creation.
+    Default = auto()
+    # Indicates the comment should be at the top of the file.
+    TopOfFile = auto()
 
 
 class Node:
@@ -34,13 +46,16 @@ class Node:
         value: NodeValue | SentinelType = _sentinel,
         # TODO Future: Node comments should be Optional.
         comment: str = "",
+        comment_pos: CommentPosition = CommentPosition.Default,
         children: Optional[list["Node"]] = None,
         list_member_flag: bool = False,
         multiline_variant: MultilineVariant = MultilineVariant.NONE,
         key_flag: bool = False,
     ):
         """
-        Constructs a node
+        Constructs a node.
+
+        TODO members (or at least most members) of the `Node` class should be marked as private.
 
         :param value:               Value of the current node
         :param comment:             Comment on the line this node was found on
@@ -51,6 +66,7 @@ class Node:
         """
         self.value = value
         self.comment = comment
+        self.comment_pos = comment_pos
         self.children: list[Node] = children if children else []
         self.list_member_flag = list_member_flag
         self.multiline_variant = multiline_variant
@@ -129,6 +145,15 @@ class Node:
         :returns: True if the node represents only a comment. False otherwise.
         """
         return self.value == Node._sentinel and bool(self.comment) and not self.children
+
+    def is_tof_comment(self) -> bool:
+        """
+        Indicates if a line contains only a comment, located at the top of the file. When rendered, this will be a
+        comment only-line. This only applies to V0 recipes.
+
+        :returns: True if the node represents only a comment. False otherwise.
+        """
+        return self.is_comment() and self.comment_pos == CommentPosition.TopOfFile
 
     def is_empty_key(self) -> bool:
         """
