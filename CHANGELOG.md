@@ -12,6 +12,8 @@ NOTES:
 - Fixes several edge cases for PyPi URL upgrades with `crm bump-recipe`
 - Adds a `pytest-socket` smoke test
 - Includes several new quality-of-life improvements for CRM developers
+- Huge shout-out to @mrbean-bremen for their help on diagnosing some `pyfakefs` issues on the latest
+  point releases of Python.
 
 ## 0.5.1
 - Fixes a JINJA rendering bug for V0 recipes in `RecipeReader::get_value(..., sub_vars=True)` and
