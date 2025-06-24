@@ -3,6 +3,18 @@ NOTES:
 - Version releases in the 0.x.y range may introduce breaking changes.
 - See the auto-generated release notes for more details.
 
+## 0.6.0
+- Contains many significant parsing bug fixes. Most of these fixes relate to quoting strings and JINJA statements.
+  Our integration tests indicate that this increases parsing compatibility across the board. We are seeing that
+  ~97% of all recipe files in the `conda-recipe-manager-test-data` set can now be parsed without throwing an
+  exception.
+- Contains a few bug fixes around parsing and rendering comments in V0 recipe files.
+- Fixes several edge cases for PyPi URL upgrades with `crm bump-recipe`
+- Adds a `pytest-socket` smoke test
+- Includes several new quality-of-life improvements for CRM developers
+- Huge shout-out to @mrbean-bremen for their help on diagnosing some `pyfakefs` issues on the latest
+  point releases of Python.
+
 ## 0.5.1
 - Fixes a JINJA rendering bug for V0 recipes in `RecipeReader::get_value(..., sub_vars=True)` and
   related functions.
