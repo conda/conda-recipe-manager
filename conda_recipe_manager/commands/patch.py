@@ -53,7 +53,8 @@ def _pre_patch_validate(
 # `Path` instance. This is caused by how `click` uses decorators. See these links for more detail:
 # - https://pytest-pyfakefs.readthedocs.io/en/latest/troubleshooting.html#pathlib-path-objects-created-outside-of-tests
 # - https://github.com/pytest-dev/pyfakefs/discussions/605
-@click.command(short_help="Modify recipe files with JSON patch blobs.")
+CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
+@click.command(short_help="Modify recipe files with JSON patch blobs.", context_settings=CONTEXT_SETTINGS)
 @click.argument("json_patch_file_path", type=click.Path(exists=True, path_type=str))
 @click.argument("recipe_file_path", type=click.Path(exists=True, path_type=str))
 def patch(json_patch_file_path: str, recipe_file_path: str) -> None:

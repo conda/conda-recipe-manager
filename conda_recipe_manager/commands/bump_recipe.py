@@ -655,7 +655,8 @@ def _validate_interop_flags(build_num: bool, override_build_num: Optional[int], 
 # `Path` instance. This is caused by how `click` uses decorators. See these links for more detail:
 # - https://pytest-pyfakefs.readthedocs.io/en/latest/troubleshooting.html#pathlib-path-objects-created-outside-of-tests
 # - https://github.com/pytest-dev/pyfakefs/discussions/605
-@click.command(short_help="Bumps a recipe file to a new version.")
+CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
+@click.command(short_help="Bumps a recipe file to a new version.", context_settings=CONTEXT_SETTINGS)
 @click.argument("recipe_file_path", type=click.Path(exists=True, path_type=str))
 @click.option(
     "-o",

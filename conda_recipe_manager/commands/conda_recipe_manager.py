@@ -15,7 +15,8 @@ from conda_recipe_manager.commands.patch import patch
 from conda_recipe_manager.commands.rattler_bulk_build import rattler_bulk_build
 
 
-@click.group()
+CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
+@click.group(context_settings=CONTEXT_SETTINGS)
 @click.option(
     "-v",
     "--verbose",

@@ -61,7 +61,8 @@ def _parse_plot_options(recipe_graph: RecipeGraph, g_type: str, dir_str: Optiona
     return True
 
 
-@click.command(short_help="Interactive CLI for examining recipe dependency graphs.")
+CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
+@click.command(short_help="Interactive CLI for examining recipe dependency graphs.", context_settings=CONTEXT_SETTINGS)
 @click.argument("path", type=click.Path(exists=True, path_type=Path, file_okay=False))
 def graph(path: Path) -> None:
     """
