@@ -14,8 +14,9 @@ from conda_recipe_manager.commands.graph import graph
 from conda_recipe_manager.commands.patch import patch
 from conda_recipe_manager.commands.rattler_bulk_build import rattler_bulk_build
 
+CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
 
-CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
+
 @click.group(context_settings=CONTEXT_SETTINGS)
 @click.option(
     "-v",
