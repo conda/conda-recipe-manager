@@ -57,7 +57,6 @@ about:
   home: https://github.com/conda/conda-recipe-manager
   license: BSD-3-Clause
   license_file: LICENSE
-  license_url: https://github.com/conda/conda-recipe-manager/blob/main/LICENSE
   summary: Helper tool for recipes on aggregate.
   description: |
     Renders local recipes, provides build orders, find outdated recipes.
