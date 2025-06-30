@@ -8,6 +8,7 @@ from typing import Final
 
 import pytest
 
+from conda_recipe_manager.parser._node_var import NodeVar
 from conda_recipe_manager.parser.enums import SchemaVersion
 from conda_recipe_manager.parser.recipe_parser import RecipeReader
 from conda_recipe_manager.types import JsonType, Primitives
@@ -51,8 +52,8 @@ def test_construction(file: str, schema_version: SchemaVersion) -> None:
     parser = RecipeReader(types_toml)
     assert parser._init_content == types_toml  # pylint: disable=protected-access
     assert parser._vars_tbl == {  # pylint: disable=protected-access
-        "name": "types-toml",
-        "version": "0.10.8.6",
+        "name": NodeVar("types-toml", None),
+        "version": NodeVar("0.10.8.6", None),
     }
     assert parser.get_schema_version() == schema_version
     assert not parser.is_modified()
@@ -136,6 +137,8 @@ def test_loading_obj_in_list() -> None:
         "h5py.yaml",  # `numpy {{ numpy }}` regression example.
         # TODO Fix: string quotes around concatenation are not correct when round-tripped.
         "x264.yaml",
+        "parser_regressions/issue-366_quote_regressions_round_trip.yaml",
+        "parser_regressions/issue-378_colon_quote_regression.yaml",
         # V1 Recipe Files
         "v1_format/v1_types-toml.yaml",
         "v1_format/v1_simple-recipe.yaml",
@@ -146,6 +149,8 @@ def test_loading_obj_in_list() -> None:
         "v1_format/v1_google-cloud-cpp.yaml",
         "v1_format/v1_dynamic-linking.yaml",
         "v1_format/v1_sub_vars.yaml",
+        "parser_regressions/v1_format/v1_issue-366_quote_regressions.yaml",
+        "parser_regressions/v1_format/v1_issue-378_colon_quote_regression.yaml",
     ],
 )
 def test_round_trip(file: str) -> None:
@@ -1032,8 +1037,8 @@ def test_is_multi_output(file: str, expected: bool) -> None:
         ("v1_format/v1_boto.yaml", True),
         ("v1_format/v1_cctools-ld64.yaml", False),
         # Regression test for Issue 289. Compiled projects that use Python are not "pure python" packages.
-        ("issue_289_regression.yaml", False),
-        ("v1_format/v1_issue_289_regression.yaml", False),
+        ("parser_regressions/issue-289_regression.yaml", False),
+        ("parser_regressions/v1_format/v1_issue-289_regression.yaml", False),
     ],
 )
 def test_is_python_recipe(file: str, expected: bool) -> None:
@@ -1491,8 +1496,8 @@ def test_search() -> None:
 @pytest.mark.parametrize(
     "file,expected",
     [
-        ("simple-recipe.yaml", "359215c5ac3460d07470f2e3f524ed24154ff2eb7d274feb98149e6949c2ddbe"),
-        ("v1_format/v1_simple-recipe.yaml", "68c0b7fd829c17715b5b9941c882eda3bb70cb1dcef8cc08a55a9ee2b959fb7f"),
+        ("simple-recipe.yaml", "695b05c43362eb43c22eae23f0129f41f61413912225184cb7234a4d2c15f353"),
+        ("v1_format/v1_simple-recipe.yaml", "dfe5bb7ad4a0c9477d0bf0dc56219f2810d75d0e5aa72b12f7210ff9946d4ab7"),
         ("types-toml.yaml", "e117d210da9ea6507fdea856ee96407265aec40cbc58432aa6e1c7e31998a686"),
         ("v1_format/v1_types-toml.yaml", "3474ed870eea9c8efbd248d24de8bdf54ad8651a7aed06d240f118272d8a3fd1"),
         ("v1_format/v1_boto.yaml", "b42349254d020ffeda77f3068e8ad8804a92d1c7b89eb0f3d45632b38fc0a3bc"),

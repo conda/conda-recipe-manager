@@ -14,8 +14,7 @@ jobs:
         - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         - uses: ./.github/actions/setup-env
           with:
-            # See Issue #369 for details
-            python-version: "3.11.11"
+            python-version: "3.11"
         # Executes `pre-commit` with the `make` directive to ensure all dependencies are found
         - run: |
             source $CONDA/bin/activate
@@ -27,8 +26,7 @@ jobs:
       strategy:
         matrix:
           # NOTE: 3.11 is skipped as it is covered by the `pre-commit` job.
-          # See Issue #369 for details about why we target 3.12.9 specifically.
-          python-version: ["3.12.9"]
+          python-version: ["3.12"]
       steps:
         - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         - uses: ./.github/actions/setup-env
@@ -45,10 +43,9 @@ jobs:
         # As a work around for https://github.com/anaconda/conda-anaconda-telemetry/issues/87 we now build
         # outside of the base conda environment.
         - name: Build package in conda build
-          # See Issue #369 for details for why we target 3.11.11 specifically
           run: |
             source $CONDA/bin/activate
-            conda create --name build-env -y python=3.11.11 conda-build
+            conda create --name build-env -y python=3.11 conda-build
             conda activate build-env
             conda build -c defaults recipe/meta.yaml
   # Eat our own dog food and build this project with rattler-build by converting our existing recipe.
@@ -59,8 +56,7 @@ jobs:
         - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         - uses: ./.github/actions/setup-env
           with:
-            # See Issue #369 for details
-            python-version: "3.11.11"
+            python-version: "3.11"
         - name: Build package in rattler-build (experimental)
           run: |
             source $CONDA/bin/activate

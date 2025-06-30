@@ -4,29 +4,18 @@
 
 from __future__ import annotations
 
-from typing import Final, NamedTuple, Optional, cast
+from typing import Final, cast
 
+from conda_recipe_manager.parser._node_var import NodeVar
 from conda_recipe_manager.parser.recipe_reader import RecipeReader
-from conda_recipe_manager.parser.selector_parser import SelectorParser
 from conda_recipe_manager.parser.selector_query import SelectorQuery
-from conda_recipe_manager.parser.types import SchemaVersion
-from conda_recipe_manager.types import Primitives, SentinelType
-
-
-class _CBCEntry(NamedTuple):
-    """
-    Internal representation of a variable's value in a CBC file.
-    """
-
-    value: Primitives
-    selector: Optional[SelectorParser]
-
+from conda_recipe_manager.types import JsonType, SentinelType
 
 # Internal variable table type
-_CbcTable = dict[str, list[_CBCEntry]]
+_CbcTable = dict[str, list[NodeVar]]
 
 # Type that attempts to represent the contents of a CBC file
-_CbcType = dict[str, list[Primitives] | dict[str, dict[str, str]]]
+_CbcType = dict[str, list[JsonType] | dict[str, dict[str, str]]]
 
 
 class CbcParser(RecipeReader):
@@ -61,6 +50,8 @@ class CbcParser(RecipeReader):
         #                selectors is available (so py>=38 and py<=310 wouldn't work). To be confirmed though."
 
         parsed_contents: Final[_CbcType] = cast(_CbcType, self.get_value("/"))
+        # NOTE: The comments table does not include selectors.
+        comments_tbl: Final = self.get_comments_table()
         for variable, value_list in parsed_contents.items():
             if not isinstance(value_list, list):
                 continue
@@ -69,18 +60,17 @@ class CbcParser(RecipeReader):
             if variable == "zip_keys":
                 continue
 
+            # TODO add V1 support for CBC files? Is there a V1 CBC format?
             for i, value in enumerate(value_list):
                 path = f"/{variable}/{i}"
-                # TODO add V1 support for CBC files? Is there a V1 CBC format?
-                selector = None
-                try:
-                    selector = SelectorParser(self.get_selector_at_path(path), SchemaVersion.V0)
-                except KeyError:
-                    pass
-                entry = _CBCEntry(
-                    value=value,
-                    selector=selector,
-                )
+
+                # Re-assemble the comment components. If successful, append it to the node.
+                # TODO Improve: This is not very efficient.
+                selector_str = "" if not self.contains_selector_at_path(path) else self.get_selector_at_path(path)
+                comment_str = comments_tbl.get(path, "")
+                combined_comment = f"{selector_str} {comment_str}"
+                entry = NodeVar(value, f"# {combined_comment}" if combined_comment.strip() else None)
+
                 # TODO detect duplicates
                 if variable not in self._cbc_vars_tbl:
                     self._cbc_vars_tbl[variable] = [entry]
@@ -107,8 +97,8 @@ class CbcParser(RecipeReader):
         return list(self._cbc_vars_tbl.keys())
 
     def get_cbc_variable_value(
-        self, variable: str, query: SelectorQuery, default: Primitives | SentinelType = RecipeReader._sentinel
-    ) -> Primitives:
+        self, variable: str, query: SelectorQuery, default: JsonType | SentinelType = RecipeReader._sentinel
+    ) -> JsonType:
         """
         Determines which value of a CBC variable is applicable to the current environment.
 
@@ -124,15 +114,16 @@ class CbcParser(RecipeReader):
                 raise KeyError(f"CBC variable not found: {variable}")
             return default
 
-        cbc_entries: Final[list[_CBCEntry]] = self._cbc_vars_tbl[variable]
+        cbc_entries: Final = self._cbc_vars_tbl[variable]
 
         # Short-circuit on trivial case: one value, no selector
-        if len(cbc_entries) == 1 and cbc_entries[0].selector is None:
-            return cbc_entries[0].value
+        if len(cbc_entries) == 1 and not cbc_entries[0].contains_selector():
+            return cbc_entries[0].get_value()
 
         for entry in cbc_entries:
-            if entry.selector is None or entry.selector.does_selector_apply(query):
-                return entry.value
+            selector = entry.get_selector()
+            if selector is None or selector.does_selector_apply(query):
+                return entry.get_value()
 
         # No applicable entries have been found to match any selector variant.
         if isinstance(default, SentinelType):

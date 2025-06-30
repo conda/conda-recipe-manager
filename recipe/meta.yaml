@@ -1,5 +1,5 @@
 {% set name = "conda-recipe-manager" %}
-{% set version = "0.5.1" %}
+{% set version = "0.6.0" %}
 
 package:
   name: {{ name|lower }}
@@ -23,8 +23,7 @@ requirements:
     - setuptools
     - wheel
   run:
-    # See Issue #369 for more details
-    - python >=3.11.11,!=3.11.13,<=3.12.9
+    - python >=3.11
     # Version 8.2.0 introduces breaking changes around the `CliRunner` class, which breaks our
     # automated tests. We can allow for this version when it becomes available on `defaults`.
     - click >=8.1.7,<8.2.0
@@ -49,7 +48,7 @@ test:
     - pytest
     - pytest-xdist
     - pytest-socket
-    - pyfakefs
+    - pyfakefs >=5.9.0
   commands:
     - pip check
     - python -m pytest -n auto --ignore=tests/test_aux_files tests/
@@ -58,7 +57,6 @@ about:
   home: https://github.com/conda/conda-recipe-manager
   license: BSD-3-Clause
   license_file: LICENSE
-  license_url: https://github.com/conda/conda-recipe-manager/blob/main/LICENSE
   summary: Helper tool for recipes on aggregate.
   description: |
     Renders local recipes, provides build orders, find outdated recipes.

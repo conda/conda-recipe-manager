@@ -4,6 +4,9 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+from typing import Final
+
 import pytest
 
 from conda_recipe_manager.parser.recipe_parser_convert import RecipeParserConvert
@@ -42,7 +45,7 @@ def test_pre_process_recipe_text(input_file: str, expected_file: str) -> None:
 
 
 @pytest.mark.parametrize(
-    "file_base,errors,warnings",
+    "file,errors,warnings",
     [
         (
             "simple-recipe.yaml",
@@ -158,16 +161,33 @@ def test_pre_process_recipe_text(input_file: str, expected_file: str) -> None:
         ),
         # Regression: Tests scenarios where the newer `${{ }}` substitutions got doubled up, causing: `$${{ foo }}`
         (
-            "regression_jinja_sub.yaml",
+            "parser_regressions/regression_jinja_sub.yaml",
             [],
             [
                 (
                     "Recipe upgrades cannot currently upgrade ambiguous version constraints on dependencies that"
                     ' use variables: {{ pin_subpackage("libnvpl-fft" ~ somajor ) }}'
                 ),
-                "The following key(s) contain unsupported syntax: soversion",
+                "The following key(s) contain partially unsupported syntax: soversion",
                 "No `license` provided in `/about`",
             ],
+        ),
+        # Regressions found and fixed while working on Issue #366
+        (
+            "parser_regressions/issue-366_quote_regressions.yaml",
+            [],
+            [
+                "The following key(s) contain partially unsupported syntax: soversion",
+                "No `license` provided in `/about`",
+            ],
+        ),
+        # Regressions found and fixed while working on Issue #378
+        (
+            "parser_regressions/issue-378_colon_quote_regression.yaml",
+            [
+                "Could not parse dependencies when attempting to upgrade ambiguous version numbers.",
+            ],
+            ["Field at `/about/license_family` is no longer supported."],
         ),
         # Tests upgrading the `/build/script` when `script_env` is present (this is essentially a test for
         # `_upgrade_build_script_section()`)
@@ -253,7 +273,7 @@ def test_pre_process_recipe_text(input_file: str, expected_file: str) -> None:
         # Issue #289: Compiled projects that use Python are not "pure python" packages. Such packages should not receive
         # a Python section with a `pip_check: False` field
         (
-            "issue_289_regression.yaml",
+            "parser_regressions/issue-289_regression.yaml",
             [],
             [
                 "Recipe upgrades cannot currently upgrade ambiguous version constraints on dependencies that"
@@ -282,15 +302,16 @@ def test_pre_process_recipe_text(input_file: str, expected_file: str) -> None:
         # ),
     ],
 )
-def test_render_to_v1_recipe_format(file_base: str, errors: list[str], warnings: list[str]) -> None:
+def test_render_to_v1_recipe_format(file: str, errors: list[str], warnings: list[str]) -> None:
     """
     Validates rendering a recipe in the V1 format.
 
-    :param file_base: Base file name for both the input and the expected out
+    :param file: File path for the input that is also used to calculate the expected output, by convention.
     """
-    parser = load_recipe(file_base, RecipeParserConvert)
+    file_path: Final = Path(file)
+    parser = load_recipe(file_path, RecipeParserConvert)
     result, tbl, _ = parser.render_to_v1_recipe_format()
-    assert result == load_file(f"v1_format/v1_{file_base}")
+    assert result == load_file(f"{file_path.parent}/v1_format/v1_{file_path.name}")
     assert tbl.get_messages(MessageCategory.ERROR) == errors
     assert tbl.get_messages(MessageCategory.WARNING) == warnings
     # Ensure that the original file was untouched

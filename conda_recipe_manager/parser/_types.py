@@ -122,11 +122,25 @@ class Regex:
     Namespace used to organize all regular expressions used by the `parser` module.
     """
 
-    # Jinja syntax that is too complicated to convert
+    # Jinja syntax that is too complicated to fully convert
+    # TODO remove after supporting issue #368
     V0_UNSUPPORTED_JINJA: Final[list[re.Pattern[str]]] = [re.compile(r"\.join\(")]
 
     # Pattern to detect Jinja variable names and functions
-    _JINJA_VAR_FUNCTION_PATTERN: Final[str] = r"[a-zA-Z0-9_\|\'\"\(\)\[\]\, =\.\-~\+]*"
+    _JINJA_VAR_FUNCTION_PATTERN: Final[str] = r"[a-zA-Z0-9_\|\'\"\(\)\[\]\,\\\/ =\.\-~\+:]+"
+    # Pattern to detect optional comments or trailing whitespace. NOTE: The comment is marked as an optional matching
+    # group. Failure to mark this may cause `findall()` to return empty strings if no other group is present in the
+    # regex.
+    _JINJA_OPTIONAL_EOL_COMMENT: Final[str] = r"[ \t]*(?:#[^\n]*)?$"
+
+    # Pattern that attempts to identify YAML strings that need to be quote-escaped in the parsing process. Including:
+    #   - Strings that start with a quote marker, close the same quote marker, and then are trailed by characters.
+    # Examples:
+    #   'm2w64-' if win else ''
+    #   "" foo ""
+    #   "%R%" -e "library('RSQLite')"
+    #   "foo" bar # baz
+    YAML_TO_QUOTE_ESCAPE: Final[re.Pattern[str]] = re.compile(r"^('.*'|\".*\")(?![ \t]#.+).+")
 
     ## V0 Formatter regular expressions ##
     V0_FMT_SECTION_HEADER: Final[re.Pattern[str]] = re.compile(r"^[\w|-]+:$")
@@ -185,9 +199,12 @@ class Regex:
 
     ## Jinja regular expressions ##
     JINJA_V0_SUB: Final[re.Pattern[str]] = re.compile(r"{{\s*" + _JINJA_VAR_FUNCTION_PATTERN + r"\s*}}")
-    JINJA_V0_LINE: Final[re.Pattern[str]] = re.compile(r"({%.*%}|{#.*#})\n")
+    JINJA_V0_LINE: Final[re.Pattern[str]] = re.compile(
+        r"^[ \t]*({%.+%}|{#.+#})" + _JINJA_OPTIONAL_EOL_COMMENT, flags=re.MULTILINE
+    )
     JINJA_V0_SET_LINE: Final[re.Pattern[str]] = re.compile(
-        r"{%\s*set\s*" + _JINJA_VAR_FUNCTION_PATTERN + r"\s*=.*%}\s*\n"
+        r"^[ \t]*{%[ \t]*set[ \t]*" + _JINJA_VAR_FUNCTION_PATTERN + r"[ \t]*=.+%}" + _JINJA_OPTIONAL_EOL_COMMENT,
+        flags=re.MULTILINE,
     )
     # Useful for replacing the older `{{` JINJA substitution with the newer `${{` WITHOUT accidentally doubling-up the
     # newer syntax when multiple replacements are possible.
@@ -212,7 +229,7 @@ class Regex:
     )
     JINJA_FUNCTION_IDX_ACCESS: Final[re.Pattern[str]] = re.compile(r"(.+)\[(-?\d+)\]")
     JINJA_FUNCTION_ADD_CONCAT: Final[re.Pattern[str]] = re.compile(
-        r"([\"\']?[\w\.]+[\"\']?)\s*\+\s*([\"\']?[\w\.]+[\"\']?)"
+        r"([\"\']?[\w\.!]+[\"\']?)[ \t]*\+[ \t]*([\"\']?[\w\.!]+[\"\']?)"
     )
     # `match()` is a JINJA function available in the V1 recipe format
     JINJA_FUNCTION_MATCH: Final[re.Pattern[str]] = re.compile(r"match\(.*,.*\)")
@@ -220,11 +237,8 @@ class Regex:
         JINJA_FUNCTION_LOWER,
         JINJA_FUNCTION_UPPER,
         JINJA_FUNCTION_REPLACE,
-        # TODO FIX: Adding `split` and `join` to this list causes some odd bracket-escaping in the
-        # `regression_jinja_sub.yaml` upgrade test. This will require additional investigation, but for now, IMO the
-        # old behavior is a little less wrong, so we'll leave it as is.
-        # JINJA_FUNCTION_SPLIT,
-        # JINJA_FUNCTION_JOIN,
+        JINJA_FUNCTION_SPLIT,
+        JINJA_FUNCTION_JOIN,
         JINJA_FUNCTION_IDX_ACCESS,
         JINJA_FUNCTION_ADD_CONCAT,
         JINJA_FUNCTION_MATCH,
@@ -237,8 +251,13 @@ class Regex:
     SELECTOR: Final[re.Pattern[str]] = re.compile(r"\[.*\]")
     # Detects the 6 common variants (3 |'s, 3 >'s). See this guide for more info:
     #   https://stackoverflow.com/questions/3790454/how-do-i-break-a-string-in-yaml-over-multiple-lines/21699210
-    MULTILINE: Final[re.Pattern[str]] = re.compile(r"^\s*.*:\s+(\||>)(\+|\-)?(\s*|\s+#.*)")
+    MULTILINE_VARIANT: Final[re.Pattern[str]] = re.compile(r"^[ \t]*.*:[ \t]+(\||>)(\+|\-)?([ \t]*|[ \t]+#.*)")
     # Group where the "variant" string is identified
     MULTILINE_VARIANT_CAPTURE_GROUP_CHAR: Final[int] = 1
     MULTILINE_VARIANT_CAPTURE_GROUP_SUFFIX: Final[int] = 2
-    DETECT_TRAILING_COMMENT: Final[re.Pattern[str]] = re.compile(r"(\s)+(#)")
+    # Detects the special "-backslash multiline string.
+    MULTILINE_BACKSLASH_QUOTE: Final[re.Pattern[str]] = re.compile(r"^[ \t]*(.*):[ \t]+(\".*\\)$")
+    MULTILINE_BACKSLASH_QUOTE_CAPTURE_GROUP_KEY: Final[int] = 1
+    MULTILINE_BACKSLASH_QUOTE_CAPTURE_GROUP_FIRST_VALUE: Final[int] = 2
+
+    DETECT_TRAILING_COMMENT: Final[re.Pattern[str]] = re.compile(r"([ \t])+(#)")

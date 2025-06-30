@@ -25,6 +25,7 @@ from typing import Final, Optional, TypeGuard, cast
 from jsonschema import validate as schema_validate
 
 from conda_recipe_manager.parser._node import Node
+from conda_recipe_manager.parser._node_var import NodeVar
 from conda_recipe_manager.parser._traverse import (
     INVALID_IDX,
     remap_child_indices_virt_to_phys,
@@ -106,7 +107,7 @@ class RecipeParser(RecipeReader):
         :param var: Variable to modify
         :param value: Value to set
         """
-        self._vars_tbl[var] = value
+        self._vars_tbl[var] = NodeVar(value)
         self._is_modified = True
 
     def del_variable(self, var: str) -> None:
