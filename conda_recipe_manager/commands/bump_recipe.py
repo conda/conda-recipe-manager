@@ -335,7 +335,8 @@ def _fetch_archive(fetcher: HttpArtifactFetcher, cli_args: _CliArgs, retries: in
             fetcher.fetch()
             return
         except FetchError:
-            time.sleep(retry_id * cli_args.retry_interval)
+            if retry_id < retries:
+                time.sleep(retry_id * cli_args.retry_interval)
 
     raise FetchError(f"Failed to fetch `{fetcher}` after {retries} retries.")
 
@@ -432,9 +433,10 @@ def _get_sha256_and_corrected_url(
         return (fetcher.get_archive_sha256(), None)
 
     # Attempt to handle PyPi URLs that might have changed.
-    pypi_retries: Final[int] = _RETRY_LIMIT // 2
+    initial_retries: Final[int] = 1
+    corrected_pypi_retries: Final[int] = _RETRY_LIMIT - initial_retries
     try:
-        _fetch_archive(fetcher, cli_args, retries=pypi_retries)
+        _fetch_archive(fetcher, cli_args, retries=initial_retries)
         return (fetcher.get_archive_sha256(), None)
     except FetchError:
         log.info("PyPI URL detected. Attempting to recover URL.")
@@ -442,7 +444,7 @@ def _get_sha256_and_corrected_url(
         corrected_fetcher_url, corrected_recipe_url = _correct_pypi_url(recipe_reader, url_path)
         corrected_fetcher: Final[HttpArtifactFetcher] = HttpArtifactFetcher(str(fetcher), corrected_fetcher_url)
 
-        _fetch_archive(corrected_fetcher, cli_args, retries=pypi_retries)
+        _fetch_archive(corrected_fetcher, cli_args, retries=corrected_pypi_retries)
         log.warning("Archive found at %s. Will attempt to update recipe file.", corrected_fetcher_url)
         return (corrected_fetcher.get_archive_sha256(), corrected_recipe_url)
 
