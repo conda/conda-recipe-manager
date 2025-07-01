@@ -94,7 +94,6 @@ class HttpArtifactFetcher(BaseArtifactFetcher):
         :raises FetchError: If an issue occurred while downloading or extracting the archive.
         """
         # Buffered download approach
-        # confirming that the path is lowercase
         try:
             response = requests.get(str(self._archive_url), stream=True, timeout=_DOWNLOAD_TIMEOUT)
             with open(self._archive_path, "wb") as archive:
