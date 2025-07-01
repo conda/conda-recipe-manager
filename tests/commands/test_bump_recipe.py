@@ -513,3 +513,27 @@ def test_new_line_removal(
     assert recipe_file_path != expected_recipe_file_path
     assert load_file(recipe_file_path) == load_file(expected_recipe_file_path)
     assert result.exit_code == ExitCode.SUCCESS
+
+
+@pytest.mark.parametrize(
+    "url,should_match",
+    [
+        # PyPI URLs that should match
+        ("https://pypi.io/packages/source/t/types-toml/types-toml-0.10.8.20240310.tar.gz", True),
+        ("https://pypi.org/packages/source/p/pytest-pep8/pytest-pep8-1.0.7.tar.gz", True),
+        ("https://files.pythonhosted.org/packages/source/p/pytest/pytest-1.0.0.tar.gz", True),
+        # Non-PyPI URLs that shouldn't match
+        ("https://github.com/googleapis/google-cloud-cpp/archive/v2.31.0.tar.gz", False),
+        ("https://curl.se/download/curl-8.11.0.tar.bz2", False),
+        ("http://download.videolan.org/pub/videolan/x264/snapshots/x264-snapshot-20191217-2245-stable.tar.bz2", False),
+    ]
+)
+def test_pypi_url_regex_matching(url: str, should_match: bool) -> None:
+    """
+    Test that the PYPI_URL regex pattern correctly identifies PyPI source URLs.
+
+    :param url: URL to test against the PyPI regex pattern
+    :param should_match: Whether the URL should match the PyPI pattern
+    """
+    pypi_match = bump_recipe._Regex.PYPI_URL.match(url)
+    assert (pypi_match is not None) == should_match
