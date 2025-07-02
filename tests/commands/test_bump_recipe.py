@@ -526,7 +526,7 @@ def test_new_line_removal(
         ("https://github.com/googleapis/google-cloud-cpp/archive/v2.31.0.tar.gz", False),
         ("https://curl.se/download/curl-8.11.0.tar.bz2", False),
         ("http://download.videolan.org/pub/videolan/x264/snapshots/x264-snapshot-20191217-2245-stable.tar.bz2", False),
-    ]
+    ],
 )
 def test_pypi_url_regex_matching(url: str, should_match: bool) -> None:
     """
@@ -535,5 +535,6 @@ def test_pypi_url_regex_matching(url: str, should_match: bool) -> None:
     :param url: URL to test against the PyPI regex pattern
     :param should_match: Whether the URL should match the PyPI pattern
     """
+    # pylint: disable=protected-access
     pypi_match = bump_recipe._Regex.PYPI_URL.match(url)
     assert (pypi_match is not None) == should_match
