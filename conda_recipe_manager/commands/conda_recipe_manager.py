@@ -13,8 +13,7 @@ from conda_recipe_manager.commands.convert import convert
 from conda_recipe_manager.commands.graph import graph
 from conda_recipe_manager.commands.patch import patch
 from conda_recipe_manager.commands.rattler_bulk_build import rattler_bulk_build
-
-CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
+from conda_recipe_manager.commands.utils.types import CONTEXT_SETTINGS
 
 
 @click.group(context_settings=CONTEXT_SETTINGS)

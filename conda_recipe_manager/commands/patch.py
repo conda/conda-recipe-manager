@@ -12,7 +12,7 @@ from typing import cast
 import click
 
 from conda_recipe_manager.commands.utils.print import print_err
-from conda_recipe_manager.commands.utils.types import ExitCode
+from conda_recipe_manager.commands.utils.types import CONTEXT_SETTINGS, ExitCode
 from conda_recipe_manager.parser.exceptions import JsonPatchValidationException
 from conda_recipe_manager.parser.recipe_parser import RecipeParser
 from conda_recipe_manager.types import JsonPatchType
@@ -53,7 +53,6 @@ def _pre_patch_validate(
 # `Path` instance. This is caused by how `click` uses decorators. See these links for more detail:
 # - https://pytest-pyfakefs.readthedocs.io/en/latest/troubleshooting.html#pathlib-path-objects-created-outside-of-tests
 # - https://github.com/pytest-dev/pyfakefs/discussions/605
-CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
 
 
 @click.command(short_help="Modify recipe files with JSON patch blobs.", context_settings=CONTEXT_SETTINGS)

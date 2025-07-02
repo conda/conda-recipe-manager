@@ -17,7 +17,7 @@ from typing import Final, Optional
 import click
 
 from conda_recipe_manager.commands.utils.print import print_err, print_messages, print_out
-from conda_recipe_manager.commands.utils.types import ExitCode
+from conda_recipe_manager.commands.utils.types import CONTEXT_SETTINGS, ExitCode
 from conda_recipe_manager.parser.enums import SchemaVersion
 from conda_recipe_manager.parser.recipe_parser_convert import RecipeParserConvert
 from conda_recipe_manager.parser.types import V0_FORMAT_RECIPE_FILE_NAME, V1_FORMAT_RECIPE_FILE_NAME
@@ -241,9 +241,6 @@ def _collect_issue_stats(project_name: str, issues: list[str], hist: dict[str, i
     if issues:
         recipes_lst.append(project_name)
     return len(issues)
-
-
-CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
 
 
 @click.command(

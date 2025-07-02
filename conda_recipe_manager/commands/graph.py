@@ -14,7 +14,7 @@ from typing import Final, Optional
 import click
 
 from conda_recipe_manager.commands.utils.print import print_err
-from conda_recipe_manager.commands.utils.types import ExitCode
+from conda_recipe_manager.commands.utils.types import CONTEXT_SETTINGS, ExitCode
 from conda_recipe_manager.grapher.recipe_graph import PackageStats, RecipeGraph
 from conda_recipe_manager.grapher.recipe_graph_from_disk import RecipeGraphFromDisk
 from conda_recipe_manager.grapher.types import GraphDirection, GraphType, PackageStatsEncoder
@@ -59,9 +59,6 @@ def _parse_plot_options(recipe_graph: RecipeGraph, g_type: str, dir_str: Optiona
 
     recipe_graph.plot(GraphType(g_type), direction=direction, package=pkg)
     return True
-
-
-CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
 
 
 @click.command(short_help="Interactive CLI for examining recipe dependency graphs.", context_settings=CONTEXT_SETTINGS)
