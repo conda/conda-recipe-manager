@@ -628,6 +628,12 @@ class RecipeReader(IsModifiable):
             if clean_line == "":
                 continue
 
+            # Handle pure comments separately as they don't abide by the indentation rules of the rest of the file.
+            if line.lstrip().startswith("#"):
+                comment_indent = num_tab_spaces(line)
+                last_node.children.append(Node(comment=line.lstrip(), comment_indent=comment_indent))
+                continue
+
             new_indent = num_tab_spaces(line)
 
             # Special multiline case. This will initialize `new_node` if the special "-backslash multiline pattern is
@@ -877,7 +883,7 @@ class RecipeReader(IsModifiable):
                 # duplicating comments and accidentally rendering values on a comment block.
                 if schema_version == SchemaVersion.V0 and child.is_tof_comment():
                     continue
-                lines.append(f"{spaces}{extra_tab}" f"{child.comment}".rstrip())
+                lines.append(f"{child.comment_indent * " "}" f"{child.comment}".rstrip())
             # Empty keys can be easily confused for leaf nodes. The difference is these nodes render with a "dangling"
             # `:` mark
             elif child.is_empty_key():
