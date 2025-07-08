@@ -286,11 +286,10 @@ def test_pre_process_recipe_text(input_file: str, expected_file: str) -> None:
             ],
         ),
         # Issue #394: variable with a "+" (version with local version identifier) not treated as string
-        pytest.param(
+        (
             "parser_regressions/issue-394_regression.yaml",
             [],
             [],
-            marks=pytest.mark.xfail(reason="Issue #394"),
         ),
         # TODO complete: The `rust.yaml` test contains many edge cases and selectors that aren't directly supported in
         # the V1 recipe format
