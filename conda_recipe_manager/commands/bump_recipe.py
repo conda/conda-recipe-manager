@@ -102,7 +102,7 @@ class _Regex:
 # Maximum number of retries to attempt when trying to fetch an external artifact.
 _RETRY_LIMIT: Final[int] = 5
 # How much longer (in seconds) we should wait per retry.
-_DEFAULT_RETRY_INTERVAL: Final[int] = 30
+_DEFAULT_RETRY_INTERVAL: Final[int] = 10
 
 
 ## Functions ##
@@ -335,7 +335,8 @@ def _fetch_archive(fetcher: HttpArtifactFetcher, cli_args: _CliArgs, retries: in
             fetcher.fetch()
             return
         except FetchError:
-            time.sleep(retry_id * cli_args.retry_interval)
+            if retry_id < retries:
+                time.sleep(retry_id * cli_args.retry_interval)
 
     raise FetchError(f"Failed to fetch `{fetcher}` after {retries} retries.")
 
