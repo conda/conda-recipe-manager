@@ -102,7 +102,7 @@ class _Regex:
 # Maximum number of retries to attempt when trying to fetch an external artifact.
 _RETRY_LIMIT: Final[int] = 5
 # How much longer (in seconds) we should wait per retry.
-_DEFAULT_RETRY_INTERVAL: Final[int] = 30
+_DEFAULT_RETRY_INTERVAL: Final[int] = 10
 
 
 ## Functions ##
@@ -433,10 +433,9 @@ def _get_sha256_and_corrected_url(
         return (fetcher.get_archive_sha256(), None)
 
     # Attempt to handle PyPi URLs that might have changed.
-    initial_retries: Final[int] = 1
-    corrected_pypi_retries: Final[int] = _RETRY_LIMIT - initial_retries
+    pypi_retries: Final[int] = _RETRY_LIMIT // 2
     try:
-        _fetch_archive(fetcher, cli_args, retries=initial_retries)
+        _fetch_archive(fetcher, cli_args, retries=pypi_retries)
         return (fetcher.get_archive_sha256(), None)
     except FetchError:
         log.info("PyPI URL detected. Attempting to recover URL.")
@@ -444,7 +443,7 @@ def _get_sha256_and_corrected_url(
         corrected_fetcher_url, corrected_recipe_url = _correct_pypi_url(recipe_reader, url_path)
         corrected_fetcher: Final[HttpArtifactFetcher] = HttpArtifactFetcher(str(fetcher), corrected_fetcher_url)
 
-        _fetch_archive(corrected_fetcher, cli_args, retries=corrected_pypi_retries)
+        _fetch_archive(corrected_fetcher, cli_args, retries=pypi_retries)
         log.warning("Archive found at %s. Will attempt to update recipe file.", corrected_fetcher_url)
         return (corrected_fetcher.get_archive_sha256(), corrected_recipe_url)
 
