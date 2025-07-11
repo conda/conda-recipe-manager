@@ -69,9 +69,15 @@ class V0RecipeFormatter:
                 idx += 1
                 continue
 
+            prev_cntr = num_tab_spaces(self._lines[idx - 1])
             cur_cntr = num_tab_spaces(line)
             next_cntr = num_tab_spaces(self._lines[idx + 1])
             next_clean_line = self._lines[idx + 1].lstrip()
+
+            # If the current line is more than 1 tab indented with respect to the previous line,
+            # this will crash the parser, irrespective of the type of line (comment, list, etc).
+            if cur_cntr > prev_cntr + TAB_SPACE_COUNT:
+                self._lines[idx] = (" " * (prev_cntr + TAB_SPACE_COUNT)) + clean_line
 
             # Attempt to correct mis-matched comment indentations by looking at the next line. This does not change
             # indentation when the following line is another comment (as to not mess with multi-line comment blocks).

@@ -46,7 +46,6 @@ class Node:
         value: NodeValue | SentinelType = _sentinel,
         # TODO Future: Node comments should be Optional.
         comment: str = "",
-        comment_indent: int = 0,
         comment_pos: CommentPosition = CommentPosition.DEFAULT,
         children: Optional[list["Node"]] = None,
         list_member_flag: bool = False,
@@ -60,7 +59,6 @@ class Node:
 
         :param value:               Value of the current node
         :param comment:             Comment on the line this node was found on
-        :param comment_indent:      Indentation of the comment on the line this node was found on
         :param comment_pos:         Special enum indicating full-line comment positioning.
         :param children:            List of children nodes, descendants of this node
         :param list_member_flag:    Indicates if this node is part of a list
@@ -69,7 +67,6 @@ class Node:
         """
         self.value = value
         self.comment = comment
-        self.comment_indent = comment_indent
         self.comment_pos = comment_pos
         self.children: list[Node] = children if children else []
         self.list_member_flag = list_member_flag
