@@ -8,7 +8,7 @@ from typing import Final
 
 import pytest
 
-from conda_recipe_manager.parser._node_var import NodeVar
+from conda_recipe_manager.parser._node_var import NodeVar, VarSource
 from conda_recipe_manager.parser.enums import SchemaVersion
 from conda_recipe_manager.parser.recipe_parser import RecipeReader
 from conda_recipe_manager.types import JsonType, Primitives
@@ -52,8 +52,8 @@ def test_construction(file: str, schema_version: SchemaVersion) -> None:
     parser = RecipeReader(types_toml)
     assert parser._init_content == types_toml  # pylint: disable=protected-access
     assert parser._vars_tbl == {  # pylint: disable=protected-access
-        "name": NodeVar("types-toml", None),
-        "version": NodeVar("0.10.8.6", None),
+        "name": NodeVar("types-toml", VarSource.RECIPE_FILE, None),
+        "version": NodeVar("0.10.8.6", VarSource.RECIPE_FILE, None),
     }
     assert parser.get_schema_version() == schema_version
     assert not parser.is_modified()

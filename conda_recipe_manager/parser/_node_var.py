@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+from enum import Enum, auto
 from typing import Final, Optional
 
 from conda_recipe_manager.parser._types import Regex
@@ -14,15 +15,35 @@ from conda_recipe_manager.parser.types import SchemaVersion
 from conda_recipe_manager.types import JsonType
 
 
+class VarSource(Enum):
+    """
+    Indicates where a recipe variable was set.
+    """
+
+    # Comes from the recipe file, itself
+    RECIPE_FILE = auto()
+    # Comes from a Conda Build Config (CBC) file
+    CBC_FILE = auto()
+    # Another, unknown source
+    OTHER = auto()
+
+
 class NodeVar:
     """
     Simple representation of a variable found in a recipe or CBC file.
 
     This class was originally called `_CBCEntry` and was exclusively used in the `CbcParser` class. It has now been
     generalized for use in the `RecipeParser` class.
+
+    From Cheng Lee, the order of increasing precedence for `conda-build` is:
+      - what's in the "system" wide cbc.yaml
+      - what's in the recipe cbc.yaml
+      - what's in the meta.yaml itself
+    TODO Future: Add support for tracking order precedence.
+
     """
 
-    def __init__(self, value: JsonType, comment: Optional[str] = None):
+    def __init__(self, value: JsonType, source: VarSource, comment: Optional[str] = None):
         self._value = value
         # Raw comment string. This may or may not contain a V0 selector. Modeled after the `Node.comment` for
         # consistency (so this includes the leading `#`)
@@ -30,6 +51,7 @@ class NodeVar:
         # TODO add V1 support
         selector_str: Final = SelectorParser._v0_extract_selector(comment)
         self._selector: Final = SelectorParser(selector_str, SchemaVersion.V0) if selector_str else None
+        self._source: Final = source
 
     def __eq__(self, other: object) -> bool:
         """
@@ -41,7 +63,7 @@ class NodeVar:
         if not isinstance(other, NodeVar):
             return False
         # We don't directly compare the `_selector` field as it is calculated from `_comment`.
-        return self._value == other._value and self._comment == other._comment
+        return self._value == other._value and self._source == other._source and self._comment == other._comment
 
     def __str__(self) -> str:
         """
@@ -71,6 +93,18 @@ class NodeVar:
         :returns: The variable's value.
         """
         return self._value
+
+    def can_render_v0_value(self) -> bool:
+        """
+        Indicates if a variable can be rendered as a variable in a V0 recipe file. If this returns `False`, DO NOT
+        INVOKE `render_v0_value()`. Otherwise, the recipe file could incorrectly include variables from other sources.
+
+        Also note that `render_v0_value()` does not return an empty string in this case so that we do not have spurious
+        empty lines in the recipe file.
+
+        :returns: True if the `NodeVar` instance can be rendered in a recipe file.
+        """
+        return self._source == VarSource.RECIPE_FILE
 
     def render_v0_value(self) -> str:
         """

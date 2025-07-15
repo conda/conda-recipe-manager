@@ -16,7 +16,7 @@ import yaml
 
 from conda_recipe_manager.parser._is_modifiable import IsModifiable
 from conda_recipe_manager.parser._node import CommentPosition, Node
-from conda_recipe_manager.parser._node_var import NodeVar
+from conda_recipe_manager.parser._node_var import NodeVar, VarSource
 from conda_recipe_manager.parser._selector_info import SelectorInfo
 from conda_recipe_manager.parser._traverse import traverse, traverse_all
 from conda_recipe_manager.parser._types import (
@@ -528,7 +528,12 @@ class RecipeReader(IsModifiable):
         Initializes the variable table, `vars_tbl` based on the document content.
         Requires parse-tree and `_schema_version` to be initialized.
         """
-        # Tracks Jinja variables set by the file
+        # Pre-load variables from the CBC file into the table. NOTE:
+        #   - Variables in the recipe file have the highest precedence. So, we can safely write over CBC variables found
+        #     in the file without worrying about accidentally dropping them when the file is the rendered.
+        #   - In the future, if we decide to support multiple CBC files, we will need to worry about the precedence
+        #     order in which we load-in CBC variables.
+        # TODO add CBC variables.
         self._vars_tbl: _VarTable = {}
 
         match self._schema_version:
@@ -547,7 +552,9 @@ class RecipeReader(IsModifiable):
                         value = cast(JsonType, ast.literal_eval(cast(str, value)))
                     except Exception:  # pylint: disable=broad-exception-caught
                         value = str(value)
-                    self._vars_tbl[key] = NodeVar(value, RecipeReader._parse_trailing_comment(line))
+                    self._vars_tbl[key] = NodeVar(
+                        value, VarSource.RECIPE_FILE, RecipeReader._parse_trailing_comment(line)
+                    )
             case SchemaVersion.V1:
                 # Abuse the fact that the `/context` section is pure YAML.
                 context: Final = cast(dict[str, JsonType], self.get_value("/context", {}))
@@ -556,7 +563,7 @@ class RecipeReader(IsModifiable):
                     # V1 only allows for scalar types as variables. So we should be able to recover all comments without
                     # recursing through `/context`
                     var_path = RecipeReader.append_to_path("/context", key)
-                    self._vars_tbl[key] = NodeVar(value, comments_tbl.get(var_path, None))
+                    self._vars_tbl[key] = NodeVar(value, VarSource.RECIPE_FILE, comments_tbl.get(var_path, None))
 
     def _rebuild_selectors(self) -> None:
         """
@@ -901,7 +908,8 @@ class RecipeReader(IsModifiable):
         lines: list[str] = []
 
         # Render variable set section for V0 recipes. V1 recipes have variables stored in the parse tree under
-        # `/context`.
+        # `/context`. This also means we don't have to worry about accidentally rendering CBC variables in a V1 recipe
+        # file.
         if self._schema_version == SchemaVersion.V0:
             # Rendering comments before the variable table is not an issue in V1 as variables are inherently part of the
             # tree structure.
@@ -912,6 +920,8 @@ class RecipeReader(IsModifiable):
                 lines.append(root_child.comment.rstrip())
 
             for key, val in self._vars_tbl.items():
+                if not val.can_render_v0_value():
+                    continue
                 lines.append(f"{{% set {key} = {val.render_v0_value()} %}}{val.render_comment()}")
             # Add spacing if variables have been set
             if len(self._vars_tbl):

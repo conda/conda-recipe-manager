@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import Final, cast
 
-from conda_recipe_manager.parser._node_var import NodeVar
+from conda_recipe_manager.parser._node_var import NodeVar, VarSource
 from conda_recipe_manager.parser.recipe_reader import RecipeReader
 from conda_recipe_manager.parser.selector_query import SelectorQuery
 from conda_recipe_manager.types import JsonType, SentinelType
@@ -69,7 +69,9 @@ class CbcParser(RecipeReader):
                 selector_str = "" if not self.contains_selector_at_path(path) else self.get_selector_at_path(path)
                 comment_str = comments_tbl.get(path, "")
                 combined_comment = f"{selector_str} {comment_str}"
-                entry = NodeVar(value, f"# {combined_comment}" if combined_comment.strip() else None)
+                entry = NodeVar(
+                    value, VarSource.CBC_FILE, f"# {combined_comment}" if combined_comment.strip() else None
+                )
 
                 # TODO detect duplicates
                 if variable not in self._cbc_vars_tbl:
