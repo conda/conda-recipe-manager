@@ -124,6 +124,7 @@ class CbcParser(RecipeReader):
 
         for entry in cbc_entries:
             selector = entry.get_selector()
+            # TODO: What to do if multiple selectors apply???
             if selector is None or selector.does_selector_apply(query):
                 return entry.get_value()
 

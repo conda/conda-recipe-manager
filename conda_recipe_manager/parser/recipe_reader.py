@@ -10,7 +10,7 @@ import hashlib
 import re
 import sys
 from collections.abc import Callable
-from typing import Final, Optional, cast, no_type_check
+from typing import TYPE_CHECKING, Final, Optional, cast, no_type_check
 
 import yaml
 
@@ -48,6 +48,11 @@ from conda_recipe_manager.parser.v0_recipe_formatter import V0RecipeFormatter
 from conda_recipe_manager.types import PRIMITIVES_TUPLE, JsonType, Primitives, SentinelType
 from conda_recipe_manager.utils.cryptography.hashing import hash_str
 from conda_recipe_manager.utils.typing import optional_str
+
+# Prevents a cyclical import at runtime. See this post for more details:
+#   https://stackoverflow.com/questions/39740632/python-type-hinting-without-cyclic-imports
+if TYPE_CHECKING:
+    from conda_recipe_manager.parser.cbc_parser import CbcParser
 
 # Import guard: Fallback to `SafeLoader` if `CSafeLoader` isn't available
 try:
@@ -528,12 +533,8 @@ class RecipeReader(IsModifiable):
         Initializes the variable table, `vars_tbl` based on the document content.
         Requires parse-tree and `_schema_version` to be initialized.
         """
-        # Pre-load variables from the CBC file into the table. NOTE:
-        #   - Variables in the recipe file have the highest precedence. So, we can safely write over CBC variables found
-        #     in the file without worrying about accidentally dropping them when the file is the rendered.
-        #   - In the future, if we decide to support multiple CBC files, we will need to worry about the precedence
-        #     order in which we load-in CBC variables.
-        # TODO add CBC variables.
+        # To keep things clean, CBC variables are NOT added to the variables table. However, we now track the origin of
+        # variables in case we need to manage that distinction in the future.
         self._vars_tbl: _VarTable = {}
 
         match self._schema_version:
@@ -582,17 +583,20 @@ class RecipeReader(IsModifiable):
 
         traverse_all(self._root, _collect_selectors)
 
-    def __init__(self, content: str):
+    def __init__(self, content: str, cbc_parser: Optional[CbcParser] = None):
         # pylint: disable=too-complex
         # TODO Refactor and simplify ^
         """
         Constructs a RecipeReader instance.
 
         :param content: conda-build formatted recipe file, as a single text string.
+        :param cbc_parser: (Optional) Reference to an applicable Conda Build Config (CBC) parser instance. If provided,
+            This will allow variable substitutions to be made using a CBC file.
         """
         super().__init__()
         # The initial, raw, text is preserved for diffing and debugging purposes
         self._init_content: Final[str] = content
+        self._cbc_parser_ref: Final = cbc_parser
 
         # Root of the parse tree
         self._root = Node(value=ROOT_NODE_VALUE)
@@ -919,9 +923,9 @@ class RecipeReader(IsModifiable):
                 # NOTE: Top of file comments must be owned by the root level and, therefore, do not need indentation.
                 lines.append(root_child.comment.rstrip())
 
+            # NOTE: Even though we now support CBC variables, the variables table ONLY contains variables found in the
+            # the recipe file. Therefore we do not need to check/run `is_in_recipe()`.
             for key, val in self._vars_tbl.items():
-                if not val.can_render_v0_value():
-                    continue
                 lines.append(f"{{% set {key} = {val.render_v0_value()} %}}{val.render_comment()}")
             # Add spacing if variables have been set
             if len(self._vars_tbl):

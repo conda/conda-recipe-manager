@@ -94,10 +94,10 @@ class NodeVar:
         """
         return self._value
 
-    def can_render_v0_value(self) -> bool:
+    def is_in_recipe_file(self) -> bool:
         """
-        Indicates if a variable can be rendered as a variable in a V0 recipe file. If this returns `False`, DO NOT
-        INVOKE `render_v0_value()`. Otherwise, the recipe file could incorrectly include variables from other sources.
+        Indicates if a variable originates from the recipe file. If this returns `False`, DO NOT INVOKE
+        `render_v0_value()`. Otherwise, the recipe file could incorrectly include variables from other sources.
 
         Also note that `render_v0_value()` does not return an empty string in this case so that we do not have spurious
         empty lines in the recipe file.
