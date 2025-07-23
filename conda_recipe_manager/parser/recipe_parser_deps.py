@@ -133,6 +133,7 @@ class RecipeParserDeps(RecipeParser, RecipeReaderDeps):
 
         return patch_success
 
+    # TODO upgrade this with the CBC parser work
     def add_dependency(
         self,
         dep: Dependency,
