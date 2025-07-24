@@ -1,0 +1,16 @@
+{% set version = "0.10.8.6" %}
+# Overrides CBC file
+{% set fontconfig = "3.2.1" %}
+
+package:
+  version: {{ version }}
+
+requirements:
+  build:
+    - fortran {{ fortran_compiler_version }}
+    - {{ c_compiler }} {{ c_compiler_version }}
+    - glib {{ glib }}
+  host:
+    - gstreamer {{ gstreamer }}
+    - fontconfig {{ fontconfig }}
+    - foobar {{ var_dne_42 }}
