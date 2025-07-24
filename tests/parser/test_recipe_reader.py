@@ -997,6 +997,15 @@ def test_get_value(file: str, path: str, sub_vars: bool, expected: JsonType) -> 
             None,
             "fortran 2022.1.0",
         ),
+        ## Tests where CBC file has a "gap" in coverage and a selector CAN NOT be applied ##
+        (
+            "parser_cbc_vars/types-toml_cbc_vars.yaml",
+            "anaconda_cbc_01.yaml",
+            "/requirements/build/1",
+            True,
+            SelectorQuery(platform=Platform.WIN_64),
+            "vs2017 {{ c_compiler_version }}",
+        ),
         ## Tests where the CBC variables is defined in the file AND a selector changes that value. ##
         (
             "parser_cbc_vars/types-toml_cbc_vars.yaml",
@@ -1013,6 +1022,22 @@ def test_get_value(file: str, path: str, sub_vars: bool, expected: JsonType) -> 
             True,
             SelectorQuery(platform=Platform.LINUX_64),
             "fortran 11.2.0",
+        ),
+        (
+            "parser_cbc_vars/types-toml_cbc_vars.yaml",
+            "anaconda_cbc_01.yaml",
+            "/requirements/build/1",
+            True,
+            SelectorQuery(platform=Platform.LINUX_RISC_V64),
+            "gcc 11.2.0",
+        ),
+        (
+            "parser_cbc_vars/types-toml_cbc_vars.yaml",
+            "anaconda_cbc_01.yaml",
+            "/requirements/build/1",
+            True,
+            SelectorQuery(platform=Platform.OSX_ARM_64),
+            "clang 14",
         ),
         # TODO numpy test: Numpy does not use the selector syntax. Numpy requires "zip-keys" support.
         # ("h5py.yaml", "anaconda_cbc_01.yaml", "/requirements/host/3", True, SelectorQuery(), "numpy TODO"),
