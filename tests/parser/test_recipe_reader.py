@@ -4,13 +4,14 @@
 
 from __future__ import annotations
 
-from typing import Final
+from typing import Final, Optional
 
 import pytest
 
 from conda_recipe_manager.parser._node_var import NodeVar, VarSource
 from conda_recipe_manager.parser.enums import SchemaVersion
 from conda_recipe_manager.parser.recipe_parser import RecipeReader
+from conda_recipe_manager.parser.selector_query import Platform, SelectorQuery
 from conda_recipe_manager.types import JsonType, Primitives
 from tests.constants import SIMPLE_DESCRIPTION
 from tests.file_loading import load_file, load_recipe
@@ -870,8 +871,57 @@ def test_get_value(file: str, path: str, sub_vars: bool, expected: JsonType) -> 
     :param sub_vars: True to substitute JINJA variables. False otherwise.
     :param expected: Expected result of the test
     """
-    parser = load_recipe(file, RecipeReader)
+    parser: Final = load_recipe(file, RecipeReader)
     assert parser.get_value(path, sub_vars=sub_vars) == expected
+    assert not parser.is_modified()
+
+
+@pytest.mark.parametrize(
+    "file,cbc_file,path,sub_vars,query,expected",
+    [
+        ## Tests that should result in the recipe file's value because the request/CBC file was not provided. ##
+        ## Tests where the value is defined in both the recipe file and the CBC file so the recipe has precedence. ##
+        ## Tests to ensure the reading of the CBC file does not corrupt values not found in the CBC file. ##
+        ## Tests where the CBC variable is defined in the file. ##
+        ## Tests where the CBC variables is defined in the file AND a selector changes that value. ##
+        (
+            "parser_cbc_vars/types-toml_cbc_vars.yaml",
+            "anaconda_cbc_01.yaml",
+            "/requirements/build/0",
+            True,
+            SelectorQuery(platform=Platform.WIN_64),
+            "fortran 2022.1.0",
+        ),
+        (
+            "parser_cbc_vars/types-toml_cbc_vars.yaml",
+            "anaconda_cbc_01.yaml",
+            "/requirements/build/0",
+            True,
+            SelectorQuery(platform=Platform.LINUX_64),
+            "fortran 11.2.0",
+        ),
+        # TODO numpy test: Numpy does not use the selector syntax. Numpy requires "zip-keys" support.
+        # ("h5py.yaml", "anaconda_cbc_01.yaml", "/requirements/host/3", True, SelectorQuery(), "numpy TODO"),
+        # TODO add test for `{{ compiler('cxx') }}` (cross compiling)??
+        #   Details here: https://docs.conda.io/projects/conda-build/en/stable/resources/variants.html#cross-compiling
+        # TODO add V1 support
+    ],
+)
+def test_get_value_selector_query(
+    file: str, cbc_file: Optional[str], path: str, sub_vars: bool, query: Optional[SelectorQuery], expected: JsonType
+) -> None:
+    """
+    Tests retrieval of a value from a parsed YAML example.
+
+    :param file: File to work against
+    :param cbc_file: (Optional) CBC file for the recipe parser to reference
+    :param path: Target input path
+    :param sub_vars: True to substitute JINJA variables. False otherwise.
+    :param query: (Optional) Query
+    :param expected: Expected result of the test
+    """
+    parser: Final = load_recipe(file, RecipeReader, cbc_file=cbc_file)
+    assert parser.get_value(path, sub_vars=sub_vars, query=query) == expected
     assert not parser.is_modified()
 
 
