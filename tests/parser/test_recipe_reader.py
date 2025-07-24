@@ -880,9 +880,42 @@ def test_get_value(file: str, path: str, sub_vars: bool, expected: JsonType) -> 
     "file,cbc_file,path,sub_vars,query,expected",
     [
         ## Tests that should result in the recipe file's value because the request/CBC file was not provided. ##
+        (
+            "parser_cbc_vars/types-toml_cbc_vars.yaml",
+            None,
+            "/requirements/build/0",
+            False,
+            None,
+            "fortran {{ fortran_compiler_version }}",
+        ),
+        (
+            "parser_cbc_vars/types-toml_cbc_vars.yaml",
+            "anaconda_cbc_01.yaml",
+            "/requirements/build/0",
+            False,
+            None,
+            "fortran {{ fortran_compiler_version }}",
+        ),
+        (
+            "parser_cbc_vars/types-toml_cbc_vars.yaml",
+            "anaconda_cbc_01.yaml",
+            "/requirements/build/0",
+            False,
+            SelectorQuery(platform=Platform.OSX_64),
+            "fortran {{ fortran_compiler_version }}",
+        ),
         ## Tests where the value is defined in both the recipe file and the CBC file so the recipe has precedence. ##
         ## Tests to ensure the reading of the CBC file does not corrupt values not found in the CBC file. ##
         ## Tests where the CBC variable is defined in the file. ##
+        ## NOTE: As of writing, if multiple values are defined and no selector is provided, the 1st value is used. ##
+        (
+            "parser_cbc_vars/types-toml_cbc_vars.yaml",
+            "anaconda_cbc_01.yaml",
+            "/requirements/build/0",
+            True,
+            None,
+            "fortran 2022.1.0",
+        ),
         ## Tests where the CBC variables is defined in the file AND a selector changes that value. ##
         (
             "parser_cbc_vars/types-toml_cbc_vars.yaml",
