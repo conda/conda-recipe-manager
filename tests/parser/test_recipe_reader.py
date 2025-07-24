@@ -922,8 +922,48 @@ def test_get_value(file: str, path: str, sub_vars: bool, expected: JsonType) -> 
             "fontconfig 3.2.1",
         ),
         ## Tests to ensure the reading of the CBC file does not corrupt values not found in the CBC file. ##
+        (
+            "parser_cbc_vars/types-toml_cbc_vars.yaml",
+            "anaconda_cbc_01.yaml",
+            "/package/version",
+            True,
+            None,
+            "0.10.8.6",
+        ),
+        (
+            "parser_cbc_vars/types-toml_cbc_vars.yaml",
+            "anaconda_cbc_01.yaml",
+            "/package/version",
+            True,
+            SelectorQuery(platform=Platform.LINUX_ARM_V7L),
+            "0.10.8.6",
+        ),
         ## Tests where the CBC variable is defined in the file. ##
         ## NOTE: As of writing, if multiple values are defined and no selector is provided, the 1st value is used. ##
+        (
+            "parser_cbc_vars/types-toml_cbc_vars.yaml",
+            "anaconda_cbc_01.yaml",
+            "/requirements/build/2",
+            True,
+            None,
+            "glib 2",
+        ),
+        (
+            "parser_cbc_vars/types-toml_cbc_vars.yaml",
+            "anaconda_cbc_01.yaml",
+            "/requirements/build/2",
+            True,
+            SelectorQuery(platform=Platform.LINUX_PPC_64_LE),
+            "glib 2",
+        ),
+        (
+            "parser_cbc_vars/types-toml_cbc_vars.yaml",
+            "anaconda_cbc_01.yaml",
+            "/requirements/build/2",
+            True,
+            SelectorQuery(platform=Platform.WIN_32),
+            "glib 2",
+        ),
         (
             "parser_cbc_vars/types-toml_cbc_vars.yaml",
             "anaconda_cbc_01.yaml",

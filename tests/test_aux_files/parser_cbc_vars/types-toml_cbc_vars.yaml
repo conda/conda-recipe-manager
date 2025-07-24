@@ -19,7 +19,7 @@ build:
 requirements:
   build:
     - fortran {{ fortran_compiler_version }}
-    - {{ compiler("c") }} {{ c_compiler_version }}
+    - {{ c_compiler }} {{ c_compiler_version }}
     - glib {{ glib }}
   host:
     - gstreamer {{ gstreamer }}
