@@ -7,10 +7,11 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
-from typing import Final, Type, TypeVar, cast
+from typing import Final, Optional, Type, TypeVar, cast
 
 from conda_recipe_manager.grapher.recipe_graph import RecipeGraph
 from conda_recipe_manager.parser.cbc_parser import CbcParser
+from conda_recipe_manager.parser.recipe_parser_convert import RecipeParserConvert
 from conda_recipe_manager.parser.recipe_reader import RecipeReader
 from conda_recipe_manager.parser.recipe_reader_deps import RecipeReaderDeps
 from conda_recipe_manager.types import JsonType
@@ -49,15 +50,22 @@ def load_file(file: Path | str) -> str:
     return (get_test_path() / file).read_text(encoding="utf-8")
 
 
-def load_recipe(file_name: Path | str, recipe_parser: Type[R]) -> R:
+def load_recipe(file_name: Path | str, recipe_parser_type: Type[R], cbc_file: Optional[str] = None) -> R:
     """
     Convenience function that simplifies initializing a recipe parser.
 
-    :param file_name: File name of the test recipe to load
-    :returns: RecipeParser instance, based on the file
+    :param file_name: File name of the test recipe to load.
+    :param recipe_parser_type: Type of recipe-parsing class to construct.
+    :param cbc_file: (Optional) If provided, constructs a `CbcParser` instance to attach to the recipe parser instance.
+        This argument is ignored for the `RecipeParserConvert` class.
+    :returns: RecipeParser instance, based on the file.
     """
     recipe: Final[str] = load_file(file_name)
-    return recipe_parser(recipe)
+    if recipe_parser_type == RecipeParserConvert:
+        return recipe_parser_type(recipe)
+
+    cbc_parser: Final[Optional[CbcParser]] = None if cbc_file is None else load_cbc(cbc_file)
+    return recipe_parser_type(recipe, cbc_parser)
 
 
 def load_recipe_graph(recipes: list[str]) -> RecipeGraph:

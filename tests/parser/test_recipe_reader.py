@@ -4,13 +4,14 @@
 
 from __future__ import annotations
 
-from typing import Final
+from typing import Final, Optional
 
 import pytest
 
-from conda_recipe_manager.parser._node_var import NodeVar
+from conda_recipe_manager.parser._node_var import NodeVar, VarSource
 from conda_recipe_manager.parser.enums import SchemaVersion
 from conda_recipe_manager.parser.recipe_parser import RecipeReader
+from conda_recipe_manager.parser.selector_query import Platform, SelectorQuery
 from conda_recipe_manager.types import JsonType, Primitives
 from tests.constants import SIMPLE_DESCRIPTION
 from tests.file_loading import load_file, load_recipe
@@ -52,8 +53,8 @@ def test_construction(file: str, schema_version: SchemaVersion) -> None:
     parser = RecipeReader(types_toml)
     assert parser._init_content == types_toml  # pylint: disable=protected-access
     assert parser._vars_tbl == {  # pylint: disable=protected-access
-        "name": NodeVar("types-toml", None),
-        "version": NodeVar("0.10.8.6", None),
+        "name": NodeVar("types-toml", VarSource.RECIPE_FILE, None),
+        "version": NodeVar("0.10.8.6", VarSource.RECIPE_FILE, None),
     }
     assert parser.get_schema_version() == schema_version
     assert not parser.is_modified()
@@ -304,8 +305,166 @@ def test_render_to_object(file: str, substitute: bool, expected: JsonType) -> No
     :param substitute: True to run the function with JINJA substitutions on, False for off
     :param expected: Expected value to return
     """
-    parser = load_recipe(file, RecipeReader)
+    parser: Final = load_recipe(file, RecipeReader)
     assert parser.render_to_object(substitute) == expected
+
+
+@pytest.mark.parametrize(
+    "file,cbc_file,substitute,query,expected",
+    [
+        ## Tests that should result in the recipe file's value because the request/CBC file was not provided. ##
+        (
+            "parser_cbc_vars/types-toml_cbc_vars_mini.yaml",
+            None,
+            False,
+            None,
+            {
+                "package": {"version": "{{ version }}"},
+                "requirements": {
+                    "build": [
+                        "fortran {{ fortran_compiler_version }}",
+                        "{{ c_compiler }} {{ c_compiler_version }}",
+                        "glib {{ glib }}",
+                    ],
+                    "host": [
+                        "gstreamer {{ gstreamer }}",
+                        "fontconfig {{ fontconfig }}",
+                        "foobar {{ var_dne_42 }}",
+                    ],
+                },
+            },
+        ),
+        (
+            "parser_cbc_vars/types-toml_cbc_vars_mini.yaml",
+            "anaconda_cbc_01.yaml",
+            False,
+            None,
+            {
+                "package": {"version": "{{ version }}"},
+                "requirements": {
+                    "build": [
+                        "fortran {{ fortran_compiler_version }}",
+                        "{{ c_compiler }} {{ c_compiler_version }}",
+                        "glib {{ glib }}",
+                    ],
+                    "host": [
+                        "gstreamer {{ gstreamer }}",
+                        "fontconfig {{ fontconfig }}",
+                        "foobar {{ var_dne_42 }}",
+                    ],
+                },
+            },
+        ),
+        (
+            "parser_cbc_vars/types-toml_cbc_vars_mini.yaml",
+            "anaconda_cbc_01.yaml",
+            False,
+            SelectorQuery(platform=Platform.LINUX_PPC_64),
+            {
+                "package": {"version": "{{ version }}"},
+                "requirements": {
+                    "build": [
+                        "fortran {{ fortran_compiler_version }}",
+                        "{{ c_compiler }} {{ c_compiler_version }}",
+                        "glib {{ glib }}",
+                    ],
+                    "host": [
+                        "gstreamer {{ gstreamer }}",
+                        "fontconfig {{ fontconfig }}",
+                        "foobar {{ var_dne_42 }}",
+                    ],
+                },
+            },
+        ),
+        ## Tests...
+        ##   - Where the variable is not defined anywhere.
+        ##   - To ensure the reading of the CBC file does not corrupt values not found in the CBC file.
+        ##   - Where the CBC variable is defined in the file.
+        ##     NOTE: As of writing, if multiple values are defined and no selector is provided, the 1st value is used.
+        ##   - Where the CBC file has a "gap" in coverage and a selector CAN NOT be applied.
+        ##   - Where the CBC variables is defined in the file AND a selector changes that value.
+        ##   - Where the variable is defined in both the recipe file and the CBC file so the recipe has precedence.
+        (
+            "parser_cbc_vars/types-toml_cbc_vars_mini.yaml",
+            "anaconda_cbc_01.yaml",
+            True,
+            None,
+            {
+                "package": {"version": "0.10.8.6"},
+                "requirements": {
+                    "build": [
+                        "fortran 2022.1.0",
+                        "gcc 11.2.0",
+                        "glib 2",
+                    ],
+                    "host": [
+                        "gstreamer 1.14",
+                        "fontconfig 3.2.1",
+                        "foobar {{ var_dne_42 }}",
+                    ],
+                },
+            },
+        ),
+        (
+            "parser_cbc_vars/types-toml_cbc_vars_mini.yaml",
+            "anaconda_cbc_01.yaml",
+            True,
+            SelectorQuery(platform=Platform.LINUX_PPC_64),
+            {
+                "package": {"version": "0.10.8.6"},
+                "requirements": {
+                    "build": [
+                        "fortran 11.2.0",
+                        "gcc 11.2.0",
+                        "glib 2",
+                    ],
+                    "host": [
+                        "gstreamer 1.14",
+                        "fontconfig 3.2.1",
+                        "foobar {{ var_dne_42 }}",
+                    ],
+                },
+            },
+        ),
+        (
+            "parser_cbc_vars/types-toml_cbc_vars_mini.yaml",
+            "anaconda_cbc_01.yaml",
+            True,
+            SelectorQuery(platform=Platform.WIN_64),
+            {
+                "package": {"version": "0.10.8.6"},
+                "requirements": {
+                    "build": [
+                        "fortran 2022.1.0",
+                        "vs2017 {{ c_compiler_version }}",
+                        "glib 2",
+                    ],
+                    "host": [
+                        "gstreamer 1.18",
+                        "fontconfig 3.2.1",
+                        "foobar {{ var_dne_42 }}",
+                    ],
+                },
+            },
+        ),
+        # TODO add V1 support
+    ],
+)
+def test_render_to_object_selector_query(
+    file: str, cbc_file: Optional[str], substitute: bool, query: Optional[SelectorQuery], expected: JsonType
+) -> None:
+    """
+    Tests rendering a recipe to an object format, using a `CbcParser` reference and an optional `SelectorQuery`.
+    TODO: Does not work with V1 recipes; if/then selectors crash with KeyError
+
+    :param file: File to load and test against.
+    :param cbc_file: (Optional) CBC file for the recipe parser to reference.
+    :param substitute: True to run the function with JINJA substitutions on, False for off.
+    :param query: (Optional) Selector query instance to simulate target environment.
+    :param expected: Expected value to return.
+    """
+    parser: Final = load_recipe(file, RecipeReader, cbc_file=cbc_file)
+    assert parser.render_to_object(substitute, query=query) == expected
 
 
 def test_render_to_object_multi_output() -> None:
@@ -870,8 +1029,197 @@ def test_get_value(file: str, path: str, sub_vars: bool, expected: JsonType) -> 
     :param sub_vars: True to substitute JINJA variables. False otherwise.
     :param expected: Expected result of the test
     """
-    parser = load_recipe(file, RecipeReader)
+    parser: Final = load_recipe(file, RecipeReader)
     assert parser.get_value(path, sub_vars=sub_vars) == expected
+    assert not parser.is_modified()
+
+
+@pytest.mark.parametrize(
+    "file,cbc_file,path,sub_vars,query,expected",
+    [
+        ## Tests that should result in the recipe file's value because the request/CBC file was not provided. ##
+        (
+            "parser_cbc_vars/types-toml_cbc_vars.yaml",
+            None,
+            "/requirements/build/0",
+            False,
+            None,
+            "fortran {{ fortran_compiler_version }}",
+        ),
+        (
+            "parser_cbc_vars/types-toml_cbc_vars.yaml",
+            "anaconda_cbc_01.yaml",
+            "/requirements/build/0",
+            False,
+            None,
+            "fortran {{ fortran_compiler_version }}",
+        ),
+        (
+            "parser_cbc_vars/types-toml_cbc_vars.yaml",
+            "anaconda_cbc_01.yaml",
+            "/requirements/build/0",
+            False,
+            SelectorQuery(platform=Platform.OSX_64),
+            "fortran {{ fortran_compiler_version }}",
+        ),
+        ## Tests where the variable is not defined anywhere. ##
+        (
+            "parser_cbc_vars/types-toml_cbc_vars.yaml",
+            None,
+            "/requirements/host/2",
+            True,
+            None,
+            "foobar {{ var_dne_42 }}",
+        ),
+        (
+            "parser_cbc_vars/types-toml_cbc_vars.yaml",
+            "anaconda_cbc_01.yaml",
+            "/requirements/host/2",
+            True,
+            None,
+            "foobar {{ var_dne_42 }}",
+        ),
+        (
+            "parser_cbc_vars/types-toml_cbc_vars.yaml",
+            "anaconda_cbc_01.yaml",
+            "/requirements/host/2",
+            True,
+            SelectorQuery(platform=Platform.OSX_ARM_64),
+            "foobar {{ var_dne_42 }}",
+        ),
+        ## Tests where the variable is defined in both the recipe file and the CBC file so the recipe has precedence. ##
+        (
+            "parser_cbc_vars/types-toml_cbc_vars.yaml",
+            "anaconda_cbc_01.yaml",
+            "/requirements/host/1",
+            True,
+            None,
+            "fontconfig 3.2.1",
+        ),
+        (
+            "parser_cbc_vars/types-toml_cbc_vars.yaml",
+            "anaconda_cbc_01.yaml",
+            "/requirements/host/1",
+            True,
+            SelectorQuery(platform=Platform.LINUX_PPC_64),
+            "fontconfig 3.2.1",
+        ),
+        ## Tests to ensure the reading of the CBC file does not corrupt values not found in the CBC file. ##
+        (
+            "parser_cbc_vars/types-toml_cbc_vars.yaml",
+            "anaconda_cbc_01.yaml",
+            "/package/version",
+            True,
+            None,
+            "0.10.8.6",
+        ),
+        (
+            "parser_cbc_vars/types-toml_cbc_vars.yaml",
+            "anaconda_cbc_01.yaml",
+            "/package/version",
+            True,
+            SelectorQuery(platform=Platform.LINUX_ARM_V7L),
+            "0.10.8.6",
+        ),
+        ## Tests where the CBC variable is defined in the file. ##
+        ## NOTE: As of writing, if multiple values are defined and no selector is provided, the 1st value is used. ##
+        (
+            "parser_cbc_vars/types-toml_cbc_vars.yaml",
+            "anaconda_cbc_01.yaml",
+            "/requirements/build/2",
+            True,
+            None,
+            "glib 2",
+        ),
+        (
+            "parser_cbc_vars/types-toml_cbc_vars.yaml",
+            "anaconda_cbc_01.yaml",
+            "/requirements/build/2",
+            True,
+            SelectorQuery(platform=Platform.LINUX_PPC_64_LE),
+            "glib 2",
+        ),
+        (
+            "parser_cbc_vars/types-toml_cbc_vars.yaml",
+            "anaconda_cbc_01.yaml",
+            "/requirements/build/2",
+            True,
+            SelectorQuery(platform=Platform.WIN_32),
+            "glib 2",
+        ),
+        (
+            "parser_cbc_vars/types-toml_cbc_vars.yaml",
+            "anaconda_cbc_01.yaml",
+            "/requirements/build/0",
+            True,
+            None,
+            "fortran 2022.1.0",
+        ),
+        ## Tests where CBC file has a "gap" in coverage and a selector CAN NOT be applied ##
+        (
+            "parser_cbc_vars/types-toml_cbc_vars.yaml",
+            "anaconda_cbc_01.yaml",
+            "/requirements/build/1",
+            True,
+            SelectorQuery(platform=Platform.WIN_64),
+            "vs2017 {{ c_compiler_version }}",
+        ),
+        ## Tests where the CBC variables is defined in the file AND a selector changes that value. ##
+        (
+            "parser_cbc_vars/types-toml_cbc_vars.yaml",
+            "anaconda_cbc_01.yaml",
+            "/requirements/build/0",
+            True,
+            SelectorQuery(platform=Platform.WIN_64),
+            "fortran 2022.1.0",
+        ),
+        (
+            "parser_cbc_vars/types-toml_cbc_vars.yaml",
+            "anaconda_cbc_01.yaml",
+            "/requirements/build/0",
+            True,
+            SelectorQuery(platform=Platform.LINUX_64),
+            "fortran 11.2.0",
+        ),
+        (
+            "parser_cbc_vars/types-toml_cbc_vars.yaml",
+            "anaconda_cbc_01.yaml",
+            "/requirements/build/1",
+            True,
+            SelectorQuery(platform=Platform.LINUX_RISC_V64),
+            "gcc 11.2.0",
+        ),
+        (
+            "parser_cbc_vars/types-toml_cbc_vars.yaml",
+            "anaconda_cbc_01.yaml",
+            "/requirements/build/1",
+            True,
+            SelectorQuery(platform=Platform.OSX_ARM_64),
+            "clang 14",
+        ),
+        # TODO numpy test: Numpy does not use the selector syntax. Numpy requires "zip-keys" support.
+        # ("h5py.yaml", "anaconda_cbc_01.yaml", "/requirements/host/3", True, SelectorQuery(), "numpy TODO"),
+        # TODO add test for `{{ compiler('cxx') }}` (cross compiling)??
+        #   Details here: https://docs.conda.io/projects/conda-build/en/stable/resources/variants.html#cross-compiling
+        # TODO add V1 support
+    ],
+)
+def test_get_value_selector_query(
+    file: str, cbc_file: Optional[str], path: str, sub_vars: bool, query: Optional[SelectorQuery], expected: JsonType
+) -> None:
+    """
+    Tests retrieval of a value from a parsed recipe file that optionally includes a `CbcParser` reference with an
+    optional `SelectorQuery`.
+
+    :param file: File to work against.
+    :param cbc_file: (Optional) CBC file for the recipe parser to reference.
+    :param path: Target input path.
+    :param sub_vars: True to substitute JINJA variables. False otherwise.
+    :param query: (Optional) Selector query instance to simulate target environment.
+    :param expected: Expected result of the test.
+    """
+    parser: Final = load_recipe(file, RecipeReader, cbc_file=cbc_file)
+    assert parser.get_value(path, sub_vars=sub_vars, query=query) == expected
     assert not parser.is_modified()
 
 

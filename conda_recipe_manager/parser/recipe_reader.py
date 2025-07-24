@@ -10,13 +10,13 @@ import hashlib
 import re
 import sys
 from collections.abc import Callable
-from typing import Final, Optional, cast, no_type_check
+from typing import TYPE_CHECKING, Final, Optional, cast, no_type_check
 
 import yaml
 
 from conda_recipe_manager.parser._is_modifiable import IsModifiable
 from conda_recipe_manager.parser._node import CommentPosition, Node
-from conda_recipe_manager.parser._node_var import NodeVar
+from conda_recipe_manager.parser._node_var import NodeVar, VarSource
 from conda_recipe_manager.parser._selector_info import SelectorInfo
 from conda_recipe_manager.parser._traverse import traverse, traverse_all
 from conda_recipe_manager.parser._types import (
@@ -43,11 +43,17 @@ from conda_recipe_manager.parser.dependency import (
 )
 from conda_recipe_manager.parser.enums import SchemaVersion
 from conda_recipe_manager.parser.selector_parser import SelectorParser
+from conda_recipe_manager.parser.selector_query import SelectorQuery
 from conda_recipe_manager.parser.types import TAB_AS_SPACES, TAB_SPACE_COUNT, MultilineVariant
 from conda_recipe_manager.parser.v0_recipe_formatter import V0RecipeFormatter
 from conda_recipe_manager.types import PRIMITIVES_TUPLE, JsonType, Primitives, SentinelType
 from conda_recipe_manager.utils.cryptography.hashing import hash_str
 from conda_recipe_manager.utils.typing import optional_str
+
+# Prevents a cyclical import at runtime. See this post for more details:
+#   https://stackoverflow.com/questions/39740632/python-type-hinting-without-cyclic-imports
+if TYPE_CHECKING:
+    from conda_recipe_manager.parser.cbc_parser import CbcParser
 
 # Import guard: Fallback to `SafeLoader` if `CSafeLoader` isn't available
 try:
@@ -71,27 +77,32 @@ class RecipeReader(IsModifiable):
     _sentinel = SentinelType()
 
     @staticmethod
-    def _parse_yaml_recursive_sub(data: JsonType, modifier: Callable[[str], JsonType]) -> JsonType:
+    def _parse_yaml_recursive_sub(
+        data: JsonType, query: Optional[SelectorQuery], modifier: Callable[[str, Optional[SelectorQuery]], JsonType]
+    ) -> JsonType:
         """
         Recursive helper function used when we need to perform variable substitutions.
 
         :param data: Data to substitute values in
         :param modifier: Modifier function that performs some kind of substitution.
+        :param query: (Optional) If provided in addition to constructing this recipe parser instance with a `CbcParser`
+            reference, this will apply the value found in the associated CBC file. Only used when substituting
+            variables.
         :returns: Pythonic data corresponding to the line of YAML
         """
         # Add the substitutions back in
         if isinstance(data, str):
-            data = modifier(quote_special_strings(data))
+            data = modifier(quote_special_strings(data), query)
         if isinstance(data, dict):
             for key in data.keys():
-                data[key] = RecipeReader._parse_yaml_recursive_sub(cast(str, data[key]), modifier)
+                data[key] = RecipeReader._parse_yaml_recursive_sub(cast(str, data[key]), query, modifier)
         elif isinstance(data, list):
             for i in range(len(data)):
-                data[i] = RecipeReader._parse_yaml_recursive_sub(cast(str, data[i]), modifier)
+                data[i] = RecipeReader._parse_yaml_recursive_sub(cast(str, data[i]), query, modifier)
         return data
 
     @staticmethod
-    def _parse_yaml(s: str, parser: Optional[RecipeReader] = None) -> JsonType:
+    def _parse_yaml(s: str, parser: Optional[RecipeReader] = None, query: Optional[SelectorQuery] = None) -> JsonType:
         """
         Parse a line (or multiple) of YAML into a Pythonic data structure
 
@@ -99,6 +110,9 @@ class RecipeReader(IsModifiable):
         :param parser: (Optional) If provided, this will substitute Jinja variables with values specified in in the
             recipe file. Since `_parse_yaml()` is critical to constructing recipe files, this function must remain
             static. Also, during construction, we shouldn't be using a variables until the entire recipe is read/parsed.
+        :param query: (Optional) If provided in addition to constructing this recipe parser instance with a `CbcParser`
+            reference, this will apply the value found in the associated CBC file. Only used when substituting
+            variables.
         :returns: Pythonic data corresponding to the line of YAML
         """
         output: JsonType = None
@@ -109,7 +123,7 @@ class RecipeReader(IsModifiable):
             if parser is None:
                 return out
             return RecipeReader._parse_yaml_recursive_sub(
-                out, parser._render_jinja_vars  # pylint: disable=protected-access
+                out, query, parser._render_jinja_vars  # pylint: disable=protected-access
             )
 
         # Our first attempt handles special string cases that require quotes that the YAML parser drops. If that fails,
@@ -133,7 +147,9 @@ class RecipeReader(IsModifiable):
             # variable substitutions.
             output = _sub_jinja(
                 RecipeReader._parse_yaml_recursive_sub(
-                    cast(JsonType, yaml.load(s, Loader=SafeLoader)), lambda d: substitute_markers(d, sub_list)
+                    cast(JsonType, yaml.load(s, Loader=SafeLoader)),
+                    query,
+                    lambda d, _: substitute_markers(d, sub_list),
                 )
             )
         return output
@@ -453,13 +469,14 @@ class RecipeReader(IsModifiable):
             return s[1:-1]
         return s
 
-    def _render_jinja_vars(self, s: str) -> JsonType:
+    def _render_jinja_vars(self, s: str, query: Optional[SelectorQuery]) -> JsonType:
         # pylint: disable=too-complex
         # TODO Refactor and simplify. We should really consider using a proper parser over REGEX soup.
         """
         Helper function that replaces Jinja substitutions with their actual set values.
 
-        :param s: String to be re-rendered
+        :param s: String to be re-rendered.
+        :param query: (Optional) Selector query to apply to this value.
         :returns: The original value, augmented with Jinja substitutions. Types are re-rendered to account for multiline
             strings that may have been "normalized" prior to this call.
         """
@@ -486,9 +503,19 @@ class RecipeReader(IsModifiable):
                 if isinstance(lhs, (int, float)) and isinstance(rhs, (int, float)):
                     value = str(lhs + rhs)
                 s = s.replace(match, value)
-            elif key in self._vars_tbl:
-                # Replace value as a string. Re-interpret the entire value before returning.
-                value = str(self._vars_tbl[key].get_value())
+            elif key in self._vars_tbl or (self._cbc_parser_ref and key in self._cbc_parser_ref):
+                # Replace value as a string. Re-interpret the entire value before returning. Variables defined in the
+                # recipe file have a higher precedence than variables found in a CBC file.
+                if key in self._vars_tbl:
+                    # TODO handle selector query?
+                    value = str(self._vars_tbl[key].get_value())
+                elif self._cbc_parser_ref:
+                    try:
+                        value = str(self._cbc_parser_ref.get_cbc_variable_value(key, query))
+                    # Do not attempt to render a value that could not be determined.
+                    except (KeyError, ValueError):
+                        continue
+
                 if Regex.JINJA_VAR_VALUE_TERNARY.match(value):
                     value = "${{" + value + "}}"
                 if lower_match:
@@ -528,7 +555,8 @@ class RecipeReader(IsModifiable):
         Initializes the variable table, `vars_tbl` based on the document content.
         Requires parse-tree and `_schema_version` to be initialized.
         """
-        # Tracks Jinja variables set by the file
+        # To keep things clean, CBC variables are NOT added to the variables table. However, we now track the origin of
+        # variables in case we need to manage that distinction in the future.
         self._vars_tbl: _VarTable = {}
 
         match self._schema_version:
@@ -547,7 +575,9 @@ class RecipeReader(IsModifiable):
                         value = cast(JsonType, ast.literal_eval(cast(str, value)))
                     except Exception:  # pylint: disable=broad-exception-caught
                         value = str(value)
-                    self._vars_tbl[key] = NodeVar(value, RecipeReader._parse_trailing_comment(line))
+                    self._vars_tbl[key] = NodeVar(
+                        value, VarSource.RECIPE_FILE, RecipeReader._parse_trailing_comment(line)
+                    )
             case SchemaVersion.V1:
                 # Abuse the fact that the `/context` section is pure YAML.
                 context: Final = cast(dict[str, JsonType], self.get_value("/context", {}))
@@ -556,7 +586,7 @@ class RecipeReader(IsModifiable):
                     # V1 only allows for scalar types as variables. So we should be able to recover all comments without
                     # recursing through `/context`
                     var_path = RecipeReader.append_to_path("/context", key)
-                    self._vars_tbl[key] = NodeVar(value, comments_tbl.get(var_path, None))
+                    self._vars_tbl[key] = NodeVar(value, VarSource.RECIPE_FILE, comments_tbl.get(var_path, None))
 
     def _rebuild_selectors(self) -> None:
         """
@@ -575,17 +605,20 @@ class RecipeReader(IsModifiable):
 
         traverse_all(self._root, _collect_selectors)
 
-    def __init__(self, content: str):
+    def __init__(self, content: str, cbc_parser: Optional[CbcParser] = None):
         # pylint: disable=too-complex
         # TODO Refactor and simplify ^
         """
         Constructs a RecipeReader instance.
 
         :param content: conda-build formatted recipe file, as a single text string.
+        :param cbc_parser: (Optional) Reference to an applicable Conda Build Config (CBC) parser instance. If provided,
+            This will allow variable substitutions to be made using a CBC file.
         """
         super().__init__()
         # The initial, raw, text is preserved for diffing and debugging purposes
         self._init_content: Final[str] = content
+        self._cbc_parser_ref: Final = cbc_parser
 
         # Root of the parse tree
         self._root = Node(value=ROOT_NODE_VALUE)
@@ -901,7 +934,8 @@ class RecipeReader(IsModifiable):
         lines: list[str] = []
 
         # Render variable set section for V0 recipes. V1 recipes have variables stored in the parse tree under
-        # `/context`.
+        # `/context`. This also means we don't have to worry about accidentally rendering CBC variables in a V1 recipe
+        # file.
         if self._schema_version == SchemaVersion.V0:
             # Rendering comments before the variable table is not an issue in V1 as variables are inherently part of the
             # tree structure.
@@ -911,6 +945,8 @@ class RecipeReader(IsModifiable):
                 # NOTE: Top of file comments must be owned by the root level and, therefore, do not need indentation.
                 lines.append(root_child.comment.rstrip())
 
+            # NOTE: Even though we now support CBC variables, the variables table ONLY contains variables found in the
+            # the recipe file. Therefore we do not need to check/run `is_in_recipe()`.
             for key, val in self._vars_tbl.items():
                 lines.append(f"{{% set {key} = {val.render_v0_value()} %}}{val.render_comment()}")
             # Add spacing if variables have been set
@@ -927,7 +963,9 @@ class RecipeReader(IsModifiable):
         return "\n".join(lines)
 
     @no_type_check
-    def _render_object_tree(self, node: Node, replace_variables: bool, data: JsonType) -> None:
+    def _render_object_tree(
+        self, node: Node, replace_variables: bool, query: Optional[SelectorQuery], data: JsonType
+    ) -> None:
         # pylint: disable=too-complex
         # TODO Refactor and simplify ^
         """
@@ -935,6 +973,9 @@ class RecipeReader(IsModifiable):
 
         :param node: Current node in the tree
         :param replace_variables: If set to True, this replaces all variable substitutions with their set values.
+        :param query: (Optional) If provided in addition to constructing this recipe parser instance with a `CbcParser`
+            reference, this will apply the value found in the associated CBC file. Ignored if `replace_variables` is set
+            to `False`.
         :param data: Accumulated data structure
         """
         # Ignore comment-only lines
@@ -951,7 +992,7 @@ class RecipeReader(IsModifiable):
             value = normalize_multiline_strings(child.value, child.multiline_variant)
             if isinstance(value, str):
                 if replace_variables:
-                    value = self._render_jinja_vars(value)
+                    value = self._render_jinja_vars(value, query)
                 elif child.multiline_variant != MultilineVariant.NONE:
                     value = cast(str, yaml.load(value, Loader=SafeLoader))
 
@@ -965,7 +1006,7 @@ class RecipeReader(IsModifiable):
             if child.is_collection_element():
                 elem_dict = {}
                 for element in child.children:
-                    self._render_object_tree(element, replace_variables, elem_dict)
+                    self._render_object_tree(element, replace_variables, query, elem_dict)
                 if len(data[key]) == 0:
                     data[key] = []
                 data[key].append(elem_dict)
@@ -985,15 +1026,18 @@ class RecipeReader(IsModifiable):
 
             # All other keys prep for containing more dictionaries
             data.setdefault(key, {})
-            self._render_object_tree(child, replace_variables, data[key])
+            self._render_object_tree(child, replace_variables, query, data[key])
 
-    def render_to_object(self, replace_variables: bool = False) -> JsonType:
+    def render_to_object(self, replace_variables: bool = False, query: Optional[SelectorQuery] = None) -> JsonType:
         """
         Takes the underlying state of the parse tree and produces a Pythonic object/dictionary representation. Analogous
         to `json.load()`.
 
         :param replace_variables: (Optional) If set to True, this replaces all variable substitutions with their set
             values.
+        :param query: (Optional) If provided in addition to constructing this recipe parser instance with a `CbcParser`
+            reference, this will apply the value found in the associated CBC file. Ignored if `replaces_variables` is
+            set to `False`.
         :returns: Pythonic data object representation of the recipe.
         """
         data: JsonType = {}
@@ -1005,7 +1049,7 @@ class RecipeReader(IsModifiable):
             if child.is_comment():
                 continue
             data.setdefault(cast(str, child.value), {})
-            self._render_object_tree(child, replace_variables, data)
+            self._render_object_tree(child, replace_variables, query, data)
 
         return data
 
@@ -1037,7 +1081,13 @@ class RecipeReader(IsModifiable):
         path_stack = str_to_stack_path(path)
         return traverse(self._root, path_stack) is not None
 
-    def get_value(self, path: str, default: JsonType | SentinelType = _sentinel, sub_vars: bool = False) -> JsonType:
+    def get_value(
+        self,
+        path: str,
+        default: JsonType | SentinelType = _sentinel,
+        sub_vars: bool = False,
+        query: Optional[SelectorQuery] = None,
+    ) -> JsonType:
         """
         Retrieves a value at a given path. If the value is not found, return a specified default value or throw.
         TODO Refactor: This function could leverage `render_to_object()` to simplify/de-dupe the logic.
@@ -1046,6 +1096,9 @@ class RecipeReader(IsModifiable):
         :param default: (Optional) If the value is not found, return this value instead.
         :param sub_vars: (Optional) If set to True and the value contains a Jinja template variable, the Jinja value
             will be "rendered". Any variables that can't be resolved will be escaped with `${{ }}`.
+        :param query: (Optional) If provided in addition to constructing this recipe parser instance with a `CbcParser`
+            reference, this will apply the value found in the associated CBC file. Ignored if `sub_vars` is set to
+            `False`.
         :raises KeyError: If the value is not found AND no default is specified
         :returns: If found, the value in the recipe at that path. Otherwise, the caller-specified default value.
         """
@@ -1069,7 +1122,7 @@ class RecipeReader(IsModifiable):
                     ),
                 )
                 if sub_vars:
-                    return self._render_jinja_vars(multiline_str)
+                    return self._render_jinja_vars(multiline_str, query)
                 return cast(JsonType, yaml.load(multiline_str, Loader=SafeLoader))
             return_value = cast(Primitives, node.children[0].value)
         # Leaf nodes can return their value directly
@@ -1086,7 +1139,7 @@ class RecipeReader(IsModifiable):
         # `_parse_yaml()` will also render JINJA variables for us, if requested.
         if isinstance(return_value, str):
             parser = self if sub_vars else None
-            parsed_value = RecipeReader._parse_yaml(return_value, parser)
+            parsed_value = RecipeReader._parse_yaml(return_value, parser=parser, query=query)
             # Lists containing 1 value will drop the surrounding list by the YAML parser. To ensure greater consistency
             # and provide better type-safety, we will re-wrap such values.
             if not isinstance(parsed_value, list) and len(node.children) == 1 and node.children[0].list_member_flag:

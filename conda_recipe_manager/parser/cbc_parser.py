@@ -4,9 +4,9 @@
 
 from __future__ import annotations
 
-from typing import Final, cast
+from typing import Final, Optional, cast
 
-from conda_recipe_manager.parser._node_var import NodeVar
+from conda_recipe_manager.parser._node_var import NodeVar, VarSource
 from conda_recipe_manager.parser.recipe_reader import RecipeReader
 from conda_recipe_manager.parser.selector_query import SelectorQuery
 from conda_recipe_manager.types import JsonType, SentinelType
@@ -69,7 +69,9 @@ class CbcParser(RecipeReader):
                 selector_str = "" if not self.contains_selector_at_path(path) else self.get_selector_at_path(path)
                 comment_str = comments_tbl.get(path, "")
                 combined_comment = f"{selector_str} {comment_str}"
-                entry = NodeVar(value, f"# {combined_comment}" if combined_comment.strip() else None)
+                entry = NodeVar(
+                    value, VarSource.CBC_FILE, f"# {combined_comment}" if combined_comment.strip() else None
+                )
 
                 # TODO detect duplicates
                 if variable not in self._cbc_vars_tbl:
@@ -97,13 +99,16 @@ class CbcParser(RecipeReader):
         return list(self._cbc_vars_tbl.keys())
 
     def get_cbc_variable_value(
-        self, variable: str, query: SelectorQuery, default: JsonType | SentinelType = RecipeReader._sentinel
+        self,
+        variable: str,
+        query: Optional[SelectorQuery] = None,
+        default: JsonType | SentinelType = RecipeReader._sentinel,
     ) -> JsonType:
         """
         Determines which value of a CBC variable is applicable to the current environment.
 
         :param variable: Target variable name.
-        :param query: Query that represents the state of the target build environment.
+        :param query: (Optional) Query that represents the state of the target build environment.
         :param default: (Optional) Value to return if no variable could be found or no value could be determined.
         :raises KeyError: If the key does not exist and no default value is provided.
         :raises ValueError: If the selector query does not match any case and no default value is provided.
@@ -122,7 +127,8 @@ class CbcParser(RecipeReader):
 
         for entry in cbc_entries:
             selector = entry.get_selector()
-            if selector is None or selector.does_selector_apply(query):
+            # TODO: What to do if multiple selectors apply???
+            if selector is None or query is None or selector.does_selector_apply(query):
                 return entry.get_value()
 
         # No applicable entries have been found to match any selector variant.

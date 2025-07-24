@@ -25,7 +25,7 @@ from typing import Final, Optional, TypeGuard, cast
 from jsonschema import validate as schema_validate
 
 from conda_recipe_manager.parser._node import Node
-from conda_recipe_manager.parser._node_var import NodeVar
+from conda_recipe_manager.parser._node_var import NodeVar, VarSource
 from conda_recipe_manager.parser._traverse import (
     INVALID_IDX,
     remap_child_indices_virt_to_phys,
@@ -102,17 +102,20 @@ class RecipeParser(RecipeReader):
 
     def set_variable(self, var: str, value: JsonType) -> None:
         """
-        Adds or changes an existing Jinja variable.
+        Adds or changes an existing Jinja variable. Only applies to recipe-defined variables. If the same string name
+        is found in any referenced CBC file, by conda-build precedence rules, this will override the value found in the
+        CBC file.
 
         :param var: Variable to modify
         :param value: Value to set
         """
-        self._vars_tbl[var] = NodeVar(value)
+        self._vars_tbl[var] = NodeVar(value, VarSource.RECIPE_FILE)
         self._is_modified = True
 
     def del_variable(self, var: str) -> None:
         """
-        Remove a variable from the project. If one is not found, no changes are made.
+        Removes a variable from the project. If one is not found, no changes are made. Only applies to recipe-defined
+        variables.
 
         :param var: Variable to delete
         """

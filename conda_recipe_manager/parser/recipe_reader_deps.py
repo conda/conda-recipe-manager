@@ -71,6 +71,7 @@ class RecipeReaderDeps(RecipeReader):
         except KeyError:
             return None
 
+    # TODO upgrade this with the CBC parser work
     def get_package_names_to_path(self) -> dict[str, str]:
         """
         Get a map containing all the packages (artifacts) named in a recipe to their paths in the recipe structure.
@@ -102,6 +103,7 @@ class RecipeReaderDeps(RecipeReader):
             package_tbl[name] = path
         return package_tbl
 
+    # TODO upgrade this with the CBC parser work
     def get_all_dependencies(self) -> DependencyMap:
         """
         Get a parsed representation of all the dependencies found in the recipe.

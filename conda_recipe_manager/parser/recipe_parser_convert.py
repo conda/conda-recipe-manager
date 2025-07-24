@@ -32,6 +32,9 @@ class RecipeParserConvert(RecipeParserDeps):
         Constructs a convertible recipe object. This extension of the parser class keeps a modified copy of the original
         recipe to work on and tracks some debugging state.
 
+        NOTE: The conversion class does not take an optional `CbcParser` instance. It is not necessary for the V1
+              upgrade process.
+
         :param content: conda-build formatted recipe file, as a single text string.
         """
         super().__init__(content)
