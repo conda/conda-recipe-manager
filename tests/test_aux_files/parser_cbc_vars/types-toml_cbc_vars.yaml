@@ -23,6 +23,7 @@ requirements:
     - glib {{ glib }}
   host:
     - gstreamer {{ gstreamer }}
+    - fontconfig {{ fontconfig }}
     - setuptools
     - wheel
     - pip

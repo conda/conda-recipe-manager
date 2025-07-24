@@ -905,6 +905,22 @@ def test_get_value(file: str, path: str, sub_vars: bool, expected: JsonType) -> 
             "fortran {{ fortran_compiler_version }}",
         ),
         ## Tests where the value is defined in both the recipe file and the CBC file so the recipe has precedence. ##
+        (
+            "parser_cbc_vars/types-toml_cbc_vars.yaml",
+            "anaconda_cbc_01.yaml",
+            "/requirements/host/1",
+            True,
+            None,
+            "fontconfig 3.2.1",
+        ),
+        (
+            "parser_cbc_vars/types-toml_cbc_vars.yaml",
+            "anaconda_cbc_01.yaml",
+            "/requirements/host/1",
+            True,
+            SelectorQuery(platform=Platform.LINUX_PPC_64),
+            "fontconfig 3.2.1",
+        ),
         ## Tests to ensure the reading of the CBC file does not corrupt values not found in the CBC file. ##
         ## Tests where the CBC variable is defined in the file. ##
         ## NOTE: As of writing, if multiple values are defined and no selector is provided, the 1st value is used. ##
