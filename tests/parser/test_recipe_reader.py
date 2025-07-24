@@ -904,7 +904,32 @@ def test_get_value(file: str, path: str, sub_vars: bool, expected: JsonType) -> 
             SelectorQuery(platform=Platform.OSX_64),
             "fortran {{ fortran_compiler_version }}",
         ),
-        ## Tests where the value is defined in both the recipe file and the CBC file so the recipe has precedence. ##
+        ## Tests where the variable is not defined anywhere. ##
+        (
+            "parser_cbc_vars/types-toml_cbc_vars.yaml",
+            None,
+            "/requirements/host/2",
+            True,
+            None,
+            "foobar {{ var_dne_42 }}",
+        ),
+        (
+            "parser_cbc_vars/types-toml_cbc_vars.yaml",
+            "anaconda_cbc_01.yaml",
+            "/requirements/host/2",
+            True,
+            None,
+            "foobar {{ var_dne_42 }}",
+        ),
+        (
+            "parser_cbc_vars/types-toml_cbc_vars.yaml",
+            "anaconda_cbc_01.yaml",
+            "/requirements/host/2",
+            True,
+            SelectorQuery(platform=Platform.OSX_ARM_64),
+            "foobar {{ var_dne_42 }}",
+        ),
+        ## Tests where the variable is defined in both the recipe file and the CBC file so the recipe has precedence. ##
         (
             "parser_cbc_vars/types-toml_cbc_vars.yaml",
             "anaconda_cbc_01.yaml",
