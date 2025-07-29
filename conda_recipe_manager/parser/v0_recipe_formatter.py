@@ -53,9 +53,58 @@ class V0RecipeFormatter:
         """
         return self._is_v0_recipe
 
-    def fmt_text(self) -> None:
+    def _fix_excessive_indentation(self) -> bool:
         """
-        Executes a number of custom V0 formatting rules in an attempt to improve the chances a V0 recipe can be parsed.
+        Fixes excessive indentation in the recipe file. Excessive indentation is defined as a line that is more than 1
+        tab indented with respect to its parent line.
+
+        :returns: True if the operation changed the recipe file. False otherwise.
+        """
+        idx = 0
+        last_parent: list[str] = []
+        prev_cntr = -TAB_SPACE_COUNT
+        prev_line = ""
+        num_lines: Final[int] = len(self._lines)
+        old_lines = self._lines.copy()
+        while idx < num_lines:
+            line = old_lines[idx]
+            clean_line = line.lstrip()
+
+            if not clean_line:
+                idx += 1
+                continue
+
+            cur_cntr = num_tab_spaces(line)
+            if cur_cntr > prev_cntr:
+                last_parent.append(prev_line)
+            elif cur_cntr < prev_cntr:
+                if not last_parent:
+                    self._lines = old_lines
+                    return False
+                last_parent.pop()
+
+            # If the current line is more than 1 tab indented with respect to its parent line,
+            # this will crash the parser, irrespective of the type of line (comment, list, etc).
+            if not last_parent:
+                self._lines = old_lines
+                return False
+            correct_indent = num_tab_spaces(last_parent[-1]) + TAB_SPACE_COUNT
+            if last_parent[-1].lstrip().startswith("- "):
+                correct_indent += 2
+            if cur_cntr > correct_indent:
+                self._lines[idx] = (" " * correct_indent) + clean_line
+            else:
+                self._lines[idx] = line
+
+            prev_cntr = cur_cntr
+            prev_line = line
+            idx += 1
+
+        return self._lines != old_lines
+
+    def _fix_comment_and_list_indentation(self) -> None:
+        """
+        Fixes comment and list indentation issues in the recipe file.
         """
         idx = 0
         num_lines: Final[int] = len(self._lines)
@@ -69,15 +118,9 @@ class V0RecipeFormatter:
                 idx += 1
                 continue
 
-            prev_cntr = num_tab_spaces(self._lines[idx - 1])
             cur_cntr = num_tab_spaces(line)
             next_cntr = num_tab_spaces(self._lines[idx + 1])
             next_clean_line = self._lines[idx + 1].lstrip()
-
-            # If the current line is more than 1 tab indented with respect to the previous line,
-            # this will crash the parser, irrespective of the type of line (comment, list, etc).
-            if cur_cntr > prev_cntr + TAB_SPACE_COUNT:
-                self._lines[idx] = (" " * (prev_cntr + TAB_SPACE_COUNT)) + clean_line
 
             # Attempt to correct mis-matched comment indentations by looking at the next line. This does not change
             # indentation when the following line is another comment (as to not mess with multi-line comment blocks).
@@ -111,3 +154,11 @@ class V0RecipeFormatter:
                 bad_lst_block_indent_tracker = -1
 
             idx += 1
+
+    def fmt_text(self) -> None:
+        """
+        Executes a number of custom V0 formatting rules in an attempt to improve the chances a V0 recipe can be parsed.
+        """
+        self._fix_comment_and_list_indentation()
+        while self._fix_excessive_indentation():
+            pass
