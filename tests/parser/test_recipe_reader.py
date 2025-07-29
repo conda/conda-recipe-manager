@@ -68,6 +68,7 @@ def test_construction(file: str, schema_version: SchemaVersion) -> None:
     [
         ("cfitsio.yaml", SchemaVersion.V0),
         ("libwebp-base.yaml", SchemaVersion.V0),
+        ("gguf.yaml", SchemaVersion.V0),
     ],
 )
 def test_construction_with_excessive_indentation(file: str, schema_version: SchemaVersion) -> None:

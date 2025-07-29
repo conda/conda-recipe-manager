@@ -61,7 +61,7 @@ class V0RecipeFormatter:
         :returns: True if the operation changed the recipe file. False otherwise.
         """
         idx = 0
-        last_parent: list[str] = []
+        parent_stack: list[str] = []
         prev_cntr = -TAB_SPACE_COUNT
         prev_line = ""
         num_lines: Final[int] = len(self._lines)
@@ -76,21 +76,20 @@ class V0RecipeFormatter:
 
             cur_cntr = num_tab_spaces(line)
             if cur_cntr > prev_cntr:
-                last_parent.append(prev_line)
+                parent_stack.append(prev_line)
             elif cur_cntr < prev_cntr:
-                if not last_parent:
+                if not parent_stack:
                     self._lines = old_lines
                     return False
-                last_parent.pop()
+                parent_stack.pop()
 
             # If the current line is more than 1 tab indented with respect to its parent line,
             # this will crash the parser, irrespective of the type of line (comment, list, etc).
-            if not last_parent:
+            if not parent_stack:
                 self._lines = old_lines
                 return False
-            correct_indent = num_tab_spaces(last_parent[-1]) + TAB_SPACE_COUNT
-            if last_parent[-1].lstrip().startswith("- "):
-                correct_indent += 2
+            last_parent = parent_stack[-1]
+            correct_indent = num_tab_spaces(last_parent) + TAB_SPACE_COUNT
             if cur_cntr > correct_indent:
                 self._lines[idx] = (" " * correct_indent) + clean_line
             else:
