@@ -160,5 +160,11 @@ class V0RecipeFormatter:
         Executes a number of custom V0 formatting rules in an attempt to improve the chances a V0 recipe can be parsed.
         """
         self._fix_comment_and_list_indentation()
+
+    def fix_excessive_indentation(self) -> None:
+        """
+        Fixes excessive indentation in the recipe file. Excessive indentation is defined as a line that is more than 1
+        tab indented with respect to its parent line.
+        """
         while self._fix_excessive_indentation():
             pass

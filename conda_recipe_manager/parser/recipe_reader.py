@@ -605,8 +605,12 @@ class RecipeReader(IsModifiable):
             while fmt_str.splitlines()[tof_comment_cntr].startswith("#"):
                 tof_comment_cntr += 1
 
-        # Replace all Jinja lines. Then traverse line-by-line
-        sanitized_yaml: Final = Regex.JINJA_V0_LINE.sub("", fmt_str)
+        # Replace all Jinja lines and fix excessive indentation. Then traverse line-by-line
+        sanitized_yaml_unfixed: Final = Regex.JINJA_V0_LINE.sub("", fmt_str)
+        sanitized_fmt = V0RecipeFormatter(sanitized_yaml_unfixed)
+        if sanitized_fmt.is_v0_recipe():
+            sanitized_fmt.fix_excessive_indentation()
+        sanitized_yaml = str(sanitized_fmt)
 
         # Read the YAML line-by-line, maintaining a stack to manage the last owning node in the tree.
         node_stack: list[Node] = [self._root]
