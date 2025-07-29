@@ -327,11 +327,14 @@ class RecipeReader(IsModifiable):
             return RecipeReader(  # pylint: disable=protected-access
                 # NOTE: `yaml.dump()` defaults to 80 character lines. Longer lines may have newlines unexpectedly
                 #       injected into this value, screwing up the parse-tree.
-                yaml.dump(value, Dumper=ForceIndentDumper, sort_keys=False, width=sys.maxsize)  # type: ignore[misc]
+                yaml.dump(value, Dumper=ForceIndentDumper, sort_keys=False, width=sys.maxsize),  # type: ignore[misc]
+                recursive_call=True,
             )._root.children
 
         # Primitives can be safely stringified to generate a parse tree.
-        return RecipeReader(str(stringify_yaml(value)))._root.children  # pylint: disable=protected-access
+        return RecipeReader(  # pylint: disable=protected-access
+            str(stringify_yaml(value)), recursive_call=True
+        )._root.children
 
     def _set_on_schema_version(self) -> tuple[int, re.Pattern[str]]:
         """
@@ -575,13 +578,14 @@ class RecipeReader(IsModifiable):
 
         traverse_all(self._root, _collect_selectors)
 
-    def __init__(self, content: str):
+    def __init__(self, content: str, recursive_call: bool = False):
         # pylint: disable=too-complex
         # TODO Refactor and simplify ^
         """
         Constructs a RecipeReader instance.
 
         :param content: conda-build formatted recipe file, as a single text string.
+        :param recursive_call: Whether this is a recursive call. If true, we cannot determine if the recipe is V0 or V1.
         """
         super().__init__()
         # The initial, raw, text is preserved for diffing and debugging purposes
@@ -593,7 +597,7 @@ class RecipeReader(IsModifiable):
         # Format the text for V0 recipe files in an attempt to improve compatibility with our whitespace-delimited
         # parser.
         fmt: Final[V0RecipeFormatter] = V0RecipeFormatter(self._init_content)
-        if fmt.is_v0_recipe():
+        if fmt.is_v0_recipe() and not recursive_call:
             fmt.fmt_text()
         # Calculate the string equivalent once.
         fmt_str: Final = str(fmt)
@@ -601,14 +605,14 @@ class RecipeReader(IsModifiable):
         # For V0 recipe files, count the number of comment-only lines at the start, before the canonical "variables
         # section"
         tof_comment_cntr = 0
-        if fmt.is_v0_recipe():
+        if fmt.is_v0_recipe() and not recursive_call:
             while fmt_str.splitlines()[tof_comment_cntr].startswith("#"):
                 tof_comment_cntr += 1
 
         # Replace all Jinja lines and fix excessive indentation. Then traverse line-by-line
         sanitized_yaml_unfixed: Final = Regex.JINJA_V0_LINE.sub("", fmt_str)
         sanitized_fmt = V0RecipeFormatter(sanitized_yaml_unfixed)
-        if sanitized_fmt.is_v0_recipe():
+        if sanitized_fmt.is_v0_recipe() and not recursive_call:
             sanitized_fmt.fix_excessive_indentation()
         sanitized_yaml = str(sanitized_fmt)
 
