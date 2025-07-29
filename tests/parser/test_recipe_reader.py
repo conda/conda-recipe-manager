@@ -64,6 +64,23 @@ def test_construction(file: str, schema_version: SchemaVersion) -> None:
 
 
 @pytest.mark.parametrize(
+    "file,schema_version",
+    [
+        ("cfitsio.yaml", SchemaVersion.V0),
+    ],
+)
+def test_construction_with_excessive_indentation(file: str, schema_version: SchemaVersion) -> None:
+    """
+    Tests the construction of a recipe parser instance with a recipe file that has excessive indentation.
+    """
+    file_content = load_file(file)
+    parser = RecipeReader(file_content)
+    assert parser._init_content == file_content  # pylint: disable=protected-access
+    assert parser.get_schema_version() == schema_version
+    assert not parser.is_modified()
+
+
+@pytest.mark.parametrize(
     "file,out_file",
     [
         ("simple-recipe.yaml", "simple-recipe_to_str.out"),
