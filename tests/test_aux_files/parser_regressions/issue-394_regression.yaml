@@ -1,0 +1,39 @@
+{% set name = "mylib" %}
+{% set version = "1.2.1.dev1+g3df5418" %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  url: file:///tmp/dist/mylib-1.2.1.dev1%2Bg3df5418.tar.gz
+  sha256: 9bdff8785453464cd0932867694a15a4a322cf859693990820fdbf04272bf022
+
+build:
+  noarch: python
+  script: {{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
+  number: 0
+
+requirements:
+  host:
+    - python >=3.9
+    - setuptools >=45
+    - setuptools-scm >=6.2
+    - pip
+  run:
+    - python >=3.9
+    - numpy
+
+test:
+  imports:
+    - mylib
+  commands:
+    - pip check
+  requires:
+    - pip
+
+about:
+  home: https://gitlab.com/mygroup/mylib
+  summary: My great Python library
+  license: GPL-3.0-or-later
+  license_file: LICENSE
