@@ -6,6 +6,10 @@ from __future__ import annotations
 
 from enum import IntEnum
 
+# Standard Click context settings used across all commands to ensure consistent
+# help option behavior
+CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
+
 
 class ExitCode(IntEnum):
     """

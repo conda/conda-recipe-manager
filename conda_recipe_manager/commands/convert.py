@@ -17,7 +17,7 @@ from typing import Final, Optional
 import click
 
 from conda_recipe_manager.commands.utils.print import print_err, print_messages, print_out
-from conda_recipe_manager.commands.utils.types import ExitCode
+from conda_recipe_manager.commands.utils.types import CONTEXT_SETTINGS, ExitCode
 from conda_recipe_manager.parser.enums import SchemaVersion
 from conda_recipe_manager.parser.recipe_parser_convert import RecipeParserConvert
 from conda_recipe_manager.parser.types import V0_FORMAT_RECIPE_FILE_NAME, V1_FORMAT_RECIPE_FILE_NAME
@@ -243,7 +243,10 @@ def _collect_issue_stats(project_name: str, issues: list[str], hist: dict[str, i
     return len(issues)
 
 
-@click.command(short_help="Converts a `meta.yaml` formatted-recipe file to the new `recipe.yaml` format.")
+@click.command(
+    short_help="Converts a `meta.yaml` formatted-recipe file to the new `recipe.yaml` format.",
+    context_settings=CONTEXT_SETTINGS,
+)
 @click.argument("path", type=click.Path(exists=True, path_type=Path))
 @click.option(
     "--output",
