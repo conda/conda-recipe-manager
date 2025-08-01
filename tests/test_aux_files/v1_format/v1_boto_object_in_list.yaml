@@ -1,0 +1,63 @@
+schema_version: 1
+
+context:
+  name: boto
+  version: 2.49.0
+
+package:
+  name: ${{ name|lower }}
+  version: ${{ version }}
+
+source:
+  url: https://pypi.org/packages/source/${{ name[0] }}/${{ name }}/${{ name }}-${{ version }}.tar.gz
+  sha256: ea0d3b40a2d852767be77ca343b58a9e3a4b00d9db440efb8da74b4e58025e5a
+  file_name: ${{ name }}-${{ version }}.tar.gz
+
+build:
+  number: 0
+  script: python setup.py install
+
+requirements:
+  host:
+    - python
+  run:
+    - python
+
+tests:
+  - python:
+      imports:
+        - boto
+      pip_check: false
+  - script:
+      - if: match(python, ">=2,<3")
+        then: asadmin -h
+      - s3put -h
+      - if: match(python, ">=2,<3")
+        then: taskadmin -h
+
+multi_level:
+  list_1:
+    - ken
+    # Ensure a comment in a list is supported
+    - barbie
+  list_2:
+    - cat
+    - build:
+        number: 42
+        skip: true
+    - mat
+  list_3:
+    - ls
+    - sl
+    - {{ compiler('c') }}
+
+about:
+  license: MIT
+  summary: Amazon Web Services Library
+  description: |
+    Boto aims to support the full breadth and depth of Amazon Web Services.
+    NOTE: Boto3, the next version of Boto, is stable and recommended for
+    general use.
+  homepage: https://github.com/boto/boto/
+  repository: https://github.com/boto/boto/
+  documentation: http://docs.pythonboto.org/en/latest/

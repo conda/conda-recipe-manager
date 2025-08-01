@@ -132,8 +132,9 @@ def test_eq(file: str, other_file: str) -> None:
 def test_loading_obj_in_list() -> None:
     """
     Regression test: at one point, the parser would crash loading this file, containing an object in a list.
+    Given that this pattern doesn't seem to be used in V0 recipes, this test is only run for a V1 recipe.
     """
-    replace = load_file("simple-recipe_test_patch_replace.yaml")
+    replace = load_file("v1_format/v1_boto_object_in_list.yaml")
     parser = RecipeReader(replace)
     assert parser.render() == replace
 
