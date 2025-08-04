@@ -68,6 +68,7 @@ def test_construction(file: str, schema_version: SchemaVersion) -> None:
 # CRM #403: https://github.com/conda/conda-recipe-manager/issues/403
 # CRM #404: https://github.com/conda/conda-recipe-manager/issues/404
 # CRM #405: https://github.com/conda/conda-recipe-manager/issues/405
+# CRM #406: https://github.com/conda/conda-recipe-manager/issues/406
 @pytest.mark.skip(
     reason="This test is not working as expected because of bugs unrelated to the formatter functionality tested here"
 )
