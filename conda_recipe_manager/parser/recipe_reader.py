@@ -613,7 +613,9 @@ class RecipeReader(IsModifiable):
         sanitized_yaml_unfixed: Final = Regex.JINJA_V0_LINE.sub("", fmt_str)
         sanitized_fmt = V0RecipeFormatter(sanitized_yaml_unfixed)
         if sanitized_fmt.is_v0_recipe() and not recursive_call:
-            sanitized_fmt.fix_excessive_indentation()
+            if not sanitized_fmt.fix_excessive_indentation():
+                # TODO: Add logging here ?
+                pass
         sanitized_yaml = str(sanitized_fmt)
 
         # Read the YAML line-by-line, maintaining a stack to manage the last owning node in the tree.

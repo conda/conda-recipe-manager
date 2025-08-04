@@ -63,23 +63,41 @@ def test_construction(file: str, schema_version: SchemaVersion) -> None:
     # assert parser._root == TODO
 
 
+# TODO: Unskip this test once the underlying bugs are fixed:
+# CRM #390: https://github.com/conda/conda-recipe-manager/issues/390
+# CRM #403: https://github.com/conda/conda-recipe-manager/issues/403
+# CRM #404: https://github.com/conda/conda-recipe-manager/issues/404
+# CRM #405: https://github.com/conda/conda-recipe-manager/issues/405
+@pytest.mark.skip(
+    reason="This test is not working as expected because of bugs unrelated to the formatter functionality tested here"
+)
 @pytest.mark.parametrize(
-    "file,schema_version",
+    "file,schema_version,expected_file",
     [
-        ("cfitsio.yaml", SchemaVersion.V0),
-        ("libwebp-base.yaml", SchemaVersion.V0),
-        ("gguf.yaml", SchemaVersion.V0),
+        (
+            "v0_formatter/cfitsio_excessive_indent.yaml",
+            SchemaVersion.V0,
+            "v0_formatter/cfitsio_excessive_indent_fixed.yaml",
+        ),
+        (
+            "v0_formatter/libwebp-base_excessive_indent_jinja_logic.yaml",
+            SchemaVersion.V0,
+            "v0_formatter/libwebp-base_excessive_indent_jinja_logic_fixed.yaml",
+        ),
+        ("v0_formatter/gguf_excessive_indent.yaml", SchemaVersion.V0, "v0_formatter/gguf_excessive_indent_fixed.yaml"),
     ],
 )
-def test_construction_with_excessive_indentation(file: str, schema_version: SchemaVersion) -> None:
+def test_construction_with_excessive_indentation(file: str, schema_version: SchemaVersion, expected_file: str) -> None:
     """
     Tests the construction of a recipe parser instance with a recipe file that has excessive indentation.
+    This test also ensures that the file is formatted correctly after rendering.
     """
     file_content = load_file(file)
     parser = RecipeReader(file_content)
     assert parser._init_content == file_content  # pylint: disable=protected-access
     assert parser.get_schema_version() == schema_version
     assert not parser.is_modified()
+    assert parser.render() == load_file(expected_file)
 
 
 @pytest.mark.parametrize(

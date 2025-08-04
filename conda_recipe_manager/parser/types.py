@@ -122,3 +122,11 @@ class MultilineVariant(StrEnum):
     # This variant works differently. The starting line must begin with a " and end with a \. Every subsequent line
     # then must start with a \ until an unescaped-closing-" is found.
     BACKSLASH_QUOTE = "\\"
+
+
+class IndentFormattingException(Exception):
+    """
+    Exception raised when a recipe file cannot be formatted correctly for indentation issues.
+    """
+
+    pass
