@@ -616,7 +616,7 @@ class RecipeReader(IsModifiable):
             if not sanitized_fmt.fix_excessive_indentation():
                 # TODO: Add logging here ?
                 pass
-        sanitized_yaml = str(sanitized_fmt)
+        sanitized_yaml: Final = str(sanitized_fmt)
 
         # Read the YAML line-by-line, maintaining a stack to manage the last owning node in the tree.
         node_stack: list[Node] = [self._root]
