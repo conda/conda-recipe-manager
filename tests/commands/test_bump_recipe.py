@@ -132,6 +132,11 @@ def test_usage() -> None:
         ## Attempt to correct URLs using the PyPi API ##
         # "Standard" Grayskull-based recipe needing a URL correction.
         (
+            "bump_recipe/types-toml_fix_pypi_uppercase_url.yaml",
+            "0.10.8.20240310",
+            "bump_recipe/types-toml_fix_pypi_uppercase_url_bump.yaml",
+        ),
+        (
             "bump_recipe/types-toml_fix_pypi_url.yaml",
             "0.10.8.20240310",
             "bump_recipe/types-toml_fix_pypi_url_version_bump.yaml",
