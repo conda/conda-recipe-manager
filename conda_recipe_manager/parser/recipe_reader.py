@@ -593,7 +593,7 @@ class RecipeReader(IsModifiable):
         Constructs a RecipeReader instance.
 
         :param content: conda-build formatted recipe file, as a single text string.
-        :param internal_call: Whether this is a recursive call. If true, we cannot determine if the recipe is V0 or V1.
+        :param internal_call: Whether this is an internal call. If true, we cannot determine if the recipe is V0 or V1.
         """
         super().__init__()
         # The initial, raw, text is preserved for diffing and debugging purposes
