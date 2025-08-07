@@ -306,6 +306,12 @@ class RecipeReader(IsModifiable):
 
     @staticmethod
     def _create_private_recipe_reader(content: str) -> RecipeReader:
+        """
+        Creates a new RecipeReader instance. Exclusively for internal RecipeReader use.
+
+        :param content: The content of the recipe file.
+        :returns: A new RecipeReader instance.
+        """
         recipe_reader = RecipeReader.__new__(RecipeReader)
         recipe_reader._private_init(content=content, internal_call=True)  # pylint: disable=protected-access
         return recipe_reader
@@ -584,13 +590,19 @@ class RecipeReader(IsModifiable):
         traverse_all(self._root, _collect_selectors)
 
     def __init__(self, content: str):  # pylint: disable=super-init-not-called
+        """
+        Constructs a RecipeReader instance.
+
+        :param content: conda-build formatted recipe file, as a single text string.
+        """
         self._private_init(content=content, internal_call=False)
 
     def _private_init(self, content: str, internal_call: bool) -> None:
         # pylint: disable=too-complex
         # TODO Refactor and simplify ^
         """
-        Constructs a RecipeReader instance.
+        Private constructor for internal RecipeReader use. This constructor is called by `__init__()` and
+        `_create_private_recipe_reader()`, with internal_call set to False and True, respectively.
 
         :param content: conda-build formatted recipe file, as a single text string.
         :param internal_call: Whether this is an internal call. If true, we cannot determine if the recipe is V0 or V1.
