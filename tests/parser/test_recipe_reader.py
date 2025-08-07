@@ -63,6 +63,50 @@ def test_construction(file: str, schema_version: SchemaVersion) -> None:
     # assert parser._root == TODO
 
 
+# TODO: Unskip all test cases once the underlying bugs are fixed:
+# CRM #390: https://github.com/conda/conda-recipe-manager/issues/390
+# CRM #403: https://github.com/conda/conda-recipe-manager/issues/403
+# CRM #404: https://github.com/conda/conda-recipe-manager/issues/404
+# CRM #405: https://github.com/conda/conda-recipe-manager/issues/405
+# CRM #406: https://github.com/conda/conda-recipe-manager/issues/406
+@pytest.mark.parametrize(
+    "file,schema_version,expected_file",
+    [
+        (
+            "v0_formatter/gguf_excessive_indent_easy.yaml",
+            SchemaVersion.V0,
+            "v0_formatter/gguf_excessive_indent_easy_fixed.yaml",
+        ),
+        # (
+        #     "v0_formatter/cfitsio_excessive_indent.yaml",
+        #     SchemaVersion.V0,
+        #     "v0_formatter/cfitsio_excessive_indent_fixed.yaml",
+        # ),
+        # (
+        #     "v0_formatter/libwebp-base_excessive_indent_jinja_logic.yaml",
+        #     SchemaVersion.V0,
+        #     "v0_formatter/libwebp-base_excessive_indent_jinja_logic_fixed.yaml",
+        # ),
+        # (
+        #     "v0_formatter/gguf_excessive_indent.yaml",
+        #     SchemaVersion.V0,
+        #     "v0_formatter/gguf_excessive_indent_fixed.yaml",
+        # ),
+    ],
+)
+def test_construction_with_excessive_indentation(file: str, schema_version: SchemaVersion, expected_file: str) -> None:
+    """
+    Tests the construction of a recipe parser instance with a recipe file that has excessive indentation.
+    This test also ensures that the file is formatted correctly after rendering.
+    """
+    file_content = load_file(file)
+    parser = RecipeReader(file_content)
+    assert parser._init_content == file_content  # pylint: disable=protected-access
+    assert parser.get_schema_version() == schema_version
+    assert not parser.is_modified()
+    assert parser.render() == load_file(expected_file)
+
+
 @pytest.mark.parametrize(
     "file,out_file",
     [
@@ -113,8 +157,9 @@ def test_eq(file: str, other_file: str) -> None:
 def test_loading_obj_in_list() -> None:
     """
     Regression test: at one point, the parser would crash loading this file, containing an object in a list.
+    Given that this pattern doesn't seem to be used in V0 recipes, this test is only run for a V1 recipe.
     """
-    replace = load_file("simple-recipe_test_patch_replace.yaml")
+    replace = load_file("v1_format/v1_boto_object_in_list.yaml")
     parser = RecipeReader(replace)
     assert parser.render() == replace
 

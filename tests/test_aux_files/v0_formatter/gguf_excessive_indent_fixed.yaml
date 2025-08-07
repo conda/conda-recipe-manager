@@ -1,0 +1,61 @@
+{% set name = "gguf" %}
+{% set version = "0.10.0" %}
+
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  url: https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/gguf-{{ version }}.tar.gz
+  sha256: 52a30ef26328b419ffc47d9269fc580c238edf1c8a19b5ea143c323e04a038c1
+
+build:
+  entry_points:
+    - gguf-convert-endian = scripts:gguf_convert_endian_entrypoint
+    - gguf-dump = scripts:gguf_dump_entrypoint
+    - gguf-set-metadata = scripts:gguf_set_metadata_entrypoint
+    - gguf-new-metadata = scripts:gguf_new_metadata_entrypoint
+  skip: true  # [py<38]
+  script: {{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
+  number: 0
+
+requirements:
+  host:
+    - python
+    - poetry-core >=1.0.0
+    - pip
+  run:
+    - python
+    - numpy >=1.17
+    - tqdm >=4.27
+    - pyyaml >=5.1
+    - sentencepiece >=0.1.96,<0.2.0   # This dependency is missing in the upstream pyproject.toml file: https://github.com/ggerganov/llama.cpp/blob/master/gguf-py/pyproject.toml
+      # PR: https://github.com/ggerganov/llama.cpp/pull/9107
+
+test:
+  imports:
+    - gguf
+  commands:
+    - pip check
+    - gguf-convert-endian --help
+    - gguf-dump --help
+    - gguf-set-metadata --help
+    - gguf-new-metadata --help
+  requires:
+    - pip
+about:
+  home: https://ggml.ai
+  summary: Read and write ML models in GGUF for GGML
+  description: |
+    Read and write ML models in GGUF for GGML
+  license: MIT
+  license_family: MIT
+  license_file: LICENSE
+  dev_url: https://github.com/ggerganov/llama.cpp/tree/master/gguf-py
+  doc_url: https://github.com/ggerganov/llama.cpp/tree/master/gguf-py
+
+extra:
+  recipe-maintainers:
+    - sodre
+    - jnoller
