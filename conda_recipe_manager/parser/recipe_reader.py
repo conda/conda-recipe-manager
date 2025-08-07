@@ -675,6 +675,7 @@ class RecipeReader(IsModifiable):
                 #   bar:
                 #     fizz: buzz
                 # baz: blah
+                # Tab-depth is guaranteed because of fix_excessive_indentation() above.
                 depth_to_pop = (cur_indent - new_indent) // TAB_SPACE_COUNT
                 for _ in range(depth_to_pop):
                     node_stack.pop()
