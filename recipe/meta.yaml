@@ -1,5 +1,5 @@
 {% set name = "conda-recipe-manager" %}
-{% set version = "0.6.0" %}
+{% set version = "0.6.1" %}
 
 package:
   name: {{ name|lower }}
@@ -26,6 +26,7 @@ requirements:
     - python >=3.11
     # Version 8.2.0 introduces breaking changes around the `CliRunner` class, which breaks our
     # automated tests. We can allow for this version when it becomes available on `defaults`.
+    # TODO Future: click 8.2.1 is available on defaults and conda-forge now.
     - click >=8.1.7,<8.2.0
     - conda
     - jinja2

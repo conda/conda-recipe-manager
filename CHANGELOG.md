@@ -1,7 +1,30 @@
 # Changelog
+The CHANGELOG format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
+
 NOTES:
 - Version releases in the 0.x.y range may introduce breaking changes.
 - See the auto-generated release notes for more details.
+
+Note: version releases in the 0.x.y range may introduce breaking changes.
+
+## [Unreleased]
+### Added
+### Changed
+### Deprecated
+### Removed
+### Fixed
+### Security
+
+## [0.6.1]
+### Added
+- `crm` CLI commands now support `-h` in addition to `--help`.
+### Changed
+- `CHANGELOG.md` now uses the `Keep a Chagelog` format (from this version on)
+- The retry logic in `crm bump-recipe` now uses a much shorter default timeout.
+### Fixed
+- The algorithm responsible for cleaning up V0 recipes prior to the parsing stage has been greatly
+  improved to better handle inconsistent tabs.
+- Wrong interpretation of the `+` in JINJA variables in some cases.
 
 ## 0.6.0
 - Contains many significant parsing bug fixes. Most of these fixes relate to quoting strings and JINJA statements.
@@ -107,3 +130,6 @@ and continually changing.
 ## 0.1.0
 Migrates parser from [percy](https://github.com/anaconda-distribution/percy/tree/main)
 , ,
+
+[Unreleased]: https://github.com/conda/conda-recipe-manager/compare/v0.6.1...HEAD
+[0.6.1]: https://github.com/conda/conda-recipe-manager/compare/v0.6.0...v0.6.1
