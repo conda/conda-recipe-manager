@@ -667,7 +667,6 @@ class RecipeReader(IsModifiable):
                 #   bar:
                 #     fizz: buzz
                 # baz: blah
-                # TODO Figure out tab-depth of the recipe being read. 4 spaces is technically valid in YAML
                 depth_to_pop = (cur_indent - new_indent) // TAB_SPACE_COUNT
                 for _ in range(depth_to_pop):
                     node_stack.pop()
