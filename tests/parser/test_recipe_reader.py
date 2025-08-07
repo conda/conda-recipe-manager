@@ -63,29 +63,35 @@ def test_construction(file: str, schema_version: SchemaVersion) -> None:
     # assert parser._root == TODO
 
 
-# TODO: Unskip this test once the underlying bugs are fixed:
+# TODO: Unskip all test cases once the underlying bugs are fixed:
 # CRM #390: https://github.com/conda/conda-recipe-manager/issues/390
 # CRM #403: https://github.com/conda/conda-recipe-manager/issues/403
 # CRM #404: https://github.com/conda/conda-recipe-manager/issues/404
 # CRM #405: https://github.com/conda/conda-recipe-manager/issues/405
 # CRM #406: https://github.com/conda/conda-recipe-manager/issues/406
-@pytest.mark.skip(
-    reason="This test is not working as expected because of bugs unrelated to the formatter functionality tested here"
-)
 @pytest.mark.parametrize(
     "file,schema_version,expected_file",
     [
         (
-            "v0_formatter/cfitsio_excessive_indent.yaml",
+            "v0_formatter/gguf_excessive_indent_easy.yaml",
             SchemaVersion.V0,
-            "v0_formatter/cfitsio_excessive_indent_fixed.yaml",
+            "v0_formatter/gguf_excessive_indent_easy_fixed.yaml",
         ),
-        (
-            "v0_formatter/libwebp-base_excessive_indent_jinja_logic.yaml",
-            SchemaVersion.V0,
-            "v0_formatter/libwebp-base_excessive_indent_jinja_logic_fixed.yaml",
-        ),
-        ("v0_formatter/gguf_excessive_indent.yaml", SchemaVersion.V0, "v0_formatter/gguf_excessive_indent_fixed.yaml"),
+        # (
+        #     "v0_formatter/cfitsio_excessive_indent.yaml",
+        #     SchemaVersion.V0,
+        #     "v0_formatter/cfitsio_excessive_indent_fixed.yaml",
+        # ),
+        # (
+        #     "v0_formatter/libwebp-base_excessive_indent_jinja_logic.yaml",
+        #     SchemaVersion.V0,
+        #     "v0_formatter/libwebp-base_excessive_indent_jinja_logic_fixed.yaml",
+        # ),
+        # (
+        #     "v0_formatter/gguf_excessive_indent.yaml",
+        #     SchemaVersion.V0,
+        #     "v0_formatter/gguf_excessive_indent_fixed.yaml",
+        # ),
     ],
 )
 def test_construction_with_excessive_indentation(file: str, schema_version: SchemaVersion, expected_file: str) -> None:
