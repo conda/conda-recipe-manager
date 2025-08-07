@@ -609,6 +609,8 @@ class RecipeReader(IsModifiable):
         """
         super().__init__()
         # The initial, raw, text is preserved for diffing and debugging purposes
+        # Note: _init_content should be Final, but mypy requires Final attributes to be declared in __init__
+        # See https://mypy.readthedocs.io/en/stable/final_attrs.html#syntax-variants
         self._init_content: str = content
 
         # Root of the parse tree
