@@ -124,9 +124,18 @@ class MultilineVariant(StrEnum):
     BACKSLASH_QUOTE = "\\"
 
 
+# TODO: Integrate this into a hierarchy of exceptions for the parser.
+# Tracking issue: https://github.com/conda/conda-recipe-manager/issues/408
 class IndentFormattingException(Exception):
     """
     Exception raised when a recipe file cannot be formatted correctly for indentation issues.
     """
 
-    pass
+    def __init__(self, message: str):
+        """
+        Constructs an indent formatting exception.
+
+        :param message: String description of the issue encountered.
+        """
+        self.message = message if len(message) else "An unknown indent formatting issue was encountered."
+        super().__init__(self.message)
