@@ -373,17 +373,14 @@ def _correct_pypi_url(recipe_reader: RecipeReader) -> str:
     if version_value not in pypi_meta.releases:
         raise FetchError(f"Failed to retrieve target version: {version_value}")
 
-    # We replace the `filename` specifically for a number of reasons:
-    #  1) This decreases the "friction" involved with drastically changing what already exists in the recipe file. Less
-    #     changes, less disruption/confusion for our package builders (or so the theory goes).
-    #  2) The PyPi API generally produces a "post-redirect" URL for package artifacts. Again, as to not change the file
-    #     dramatically, we want to keep the commonly used `https://pypi.io` URL.
+    # Using the PyPI metadata we can construct a url that will work for the fetcher. Incase the recipe name is
+    # different from the PyPI name, we use the PyPI name from the API response to ensure the url is correct.
     filename: Final = pypi_meta.releases[version_value].filename
     name: Final = pypi_meta.info.name
-    new_url: Final = f"https://pypi.org/packages/source/{ name[0] }/{ name }/{ filename }"
-
-    if new_url is None:
+    if not (filename and name):
         raise FetchError("Unable to determine download url for PyPi API request.")
+
+    new_url: Final = f"https://pypi.org/packages/source/{ name[0] }/{ name }/{ filename }"
     return new_url
 
 
