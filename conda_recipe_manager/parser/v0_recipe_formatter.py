@@ -12,7 +12,7 @@ from typing import Final
 
 from conda_recipe_manager.parser._types import Regex
 from conda_recipe_manager.parser._utils import num_tab_spaces
-from conda_recipe_manager.parser.types import TAB_SPACE_COUNT
+from conda_recipe_manager.parser.types import TAB_SPACE_COUNT, IndentFormattingException
 
 
 class V0RecipeFormatter:
@@ -52,6 +52,57 @@ class V0RecipeFormatter:
         :returns: True if the recipe content provided is in the V0 format. False otherwise.
         """
         return self._is_v0_recipe
+
+    def _fix_excessive_indentation(self) -> None:  # pylint: disable=too-complex
+        """
+        Fixes excessive indentation in the recipe file. Excessive indentation is defined as a line that is more than 1
+        tab indented with respect to its parent line.
+
+        :raises: Exception if the recipe file couldn't be formatted correctly.
+        """
+        # Pre-processing checks
+        if not self._lines:
+            raise IndentFormattingException("The V0 recipe file couldn't be formatted correctly: the file is empty.")
+        all_indents = [num_tab_spaces(line) if line.lstrip() else -1 for line in self._lines]
+        indents = [x for x in all_indents if x > -1]
+        if not indents:
+            raise IndentFormattingException("The V0 recipe file couldn't be formatted correctly: the file is empty.")
+        if indents[0] != 0:
+            raise IndentFormattingException(
+                "The V0 recipe file couldn't be formatted correctly: the first line is indented."
+            )
+
+        # Compute correct indent levels
+        cur_indent_level = 0
+        indent_levels = [0]
+        for idx in range(1, len(indents)):
+            if indents[idx] > indents[idx - 1]:
+                cur_indent_level += 1
+            elif indents[idx] < indents[idx - 1]:
+                # Look for the first line above this one that has the same indent, and copy its indent level.
+                # If an exact match can't be found,
+                # assume that this is a child node of the closest line with a lower indent.
+                for i in range(idx - 2, -1, -1):
+                    if indents[i] == indents[idx]:
+                        cur_indent_level = indent_levels[i]
+                        break
+                    if indents[i] < indents[idx]:
+                        cur_indent_level = indent_levels[i] + 1
+                        break
+                else:
+                    raise IndentFormattingException(
+                        "The V0 recipe file couldn't be formatted correctly. Please check indentation."
+                    )
+            indent_levels.append(cur_indent_level)
+
+        # Fix all lines
+        indent_idx = 0
+        for idx in range(len(self._lines)):
+            if all_indents[idx] == -1:
+                self._lines[idx] = ""
+                continue
+            self._lines[idx] = (indent_levels[indent_idx] * TAB_SPACE_COUNT * " ") + self._lines[idx].lstrip()
+            indent_idx += 1
 
     def fmt_text(self) -> None:
         """
@@ -105,3 +156,16 @@ class V0RecipeFormatter:
                 bad_lst_block_indent_tracker = -1
 
             idx += 1
+
+    def fix_excessive_indentation(self) -> bool:
+        """
+        Fixes excessive indentation in the recipe file. Excessive indentation is defined as a line that is more than 1
+        tab indented with respect to its parent line.
+
+        :returns: True if the operation was successful. False otherwise.
+        """
+        try:
+            self._fix_excessive_indentation()
+        except IndentFormattingException:
+            return False
+        return True

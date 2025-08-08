@@ -1,0 +1,68 @@
+{% set name = "cfitsio" %}
+{% set version = "3.470" %}
+{% set nozeroversion = version[:-1] %}
+# This is the SHA256 hash of the ungzipped tar file. See https://github.com/conda/conda/issues/3798.
+{% set sha256 = "985606e058403c073a68d95be74e9696f0ded9414520784457a1d4cba8cca7e2" %}
+
+package:
+  name: {{ name }}
+  version: {{ version }}
+
+source:
+  url: https://heasarc.gsfc.nasa.gov/FTP/software/fitsio/c/{{ name }}-{{ nozeroversion }}.tar.gz
+  sha256: {{ sha256 }}
+  patches:
+    - ldflags.patch
+    - unvendor_zlib.patch
+    - lcurl-pkg-config.patch
+
+build:
+  number: 7
+  ignore_run_exports:
+    - libgfortran5  # [osx]
+  run_exports:
+    - {{ pin_subpackage('cfitsio', max_pin='x.x.x') }}
+
+requirements:
+  build:
+    - {{ compiler('fortran') }}  # [not win]
+    - {{ compiler('c') }}
+    - cmake  # [win]
+    - make  # [not win]
+    - libtool  # [unix]
+    - patch  # [not win]
+    - m2-patch  # [win]
+  host:
+    - libcurl  # [not win]
+    - bzip2  # [not win]
+    - zlib  # [not win]
+
+test:
+  commands:
+    - test -f ${PREFIX}/lib/libcfitsio{{ SHLIB_EXT }}  # [not win]
+    - if not exist %LIBRARY_LIB%\cfitsio.lib exit 1  # [win]
+    - if not exist %LIBRARY_BIN%\cfitsio.dll exit 1  # [win]
+  # Disable downstream "gdal" until gdal itself has been rebuilt.
+  # downstreams:
+    # - gdal  # [x86_64 and linux]
+
+about:
+  home: https://heasarc.gsfc.nasa.gov/fitsio/fitsio.html
+  license: Other
+  license_family: Other
+  license_file: License.txt
+  summary: A library for reading and writing FITS files
+  description: |
+    CFITSIO is a library of C and Fortran subroutines for reading and writing
+    data files in FITS (Flexible Image Transport System) data format. CFITSIO
+    provides simple high-level routines for reading and writing FITS files that
+    insulate the programmer from the internal complexities of the FITS format.
+    CFITSIO also provides many advanced features for manipulating and filtering
+    the information in FITS files.
+  dev_url: https://heasarc.gsfc.nasa.gov/fitsio/fitsio.html
+  doc_url: https://heasarc.gsfc.nasa.gov/docs/software/fitsio/quick/quick.html
+
+extra:
+  recipe-maintainers:
+    - pkgw
+    - teake

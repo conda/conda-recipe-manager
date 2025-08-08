@@ -122,3 +122,20 @@ class MultilineVariant(StrEnum):
     # This variant works differently. The starting line must begin with a " and end with a \. Every subsequent line
     # then must start with a \ until an unescaped-closing-" is found.
     BACKSLASH_QUOTE = "\\"
+
+
+# TODO: Integrate this into a hierarchy of exceptions for the parser.
+# Tracking issue: https://github.com/conda/conda-recipe-manager/issues/408
+class IndentFormattingException(Exception):
+    """
+    Exception raised when a recipe file cannot be formatted correctly for indentation issues.
+    """
+
+    def __init__(self, message: str):
+        """
+        Constructs an indent formatting exception.
+
+        :param message: String description of the issue encountered.
+        """
+        self.message = message if len(message) else "An unknown indent formatting issue was encountered."
+        super().__init__(self.message)

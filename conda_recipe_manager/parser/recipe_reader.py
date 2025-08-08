@@ -305,6 +305,18 @@ class RecipeReader(IsModifiable):
         return Node(value=output, comment=comment)
 
     @staticmethod
+    def _create_private_recipe_reader(content: str) -> RecipeReader:
+        """
+        Creates a new RecipeReader instance. Exclusively for internal RecipeReader use.
+
+        :param content: The content of the recipe file.
+        :returns: A new RecipeReader instance.
+        """
+        recipe_reader = RecipeReader.__new__(RecipeReader)
+        recipe_reader._private_init(content=content, internal_call=True)  # pylint: disable=protected-access
+        return recipe_reader
+
+    @staticmethod
     def _generate_subtree(value: JsonType) -> list[Node]:
         """
         Given a value supported by JSON, use the RecipeReader to generate a list of child nodes. This effectively
@@ -324,14 +336,16 @@ class RecipeReader(IsModifiable):
         # For complex types, generate the YAML equivalent and build a new tree.
         if not isinstance(value, PRIMITIVES_TUPLE):
             # Although not technically required by YAML, we add the optional spacing for human readability.
-            return RecipeReader(  # pylint: disable=protected-access
+            return RecipeReader._create_private_recipe_reader(  # pylint: disable=protected-access
                 # NOTE: `yaml.dump()` defaults to 80 character lines. Longer lines may have newlines unexpectedly
                 #       injected into this value, screwing up the parse-tree.
-                yaml.dump(value, Dumper=ForceIndentDumper, sort_keys=False, width=sys.maxsize)  # type: ignore[misc]
+                yaml.dump(value, Dumper=ForceIndentDumper, sort_keys=False, width=sys.maxsize),  # type: ignore[misc]
             )._root.children
 
         # Primitives can be safely stringified to generate a parse tree.
-        return RecipeReader(str(stringify_yaml(value)))._root.children  # pylint: disable=protected-access
+        return RecipeReader._create_private_recipe_reader(  # pylint: disable=protected-access
+            str(stringify_yaml(value))
+        )._root.children
 
     def _set_on_schema_version(self) -> tuple[int, re.Pattern[str]]:
         """
@@ -575,17 +589,29 @@ class RecipeReader(IsModifiable):
 
         traverse_all(self._root, _collect_selectors)
 
-    def __init__(self, content: str):
-        # pylint: disable=too-complex
-        # TODO Refactor and simplify ^
+    def __init__(self, content: str):  # pylint: disable=super-init-not-called
         """
         Constructs a RecipeReader instance.
 
         :param content: conda-build formatted recipe file, as a single text string.
         """
+        self._private_init(content=content, internal_call=False)
+
+    def _private_init(self, content: str, internal_call: bool) -> None:
+        # pylint: disable=too-complex
+        # TODO Refactor and simplify ^
+        """
+        Private constructor for internal RecipeReader use. This constructor is called by `__init__()` and
+        `_create_private_recipe_reader()`, with internal_call set to False and True, respectively.
+
+        :param content: conda-build formatted recipe file, as a single text string.
+        :param internal_call: Whether this is an internal call. If true, we cannot determine if the recipe is V0 or V1.
+        """
         super().__init__()
         # The initial, raw, text is preserved for diffing and debugging purposes
-        self._init_content: Final[str] = content
+        # Note: _init_content should be Final, but mypy requires Final attributes to be declared in __init__
+        # See https://mypy.readthedocs.io/en/stable/final_attrs.html#syntax-variants
+        self._init_content: str = content
 
         # Root of the parse tree
         self._root = Node(value=ROOT_NODE_VALUE)
@@ -593,7 +619,7 @@ class RecipeReader(IsModifiable):
         # Format the text for V0 recipe files in an attempt to improve compatibility with our whitespace-delimited
         # parser.
         fmt: Final[V0RecipeFormatter] = V0RecipeFormatter(self._init_content)
-        if fmt.is_v0_recipe():
+        if fmt.is_v0_recipe() and not internal_call:
             fmt.fmt_text()
         # Calculate the string equivalent once.
         fmt_str: Final = str(fmt)
@@ -601,12 +627,18 @@ class RecipeReader(IsModifiable):
         # For V0 recipe files, count the number of comment-only lines at the start, before the canonical "variables
         # section"
         tof_comment_cntr = 0
-        if fmt.is_v0_recipe():
+        if fmt.is_v0_recipe() and not internal_call:
             while fmt_str.splitlines()[tof_comment_cntr].startswith("#"):
                 tof_comment_cntr += 1
 
-        # Replace all Jinja lines. Then traverse line-by-line
-        sanitized_yaml: Final = Regex.JINJA_V0_LINE.sub("", fmt_str)
+        # Replace all Jinja lines and fix excessive indentation. Then traverse line-by-line
+        sanitized_yaml_unfixed: Final = Regex.JINJA_V0_LINE.sub("", fmt_str)
+        sanitized_fmt = V0RecipeFormatter(sanitized_yaml_unfixed)
+        if sanitized_fmt.is_v0_recipe() and not internal_call:
+            if not sanitized_fmt.fix_excessive_indentation():
+                # TODO: Add logging here ?
+                pass
+        sanitized_yaml: Final = str(sanitized_fmt)
 
         # Read the YAML line-by-line, maintaining a stack to manage the last owning node in the tree.
         node_stack: list[Node] = [self._root]
@@ -657,7 +689,7 @@ class RecipeReader(IsModifiable):
                 #   bar:
                 #     fizz: buzz
                 # baz: blah
-                # TODO Figure out tab-depth of the recipe being read. 4 spaces is technically valid in YAML
+                # Tab-depth is guaranteed because of fix_excessive_indentation() above.
                 depth_to_pop = (cur_indent - new_indent) // TAB_SPACE_COUNT
                 for _ in range(depth_to_pop):
                     node_stack.pop()
