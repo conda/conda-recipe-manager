@@ -1,8 +1,9 @@
-{% set name = "types-toml" %}
+{% set name = "Types-toml" %}
+{% set version = "0.10.8.20240310" %}
 
 package:
   name: {{ name|lower }}
-  version: 0.10.8.20240310
+  version: {{ version }}
 
 source:
   url: https://pypi.org/packages/source/t/types-toml/types-toml-0.10.8.20240310.tar.gz
@@ -42,7 +43,7 @@ about:
   license_file: LICENSE
   license_family: OTHER
   dev_url: https://github.com/python/typeshed
-  doc_url: https://pypi.org/project/types-toml/
+  doc_url: https://pypi.org/project/Types-toml/
 
 extra:
   recipe-maintainers:

@@ -62,6 +62,7 @@ def mock_requests_get(*args: tuple[str], **_: dict[str, str | int]) -> MockHttpR
     pypi_api_requests_map: Final[dict[str, str]] = {
         "https://pypi.org/pypi/types-toml/json": "api/pypi/get_types-toml_package.json",
         "https://pypi.org/pypi/types-toml/0.10.8.20240310/json": "api/pypi/get_types-toml_package_version_0.10.8.20240310.json",  # pylint: disable=line-too-long
+        "https://pypi.org/pypi/Types-toml/0.10.8.20240310/json": "api/pypi/get_types-toml_package_version_0.10.8.20240310.json",  # pylint: disable=line-too-long
     }
     match endpoint:
         case endpoint if endpoint in default_artifact_set:
@@ -130,7 +131,16 @@ def test_usage() -> None:
         ("bump_recipe/build_num_-1.yaml", "0.10.8.20240310", "bump_recipe/types-toml_version_bump.yaml"),
         ## Attempt to correct URLs using the PyPi API ##
         # "Standard" Grayskull-based recipe needing a URL correction.
-        ("bump_recipe/types-toml_fix_pypi_url.yaml", "0.10.8.20240310", "bump_recipe/types-toml_version_bump.yaml"),
+        (
+            "bump_recipe/types-toml_fix_pypi_uppercase_url.yaml",
+            "0.10.8.20240310",
+            "bump_recipe/types-toml_fix_pypi_uppercase_url_bump.yaml",
+        ),
+        (
+            "bump_recipe/types-toml_fix_pypi_url.yaml",
+            "0.10.8.20240310",
+            "bump_recipe/types-toml_fix_pypi_url_version_bump.yaml",
+        ),
         # `version` variable is not used in the URL, but others are.
         (
             "bump_recipe/types-toml_fix_pypi_url_no_version_variable.yaml",

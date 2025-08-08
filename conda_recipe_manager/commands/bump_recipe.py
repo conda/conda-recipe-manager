@@ -20,7 +20,6 @@ from conda_recipe_manager.fetcher.artifact_fetcher import from_recipe as af_from
 from conda_recipe_manager.fetcher.base_artifact_fetcher import BaseArtifactFetcher
 from conda_recipe_manager.fetcher.exceptions import FetchError
 from conda_recipe_manager.fetcher.http_artifact_fetcher import HttpArtifactFetcher
-from conda_recipe_manager.parser.enums import SchemaVersion
 from conda_recipe_manager.parser.recipe_parser import RecipeParser, ReplacePatchFunc
 from conda_recipe_manager.parser.recipe_reader import RecipeReader
 from conda_recipe_manager.types import JsonPatchType, JsonType
@@ -95,7 +94,7 @@ class _Regex:
     )
     # Attempts to match PyPi source archive URLs by the start of the URL.
     PYPI_URL: Final[re.Pattern[str]] = re.compile(
-        r"https?://pypi\.(?:io|org)/packages/source/[a-z]/|https?://files\.pythonhosted\.org/"
+        r"https?://pypi\.(?:io|org)/packages/source/[a-zA-Z0-9]/|https?://files\.pythonhosted\.org/"
     )
 
 
@@ -341,17 +340,17 @@ def _fetch_archive(fetcher: HttpArtifactFetcher, cli_args: _CliArgs, retries: in
     raise FetchError(f"Failed to fetch `{fetcher}` after {retries} retries.")
 
 
-def _correct_pypi_url(recipe_reader: RecipeReader, url_path: str) -> tuple[str, str]:
+def _correct_pypi_url(recipe_reader: RecipeReader) -> str:
     """
     Handles correcting PyPi URLs by querying the PyPi API. There are many edge cases here that complicate this process,
     like managing JINJA variables commonly found in our URL values.
 
     :param recipe_reader: Read-only parser (enforced by our static analyzer). Editing may not be thread-safe. It is up
         to the caller to manage that risk.
-    :param url_path: Recipe-path to the URL string being used by the fetcher.
     :raises FetchError: If an issue occurred while downloading or extracting the archive.
-    :returns: Corrected PyPi artifact URL for the fetcher and recipe file.
+    :returns: Corrected PyPi artifact URL for the fetcher.
     """
+
     version_value: Final[Optional[str]] = optional_str(
         recipe_reader.get_value(_RecipePaths.VERSION, default=None, sub_vars=True)
     )
@@ -374,41 +373,21 @@ def _correct_pypi_url(recipe_reader: RecipeReader, url_path: str) -> tuple[str, 
     if version_value not in pypi_meta.releases:
         raise FetchError(f"Failed to retrieve target version: {version_value}")
 
-    # We replace the `filename` specifically for a number of reasons:
-    #  1) This decreases the "friction" involved with drastically changing what already exists in the recipe file. Less
-    #     changes, less disruption/confusion for our package builders (or so the theory goes).
-    #  2) The PyPi API generally produces a "post-redirect" URL for package artifacts. Again, as to not change the file
-    #     dramatically, we want to keep the commonly used `https://pypi.io` URL.
-    filename: Final[str] = pypi_meta.releases[version_value].filename
+    # Using the PyPI metadata we can construct a url that will work for the fetcher. In case the recipe name is
+    # different from the PyPI name, we use the PyPI name from the API response to ensure the url is correct.
+    # See this issue for more details: https://github.com/conda/conda-recipe-manager/issues/364
 
-    # If the commonly used `version` variable exists AND it is being used in the original URL, inject its usage into the
-    # file name.
-    version_var: Final[Optional[str]] = optional_str(recipe_reader.get_variable(_RecipeVars.VERSION, None))
-    is_version_var_used: Final[bool] = url_path in recipe_reader.get_variable_references(_RecipeVars.VERSION)
-    base_original_url: Final[str] = str(recipe_reader.get_value(url_path, default="", sub_vars=False)).rsplit(
-        "/", maxsplit=1
-    )[0]
-    base_rendered_url: Final[str] = str(recipe_reader.get_value(url_path, default="", sub_vars=True)).rsplit(
-        "/", maxsplit=1
-    )[0]
-    fetcher_url: Final[str] = f"{base_rendered_url}/{filename}"
-    if version_var is not None and is_version_var_used:
-        filename_with_var: Final[str] = filename.replace(
-            version_value,
-            (
-                # NOTE: The double-escaping of the outer `{{` and `}}` braces.
-                f"{{{{ {_RecipeVars.VERSION} }}}}"
-                if recipe_reader.get_schema_version() == SchemaVersion.V0
-                else f"${{{{ {_RecipeVars.VERSION} }}}}"
-            ),
-        )
-        return (fetcher_url, f"{base_original_url}/{filename_with_var}")
+    filename: Final = pypi_meta.releases[version_value].filename
+    name: Final = pypi_meta.info.name
+    if not (filename and name):
+        raise FetchError("Unable to determine download url for PyPi API request.")
 
-    return (fetcher_url, f"{base_original_url}/{filename}")
+    new_url: Final = f"https://pypi.org/packages/source/{ name[0] }/{ name }/{ filename }"
+    return new_url
 
 
 def _get_sha256_and_corrected_url(
-    recipe_reader: RecipeReader, url_path: str, fetcher: HttpArtifactFetcher, cli_args: _CliArgs
+    recipe_reader: RecipeReader, fetcher: HttpArtifactFetcher, cli_args: _CliArgs
 ) -> tuple[str, Optional[str]]:
     """
     Wrapping function that attempts to retrieve an HTTP/HTTPS artifact with a retry mechanism.
@@ -420,7 +399,6 @@ def _get_sha256_and_corrected_url(
 
     :param recipe_reader: Read-only parser (enforced by our static analyzer). Editing may not be thread-safe. It is up
         to the caller to manage that risk.
-    :param url_path: Recipe-path to the URL string being used by the fetcher.
     :param fetcher: Artifact fetching instance to use.
     :param cli_args: Immutable CLI arguments from the user.
     :raises FetchError: If an issue occurred while downloading or extracting the archive.
@@ -440,12 +418,12 @@ def _get_sha256_and_corrected_url(
     except FetchError:
         log.info("PyPI URL detected. Attempting to recover URL.")
         # The `corrected_fetcher_url` is the rendered-out URL, without variables.
-        corrected_fetcher_url, corrected_recipe_url = _correct_pypi_url(recipe_reader, url_path)
+        corrected_fetcher_url = _correct_pypi_url(recipe_reader)
         corrected_fetcher: Final[HttpArtifactFetcher] = HttpArtifactFetcher(str(fetcher), corrected_fetcher_url)
 
         _fetch_archive(corrected_fetcher, cli_args, retries=pypi_retries)
         log.warning("Archive found at %s. Will attempt to update recipe file.", corrected_fetcher_url)
-        return (corrected_fetcher.get_archive_sha256(), corrected_recipe_url)
+        return (corrected_fetcher.get_archive_sha256(), corrected_fetcher_url)
 
 
 def _update_sha256_check_hash_var(
@@ -474,7 +452,7 @@ def _update_sha256_check_hash_var(
             and _RecipePaths.SINGLE_SHA_256 in recipe_parser.get_variable_references(hash_var)
         ):
             try:
-                sha, url = _get_sha256_and_corrected_url(recipe_parser, _RecipePaths.SINGLE_URL, src_fetcher, cli_args)
+                sha, url = _get_sha256_and_corrected_url(recipe_parser, src_fetcher, cli_args)
                 recipe_parser.set_variable(hash_var, sha)
                 if url is not None:
                     _exit_on_failed_patch(
@@ -523,7 +501,7 @@ def _update_sha256_fetch_one(
         tuple containing the path to the artifact URL and a corrected URL.
     """
     url_path: Final[str] = RecipeParser.append_to_path(src_path, "/url")
-    sha, url = _get_sha256_and_corrected_url(recipe_reader, url_path, fetcher, cli_args)
+    sha, url = _get_sha256_and_corrected_url(recipe_reader, fetcher, cli_args)
     url_tup: Final[Optional[tuple[str, str]]] = None if url is None else (url_path, url)
     return (RecipeParser.append_to_path(src_path, "/sha256"), sha, url_tup)
 
