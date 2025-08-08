@@ -373,7 +373,7 @@ def _correct_pypi_url(recipe_reader: RecipeReader) -> str:
     if version_value not in pypi_meta.releases:
         raise FetchError(f"Failed to retrieve target version: {version_value}")
 
-    # Using the PyPI metadata we can construct a url that will work for the fetcher. Incase the recipe name is
+    # Using the PyPI metadata we can construct a url that will work for the fetcher. In case the recipe name is
     # different from the PyPI name, we use the PyPI name from the API response to ensure the url is correct.
     # https://github.com/conda/conda-recipe-manager/issues/364
 
