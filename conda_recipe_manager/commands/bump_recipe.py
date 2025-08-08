@@ -375,7 +375,7 @@ def _correct_pypi_url(recipe_reader: RecipeReader) -> str:
 
     # Using the PyPI metadata we can construct a url that will work for the fetcher. In case the recipe name is
     # different from the PyPI name, we use the PyPI name from the API response to ensure the url is correct.
-    # https://github.com/conda/conda-recipe-manager/issues/364
+    # See this issue for more details: https://github.com/conda/conda-recipe-manager/issues/364
 
     filename: Final = pypi_meta.releases[version_value].filename
     name: Final = pypi_meta.info.name
