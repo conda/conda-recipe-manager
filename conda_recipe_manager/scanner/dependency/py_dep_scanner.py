@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import ast
+import logging
 import pkgutil
 import sys
 from pathlib import Path
@@ -16,7 +17,8 @@ from conda_recipe_manager.scanner.dependency.base_dep_scanner import (
     ProjectDependency,
     new_project_dependency,
 )
-from conda_recipe_manager.types import MessageCategory
+
+log = logging.getLogger(__name__)
 
 # Table that maps import names that do not match the package name for common packages. See this StackOverflow post for
 # more details:
@@ -144,10 +146,8 @@ class PythonDependencyScanner(BaseDependencyScanner):
         for file in self._src_dir.rglob("*.py"):
             try:
                 all_imports |= self._scan_one_file(file)
-            except Exception as e:  # pylint: disable=broad-exception-caught
-                self._msg_tbl.add_message(
-                    MessageCategory.EXCEPTION, f"Exception encountered while scanning `{file}`: {e}"
-                )
+            except Exception:  # pylint: disable=broad-exception-caught
+                log.exception("Exception encountered while scanning `%s`.", file)
 
         # `RUN` dependencies are automatically added as `TEST` dependencies, so we need to filter if there are
         # (effectively) duplicates
