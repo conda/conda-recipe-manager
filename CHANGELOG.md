@@ -10,6 +10,8 @@ Note: version releases in the 0.x.y range may introduce breaking changes.
 ## [Unreleased]
 ### Added
 ### Changed
+- De-emphasized/redacted the `MessageTable` class in favor of the standard Python library logger. It is now only
+  used as part of the recipe conversion process and `crm convert`
 ### Deprecated
 ### Removed
 ### Fixed
