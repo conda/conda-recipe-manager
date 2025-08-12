@@ -22,7 +22,7 @@ class FetchUnsupportedError(FetcherException):
 
         :param message: String description of the issue encountered.
         """
-        self.message = message if len(message) else "The target artifact format is unsupported."
+        self.message = message if message else "The target artifact format is unsupported."
         super().__init__(self.message)
 
 
@@ -37,7 +37,7 @@ class FetchError(FetcherException):
 
         :param message: String description of the issue encountered.
         """
-        self.message = message if len(message) else "An unknown error occurred while trying to fetch an artifact."
+        self.message = message if message else "An unknown error occurred while trying to fetch an artifact."
         super().__init__(self.message)
 
 
@@ -53,6 +53,6 @@ class FetchRequiredError(FetcherException):
         :param message: String description of the issue encountered.
         """
         self.message = (
-            message if len(message) else "An operation could not be completed as the artifact has not been fetched."
+            message if message else "An operation could not be completed as the artifact has not been fetched."
         )
         super().__init__(self.message)
