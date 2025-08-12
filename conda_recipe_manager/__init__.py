@@ -2,4 +2,7 @@
 :Description: Top-level module for the conda-recipe-manager project.
 """
 
-# NOTE: We do not set the `NullHandler` here so that the CLI commands use the default handler.
+import logging
+
+# Default to emitting no logs. It is up to the client program to define logging conditions.
+logging.getLogger(__name__).addHandler(logging.NullHandler())
