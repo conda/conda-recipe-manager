@@ -18,6 +18,7 @@
 from __future__ import annotations
 
 import difflib
+import logging
 import re
 from collections.abc import Callable
 from typing import Final, Optional, TypeGuard, cast
@@ -43,6 +44,8 @@ from conda_recipe_manager.types import PRIMITIVES_TUPLE, JsonPatchType, JsonType
 
 # Callback that allows the caller to perform custom replacements using `search_and_patch_replace()`.
 ReplacePatchFunc = Callable[[JsonType], JsonType]
+
+log = logging.getLogger(__name__)
 
 
 class RecipeParser(RecipeReader):
@@ -640,8 +643,10 @@ class RecipeParser(RecipeReader):
                 # We must traverse again as the tree state has changed.
                 node = traverse(self._root, str_to_stack_path(path))
                 if node is None:
-                    # TODO Future Log this when CRM parsers have proper logging.
                     summation = False
+                    log.warning(
+                        "Failed to find node while attempting to patch and replace with %s at %s", str(regex), path
+                    )
                     continue
 
                 # The caller is unable to access the node and patch operations ignore comments/selectors.
@@ -650,8 +655,7 @@ class RecipeParser(RecipeReader):
                 self._rebuild_selectors()
                 self._is_modified = True
             except KeyError:
-                # TODO Future Log this when CRM parsers have proper logging.
-                summation = False
+                log.warning("KeyError occurred while attempting to patch and replace with %s at %s", str(regex), path)
                 continue
 
         return summation
