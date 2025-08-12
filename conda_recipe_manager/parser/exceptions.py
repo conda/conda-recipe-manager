@@ -24,19 +24,20 @@ class BaseParserException(Exception):
         super().__init__(self.message)
 
 
-class IndentFormattingException(BaseParserException):
+class ParsingException(BaseParserException):
     """
-    Exception raised when a recipe file cannot be formatted correctly for indentation issues.
+    Exception raised when a recipe file cannot be correctly parsed. This can occur on construction of a parser class.
     """
 
     def __init__(self, message: str):
         """
-        Constructs an indent formatting exception.
+        Constructs a parser exception.
 
         :param message: String description of the issue encountered.
         """
-        self.message = message if message else "An unknown indent formatting issue occurred."
+        self.message = message if message else "An unknown parser issue occurred."
         super().__init__(self.message)
+
 
 class IndentFormattingException(BaseParserException):
     """
