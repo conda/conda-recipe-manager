@@ -19,6 +19,13 @@ existing recipe files. There is also some on-going work for parsing recipe selec
 For a more comprehensive break-down and status of the library modules, see
 [this document](./conda_recipe_manager/README.md).
 
+## Notes about logging
+CRM uses the standard Python logging library. However, the library modules use the `NullHandler`, so no logs are emitted
+by default. It is up to the client program to define a log handler.
+
+A log handler is defined and used in the provided `crm` command line interface. By default, `WARNING`-level-and-above
+messages are reported to `STDERR`. Use `crm --verbose` to see all the logs.
+
 ## Recipe Compatibility
 The latest recipe-parsing compatibility statistics can be found in the summary of our automated
 [Integration Tests](https://github.com/conda/conda-recipe-manager/actions).

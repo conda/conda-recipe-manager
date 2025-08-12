@@ -12,6 +12,14 @@ This website acts as an API document for using conda-recipe-manager in other pro
 the CLI tools provided by this project or how to contribute to this project directly, please visit the
 `CRM GitHub repository <https://github.com/conda/conda-recipe-manager>`_.
 
+Notes about logging
+===================
+CRM uses the standard Python logging library. However, the library modules use the `NullHandler`, so no logs are emitted
+by default. It is up to the client program to define a log handler.
+
+A log handler is defined and used in the provided `crm` command line interface. By default, `WARNING`-level-and-above
+messages are reported to `STDERR`. Use `crm --verbose` to see all the logs.
+
 Contents
 ========
 
