@@ -655,6 +655,7 @@ class RecipeParser(RecipeReader):
                 self._rebuild_selectors()
                 self._is_modified = True
             except KeyError:
+                summation = False
                 log.warning("KeyError occurred while attempting to patch and replace with %s at %s", str(regex), path)
                 continue
 
