@@ -68,7 +68,7 @@ class Platform(StrEnum):
     WIN_32 = "win-32"
     WIN_64 = "win-64"
     WIN_ARM_64 = "win-arm64"
-    # TODO add more
+    # TODO add more platforms
     # ("emscripten-wasm32", {"unix", "emscripten", "wasm32"}),
     # ("wasi-wasm32", {"wasi", "wasm32"}),
     # ("freebsd-64", {"freebsd", "x86", "x86_64"}),

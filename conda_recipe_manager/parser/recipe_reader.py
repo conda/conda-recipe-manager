@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import ast
 import hashlib
+import logging
 import re
 import sys
 from collections.abc import Callable
@@ -54,6 +55,8 @@ try:
     from yaml import CSafeLoader as SafeLoader
 except ImportError:
     from yaml import SafeLoader  # type: ignore[assignment]
+
+log = logging.getLogger(__name__)
 
 # Type for the internal recipe variables table.
 _VarTable = dict[str, NodeVar]
@@ -636,8 +639,7 @@ class RecipeReader(IsModifiable):
         sanitized_fmt = V0RecipeFormatter(sanitized_yaml_unfixed)
         if sanitized_fmt.is_v0_recipe() and not internal_call:
             if not sanitized_fmt.fix_excessive_indentation():
-                # TODO: Add logging here ?
-                pass
+                log.error("The recipe parser was unable to correct indentation level in a V0 recipe file.")
         sanitized_yaml: Final = str(sanitized_fmt)
 
         # Read the YAML line-by-line, maintaining a stack to manage the last owning node in the tree.

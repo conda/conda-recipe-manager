@@ -26,7 +26,7 @@ from conda_recipe_manager.types import JsonPatchType, JsonType
 from conda_recipe_manager.utils.typing import optional_str
 
 # Truncates the `__name__` to the crm command name.
-log = logging.getLogger(__name__.rsplit(".", maxsplit=1)[-1])
+log = logging.getLogger(__name__)
 
 ## Constants ##
 

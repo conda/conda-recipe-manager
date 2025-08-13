@@ -11,6 +11,7 @@ from typing import Final, Optional, cast
 from conda.models.match_spec import MatchSpec
 
 from conda_recipe_manager.licenses.spdx_utils import SpdxUtils
+from conda_recipe_manager.parser._message_table import MessageCategory, MessageTable
 from conda_recipe_manager.parser._types import ROOT_NODE_VALUE, CanonicalSortOrder, Regex
 from conda_recipe_manager.parser._utils import search_any_regex, set_key_conditionally, stack_path_to_str
 from conda_recipe_manager.parser.dependency import Dependency, DependencyConflictMode
@@ -18,7 +19,7 @@ from conda_recipe_manager.parser.enums import SchemaVersion, SelectorConflictMod
 from conda_recipe_manager.parser.recipe_parser import RecipeParser
 from conda_recipe_manager.parser.recipe_parser_deps import RecipeParserDeps
 from conda_recipe_manager.parser.types import CURRENT_RECIPE_SCHEMA_FORMAT
-from conda_recipe_manager.types import JsonPatchType, JsonType, MessageCategory, MessageTable, Primitives, SentinelType
+from conda_recipe_manager.types import JsonPatchType, JsonType, Primitives, SentinelType
 
 
 class RecipeParserConvert(RecipeParserDeps):

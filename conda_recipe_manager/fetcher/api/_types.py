@@ -5,7 +5,7 @@
 from typing import Final
 
 # Timeout of HTTP requests, in seconds
-DEFAULT_HTTP_REQ_TIMEOUT: Final[int] = 60
+DEFAULT_HTTP_REQ_TIMEOUT: Final[int] = 30
 
 
 class BaseApiException(Exception):

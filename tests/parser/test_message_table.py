@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import pytest
 
-from conda_recipe_manager.types import MessageCategory, MessageTable
+from conda_recipe_manager.parser._message_table import MessageCategory, MessageTable
 
 
 @pytest.mark.parametrize(
