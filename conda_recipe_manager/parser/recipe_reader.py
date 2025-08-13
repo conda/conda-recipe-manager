@@ -43,6 +43,7 @@ from conda_recipe_manager.parser.dependency import (
     dependency_section_to_str,
 )
 from conda_recipe_manager.parser.enums import SchemaVersion
+from conda_recipe_manager.parser.exceptions import ParsingException
 from conda_recipe_manager.parser.selector_parser import SelectorParser
 from conda_recipe_manager.parser.types import TAB_AS_SPACES, TAB_SPACE_COUNT, MultilineVariant
 from conda_recipe_manager.parser.v0_recipe_formatter import V0RecipeFormatter
@@ -597,8 +598,17 @@ class RecipeReader(IsModifiable):
         Constructs a RecipeReader instance.
 
         :param content: conda-build formatted recipe file, as a single text string.
+        :raises ParsingException: In the event that the recipe parser was unable to be parsed.
         """
-        self._private_init(content=content, internal_call=False)
+        try:
+            try:
+                self._private_init(content=content, internal_call=False)
+            except Exception as e0:  # pylint: disable=broad-exception-caught
+                raise ParsingException() from e0
+        except ParsingException as e1:
+            # Log the full chain of exceptions, then re-raise the expected exception.
+            log.exception(e1)
+            raise
 
     def _private_init(self, content: str, internal_call: bool) -> None:
         # pylint: disable=too-complex

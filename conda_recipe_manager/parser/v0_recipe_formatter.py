@@ -12,7 +12,8 @@ from typing import Final
 
 from conda_recipe_manager.parser._types import Regex
 from conda_recipe_manager.parser._utils import num_tab_spaces
-from conda_recipe_manager.parser.types import TAB_SPACE_COUNT, IndentFormattingException
+from conda_recipe_manager.parser.exceptions import IndentFormattingException
+from conda_recipe_manager.parser.types import TAB_SPACE_COUNT
 
 
 class V0RecipeFormatter:

@@ -20,6 +20,7 @@ from conda_recipe_manager.commands.utils.print import print_err, print_out
 from conda_recipe_manager.commands.utils.types import CONTEXT_SETTINGS, ExitCode
 from conda_recipe_manager.parser._message_table import MessageCategory, MessageTable
 from conda_recipe_manager.parser.enums import SchemaVersion
+from conda_recipe_manager.parser.exceptions import ParsingException
 from conda_recipe_manager.parser.recipe_parser_convert import RecipeParserConvert
 from conda_recipe_manager.parser.types import V0_FORMAT_RECIPE_FILE_NAME, V1_FORMAT_RECIPE_FILE_NAME
 
@@ -130,7 +131,7 @@ def convert_file(file_path: Path, output: Optional[Path], print_output: bool, de
     parser: RecipeParserConvert
     try:
         parser = RecipeParserConvert(recipe_content)
-    except Exception as e:  # pylint: disable=broad-exception-caught
+    except ParsingException as e:
         return _record_unrecoverable_failure(
             conversion_result,
             ExitCode.PARSE_EXCEPTION,
