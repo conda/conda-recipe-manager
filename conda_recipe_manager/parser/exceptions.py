@@ -29,14 +29,13 @@ class ParsingException(BaseParserException):
     Exception raised when a recipe file cannot be correctly parsed. This can occur on construction of a parser class.
     """
 
-    def __init__(self, message: str):
+    def __init__(self) -> None:
         """
         Constructs a parser exception.
-
-        :param message: String description of the issue encountered.
         """
-        self.message = message if message else "An unknown parser issue occurred."
-        super().__init__(self.message)
+        super().__init__(
+            "The recipe parser ran into an unexpected issue and was unable to interpret the provided Conda recipe."
+        )
 
 
 class IndentFormattingException(BaseParserException):
