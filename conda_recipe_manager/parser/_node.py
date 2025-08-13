@@ -47,6 +47,7 @@ class Node:
         # TODO Future: Node comments should be Optional.
         comment: str = "",
         comment_pos: CommentPosition = CommentPosition.DEFAULT,
+        collection: bool = False,
         children: Optional[list["Node"]] = None,
         list_member_flag: bool = False,
         multiline_variant: MultilineVariant = MultilineVariant.NONE,
@@ -60,6 +61,8 @@ class Node:
         :param value:               Value of the current node
         :param comment:             Comment on the line this node was found on
         :param comment_pos:         Special enum indicating full-line comment positioning.
+        :param collection:          Indicates if the node is a collection.
+                                    This is used to distinguish between an empty collection and a leaf node.
         :param children:            List of children nodes, descendants of this node
         :param list_member_flag:    Indicates if this node is part of a list
         :param multiline_variant:   Indicates if the node represents a multiline value AND which syntax variant is used
@@ -68,6 +71,7 @@ class Node:
         self.value = value
         self.comment = comment
         self.comment_pos = comment_pos
+        self.collection: bool = collection
         self.children: list[Node] = children if children else []
         self.list_member_flag = list_member_flag
         self.multiline_variant = multiline_variant
@@ -88,6 +92,7 @@ class Node:
             and self.list_member_flag == other.list_member_flag
             and self.multiline_variant == other.multiline_variant
             # Save recursive (most expensive) check for last
+            and self.collection == other.collection
             and self.children == other.children
         )
 
@@ -105,6 +110,7 @@ class Node:
         return (
             f"Node: {value}\n"
             f"  - Comment:      {self.comment!r}\n"
+            f"  - Collection:   {self.collection}\n"
             f"  - Child count:  {len(self.children)}\n"
             f"  - List?:        {self.list_member_flag}\n"
             f"  - Multiline?:   {self.multiline_variant}\n"
@@ -129,7 +135,7 @@ class Node:
 
         :returns: True if the node is a leaf. False otherwise.
         """
-        return not self.children and not self.is_comment()
+        return not self.collection and not self.children and not self.is_comment()
 
     def is_root(self) -> bool:
         """

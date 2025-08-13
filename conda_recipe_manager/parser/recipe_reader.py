@@ -274,7 +274,7 @@ class RecipeReader(IsModifiable):
             if output[key] is not None:
                 # As the line is shared by both parent and child, the comment gets tagged to both.
                 children.append(Node(value=cast(Primitives, output[key]), comment=comment))
-            return Node(value=key, comment=comment, children=children, key_flag=True)
+            return Node(value=key, comment=comment, collection=True, children=children, key_flag=True)
         # If a list is returned, then this line is a listed member of the parent Node
         if isinstance(output, list):
             # The full line is a comment
