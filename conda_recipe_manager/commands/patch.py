@@ -13,7 +13,7 @@ import click
 
 from conda_recipe_manager.commands.utils.print import print_err
 from conda_recipe_manager.commands.utils.types import CONTEXT_SETTINGS, ExitCode
-from conda_recipe_manager.parser.exceptions import JsonPatchValidationException
+from conda_recipe_manager.parser.exceptions import JsonPatchValidationException, ParsingException
 from conda_recipe_manager.parser.recipe_parser import RecipeParser
 from conda_recipe_manager.types import JsonPatchType
 
@@ -42,7 +42,7 @@ def _pre_patch_validate(
 
     try:
         recipe_parser = RecipeParser(contents_recipe)
-    except Exception:  # pylint: disable=broad-except
+    except ParsingException:
         print_err("An error occurred while parsing the recipe file contents.")
         sys.exit(ExitCode.PARSE_EXCEPTION)  # untested
 
