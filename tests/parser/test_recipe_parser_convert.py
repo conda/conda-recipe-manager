@@ -52,6 +52,7 @@ def test_pre_process_recipe_text(input_file: str, expected_file: str) -> None:
             [],
             [
                 "A non-list item had a selector at: /package/name",
+                "A non-list item had a selector at: /requirements/empty_field2",
                 "Could not patch unrecognized license: `Apache-2.0 AND MIT`",
             ],
         ),

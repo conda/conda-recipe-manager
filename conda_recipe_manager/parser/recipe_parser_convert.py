@@ -296,7 +296,7 @@ class RecipeParserConvert(RecipeParserDeps):
             for info in instances:
                 # Selectors can be applied to the parent node if they appear on the same line. We'll ignore these when
                 # building replacements.
-                if not info.node.is_strong_leaf():
+                if not info.node.is_leaf():
                     continue
 
                 # Strip the []'s around the selector
