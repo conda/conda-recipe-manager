@@ -1084,8 +1084,8 @@ class RecipeReader(IsModifiable):
         path_stack = str_to_stack_path(path)
         node = traverse(self._root, path_stack)
 
-        # Handle if the path was not found
-        if node is None:
+        # Handle if the path was not found or is an empty key
+        if node is None or node.is_empty_key():
             if default == RecipeReader._sentinel or isinstance(default, SentinelType):
                 raise KeyError(f"No value/key found at path {path!r}")
             return default
@@ -1105,7 +1105,7 @@ class RecipeReader(IsModifiable):
                 return cast(JsonType, yaml.load(multiline_str, Loader=SafeLoader))
             return_value = cast(Primitives, node.children[0].value)
         # Leaf nodes can return their value directly
-        elif node.is_leaf():
+        elif node.is_strong_leaf():
             return_value = cast(Primitives, node.value)
         else:
             # NOTE: Traversing the tree and generating our own data structures will be more efficient than rendering and
