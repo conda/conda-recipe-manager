@@ -8,7 +8,6 @@ from conda.models.match_spec import MatchSpec
 from conda_recipe_manager.parser.dependency import DependencySection
 from conda_recipe_manager.scanner.dependency.base_dep_scanner import ProjectDependency
 from conda_recipe_manager.scanner.dependency.pyproject_dep_scanner import PyProjectDependencyScanner
-from conda_recipe_manager.types import MessageCategory
 from tests.file_loading import get_test_path
 
 
@@ -89,9 +88,6 @@ def test_scan_missing_pyproject() -> None:
     """
     scanner = PyProjectDependencyScanner(get_test_path() / "pyproject_toml", "the_limit_dne.toml")
     assert scanner.scan() == set()
-    assert scanner.get_message_table().get_messages(MessageCategory.EXCEPTION) == [
-        "`the_limit_dne.toml` file not found."
-    ]
 
 
 def test_scan_corrupt_pyproject() -> None:
@@ -100,9 +96,6 @@ def test_scan_corrupt_pyproject() -> None:
     """
     scanner = PyProjectDependencyScanner(get_test_path() / "pyproject_toml", "corrupt_pyproject.toml")
     assert scanner.scan() == set()
-    assert scanner.get_message_table().get_messages(MessageCategory.EXCEPTION) == [
-        "Could not parse `corrupt_pyproject.toml` file."
-    ]
 
 
 def test_scan_missing_project_pyproject() -> None:
@@ -111,6 +104,3 @@ def test_scan_missing_project_pyproject() -> None:
     """
     scanner = PyProjectDependencyScanner(get_test_path() / "pyproject_toml", "no_project_pyproject.toml")
     assert scanner.scan() == set()
-    assert scanner.get_message_table().get_messages(MessageCategory.ERROR) == [
-        "`no_project_pyproject.toml` file is missing a `project` section."
-    ]

@@ -356,7 +356,6 @@ def fetch_package_metadata(package: str) -> PackageMetadata:
             _calc_package_metadata_url(package),
             PackageInfo.get_schema(True),
             log=log,
-            # TODO add timeout
             headers=_PYPI_API_HEADERS,
         )
     except BaseApiException as e:
@@ -419,7 +418,6 @@ def fetch_package_version_metadata(package: str, version: str) -> PackageMetadat
             _calc_package_version_metadata_url(package, version),
             PackageInfo.get_schema(False),
             log=log,
-            # TODO add timeout
             headers=_PYPI_API_HEADERS,
         )
     except BaseApiException as e:

@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import logging
+import sys
 
 import click
 
@@ -23,7 +24,7 @@ from conda_recipe_manager.commands.utils.types import CONTEXT_SETTINGS
     is_flag=True,
     default=False,
     show_default=True,
-    help="Enables verbose logging (for commands that use the logger).",
+    help="Enables verbose logging (shows all log levels).",
 )
 @click.version_option()
 def conda_recipe_manager(verbose: bool) -> None:
@@ -33,7 +34,10 @@ def conda_recipe_manager(verbose: bool) -> None:
     # Initialize the logger, available to all CRM commands.
     logging.basicConfig(
         format="%(asctime)s[%(levelname)s][%(name)s]: %(message)s",
-        level=logging.DEBUG if verbose else logging.INFO,
+        # This mirrors the default behavior of the Python logging library
+        level=logging.DEBUG if verbose else logging.WARNING,
+        # Explicitly ensure we log to STDERR
+        stream=sys.stderr,
     )
 
 

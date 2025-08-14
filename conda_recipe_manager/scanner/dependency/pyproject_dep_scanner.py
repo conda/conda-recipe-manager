@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import logging
 import tomllib
 from pathlib import Path
 from typing import Final, cast
@@ -14,7 +15,8 @@ from conda_recipe_manager.scanner.dependency.base_dep_scanner import (
     ProjectDependency,
     new_project_dependency,
 )
-from conda_recipe_manager.types import MessageCategory
+
+log = logging.getLogger(__name__)
 
 
 class PyProjectDependencyScanner(BaseDependencyScanner):
@@ -45,17 +47,15 @@ class PyProjectDependencyScanner(BaseDependencyScanner):
                 data = cast(dict[str, dict[str, list[str] | dict[str, list[str]]]], tomllib.load(f))
         except (FileNotFoundError, tomllib.TOMLDecodeError) as e:
             if isinstance(e, FileNotFoundError):
-                self._msg_tbl.add_message(MessageCategory.EXCEPTION, f"`{self._project_fn}` file not found.")
+                log.exception("`%s` file not found.", self._project_fn)
             if isinstance(e, tomllib.TOMLDecodeError):
-                self._msg_tbl.add_message(MessageCategory.EXCEPTION, f"Could not parse `{self._project_fn}` file.")
+                log.exception("Could not parse `%s` file.", self._project_fn)
             return set()
 
         # NOTE: There is a `validate-pyproject` library hosted on `conda-forge`, but it is marked as "experimental" by
         # its maintainers. Given that and that we only read a small portion of the file, we only validate what we use.
         if "project" not in data:
-            self._msg_tbl.add_message(
-                MessageCategory.ERROR, f"`{self._project_fn}` file is missing a `project` section."
-            )
+            log.error("`%s` file is missing a `project` section.", self._project_fn)
             return set()
 
         # NOTE: The dependency constraint system used in `pyproject.toml` appears to be compatible with `conda`'s

@@ -9,8 +9,8 @@ from typing import Final
 
 import pytest
 
+from conda_recipe_manager.parser._message_table import MessageCategory
 from conda_recipe_manager.parser.recipe_parser_convert import RecipeParserConvert
-from conda_recipe_manager.types import MessageCategory
 from tests.file_loading import load_file, load_recipe
 
 

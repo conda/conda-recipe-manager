@@ -20,13 +20,14 @@ from conda_recipe_manager.fetcher.artifact_fetcher import from_recipe as af_from
 from conda_recipe_manager.fetcher.base_artifact_fetcher import BaseArtifactFetcher
 from conda_recipe_manager.fetcher.exceptions import FetchError
 from conda_recipe_manager.fetcher.http_artifact_fetcher import HttpArtifactFetcher
+from conda_recipe_manager.parser.exceptions import ParsingException
 from conda_recipe_manager.parser.recipe_parser import RecipeParser, ReplacePatchFunc
 from conda_recipe_manager.parser.recipe_reader import RecipeReader
 from conda_recipe_manager.types import JsonPatchType, JsonType
 from conda_recipe_manager.utils.typing import optional_str
 
 # Truncates the `__name__` to the crm command name.
-log = logging.getLogger(__name__.rsplit(".", maxsplit=1)[-1])
+log = logging.getLogger(__name__)
 
 ## Constants ##
 
@@ -735,7 +736,7 @@ def bump_recipe(
 
     try:
         recipe_parser = RecipeParser(recipe_content)
-    except Exception:  # pylint: disable=broad-except
+    except ParsingException:
         log.error("An error occurred while parsing the recipe file contents.")
         sys.exit(ExitCode.PARSE_EXCEPTION)
 

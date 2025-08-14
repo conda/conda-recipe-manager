@@ -8,7 +8,6 @@ from abc import ABCMeta, abstractmethod
 from typing import NamedTuple
 
 from conda_recipe_manager.parser.dependency import DependencyData, DependencySection, dependency_data_from_str
-from conda_recipe_manager.types import MessageTable
 
 
 class ProjectDependency(NamedTuple):
@@ -47,7 +46,7 @@ class BaseDependencyScanner(metaclass=ABCMeta):
         """
         Constructs a `BaseDependencyScanner`.
         """
-        self._msg_tbl = MessageTable()
+        pass
 
     @abstractmethod
     def scan(self) -> set[ProjectDependency]:
@@ -56,11 +55,3 @@ class BaseDependencyScanner(metaclass=ABCMeta):
 
         :returns: A set of unique dependencies found by the scanner.
         """
-
-    def get_message_table(self) -> MessageTable:
-        """
-        Returns the internal message table.
-
-        :returns: Message table object containing logged messages.
-        """
-        return self._msg_tbl
