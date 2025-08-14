@@ -1298,7 +1298,11 @@ class RecipeReader(IsModifiable):
                 section_path = f"{path_prefix}/requirements/{section}"
                 # Relying on `get_value()` ensures that we will only examine literal values and ignore comments
                 # in-between dependencies.
-                dependencies = cast(list[str], self.get_value(section_path, []))
+                value = self.get_value(section_path, [])
+                # Handle empty keys
+                if value is None:
+                    continue
+                dependencies = cast(list[str], value)
                 for i in range(len(dependencies)):
                     paths.append(f"{section_path}/{i}")
 
