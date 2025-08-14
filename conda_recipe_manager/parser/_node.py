@@ -175,7 +175,17 @@ class Node:
 
     def is_strong_leaf(self) -> bool:
         """
-        Indicates if a node is a leaf node.
+        Indicates if a node is a strong leaf node. Used in the `is_single_key()` function.
+
+        A strong leaf node is a leaf node that is not a key.
+
+        Example strong leaf:
+          foo: bar
+
+        Example weak leaf:
+          foo:
+
+        :returns: True if the node represents a strong leaf. False otherwise.
         """
         return not self.key_flag and self.is_leaf()
 
