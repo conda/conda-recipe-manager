@@ -397,7 +397,7 @@ def test_add_dependency(
             Dependency("types-toml", "/requirements/run/0", DependencySection.RUN, MatchSpec("python"), None),
             True,
             "/requirements/run",
-            [],
+            None,
         ),
         # Single-output, dependency does not exist
         (
@@ -446,4 +446,4 @@ def test_remove_dependency(
     """
     parser = load_recipe(file, RecipeParserDeps)
     assert parser.remove_dependency(dep) == expected_return
-    assert parser.get_value(dep_path, []) == expected_deps
+    assert parser.get_value(dep_path) == expected_deps

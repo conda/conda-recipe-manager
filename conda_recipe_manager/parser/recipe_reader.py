@@ -1064,7 +1064,7 @@ class RecipeReader(IsModifiable):
         lst: list[str] = []
 
         def _find_paths(node: Node, path_stack: StrStack) -> None:
-            if node.is_strong_leaf():
+            if node.is_leaf():
                 lst.append(stack_path_to_str(path_stack))
 
         traverse_all(self._root, _find_paths)
@@ -1097,10 +1097,14 @@ class RecipeReader(IsModifiable):
         node = traverse(self._root, path_stack)
 
         # Handle if the path was not found or is an empty key
-        if node is None or node.is_empty_key():
+        if node is None:
             if default == RecipeReader._sentinel or isinstance(default, SentinelType):
                 raise KeyError(f"No value/key found at path {path!r}")
             return default
+
+        # Handle empty keys
+        if node.is_empty_key():
+            return None
 
         return_value: JsonType = None
         # Handle unpacking of the last key-value set of nodes.
