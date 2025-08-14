@@ -927,7 +927,7 @@ class RecipeReader(IsModifiable):
             elif child.is_empty_key():
                 lines.append(f"{spaces}{extra_tab}" f"{stringify_yaml(child.value)}:  " f"{child.comment}".rstrip())
             # Leaf nodes are rendered as members in a list
-            elif child.is_leaf():
+            elif child.is_strong_leaf():
                 lines.append(f"{spaces}{extra_tab}- " f"{stringify_yaml(child.value)}  " f"{child.comment}".rstrip())
             else:
                 RecipeReader._render_tree(child, depth + depth_delta, lines, schema_version, node)
@@ -1023,7 +1023,7 @@ class RecipeReader(IsModifiable):
                 continue
 
             # Other (non list and non-empty-key) leaf nodes set values directly
-            if child.is_leaf():
+            if child.is_strong_leaf():
                 data[key] = value
                 continue
 
@@ -1064,7 +1064,7 @@ class RecipeReader(IsModifiable):
         lst: list[str] = []
 
         def _find_paths(node: Node, path_stack: StrStack) -> None:
-            if node.is_leaf():
+            if node.is_strong_leaf():
                 lst.append(stack_path_to_str(path_stack))
 
         traverse_all(self._root, _find_paths)
@@ -1158,7 +1158,7 @@ class RecipeReader(IsModifiable):
             #   - Empty keys imply a null value, although they don't contain a null child.
             #   - Types are checked so bools aren't simplified to "truthiness" evaluations.
             if (value is None and node.is_empty_key()) or (
-                node.is_leaf()
+                node.is_strong_leaf()
                 and type(node.value) == type(value)  # pylint: disable=unidiomatic-typecheck
                 and node.value == value
             ):
@@ -1510,7 +1510,7 @@ class RecipeReader(IsModifiable):
             value = str(stringify_yaml(node.value))
             if include_comment and node.comment:
                 value = f"{value}{TAB_AS_SPACES}{node.comment}"
-            if node.is_leaf() and re_obj.search(value):
+            if node.is_strong_leaf() and re_obj.search(value):
                 paths.append(stack_path_to_str(path_stack))
 
         traverse_all(self._root, _search_paths)

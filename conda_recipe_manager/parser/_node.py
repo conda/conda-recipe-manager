@@ -123,7 +123,7 @@ class Node:
             return "<Collection Node>"
         return str(self.value)
 
-    def is_leaf(self) -> bool:
+    def _is_leaf(self) -> bool:
         """
         Indicates if a node is a leaf node
 
@@ -171,7 +171,7 @@ class Node:
 
         :returns: True if the node represents an empty key. False otherwise.
         """
-        return self.key_flag and self.is_leaf()
+        return self.key_flag and self._is_leaf()
 
     def is_strong_leaf(self) -> bool:
         """
@@ -187,7 +187,7 @@ class Node:
 
         :returns: True if the node represents a strong leaf. False otherwise.
         """
-        return not self.key_flag and self.is_leaf()
+        return not self.key_flag and self._is_leaf()
 
     def is_single_key(self) -> bool:
         """
