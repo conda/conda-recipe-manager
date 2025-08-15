@@ -702,26 +702,9 @@ class RecipeReader(IsModifiable):
                 #     fizz: buzz
                 # baz: blah
                 # Tab-depth is guaranteed because of fix_excessive_indentation() above.
-                print(f"cur_indent: {cur_indent}, new_indent: {new_indent}")
-                print(" ------------------------ node_stack (before pop) --------------------------------")
-                for node in node_stack:
-                    print(f"  {node}")
-                print(" ------------------------ node_stack (before pop) --------------------------------")
-                print(f"last_node: {last_node}")
-                print(f"new_node: {new_node}")
-                print(f"new_node.is_collection_element(): {new_node.is_collection_element()}")
-                print(f"new_node.is_single_key(): {new_node.is_single_key()}")
                 depth_to_pop = (cur_indent - new_indent) // TAB_SPACE_COUNT
-                print(f"depth_to_pop: {depth_to_pop}")
                 for _ in range(depth_to_pop):
                     node_stack.pop()
-                # If we are popping until the collection element, we must also pop the collection element
-                if node_stack[-1].is_collection_element() and not node_stack[-1].children[0].is_single_key():
-                    node_stack.pop()
-                print(" ------------------------ node_stack (after pop) --------------------------------")
-                for node in node_stack:
-                    print(f"  {node}")
-                print(" ------------------------ node_stack (after pop) --------------------------------")
             cur_indent = new_indent
             # Look at the stack to determine the parent Node and then append the current node to the new parent.
             parent = node_stack[-1]
