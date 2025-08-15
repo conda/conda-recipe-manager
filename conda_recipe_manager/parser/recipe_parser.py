@@ -279,7 +279,7 @@ class RecipeParser(RecipeReader):
 
         # Leaf nodes contain values and not path information. Paths should not be made that access leaf nodes, with the
         # exception of members of a list and keys. Making such a path violates the RFC.
-        if not node.list_member_flag and not node.key_flag and node.is_leaf():
+        if not node.list_member_flag and node.is_strong_leaf():
             return False
 
         if node_idx >= 0:

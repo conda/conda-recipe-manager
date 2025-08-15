@@ -397,8 +397,7 @@ def test_add_dependency(
             Dependency("types-toml", "/requirements/run/0", DependencySection.RUN, MatchSpec("python"), None),
             True,
             "/requirements/run",
-            # TODO Fix the return value of an empty reference in `get_value()`. Seems related to Issue #20
-            "run",
+            None,
         ),
         # Single-output, dependency does not exist
         (

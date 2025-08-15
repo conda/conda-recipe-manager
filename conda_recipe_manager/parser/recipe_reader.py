@@ -944,7 +944,7 @@ class RecipeReader(IsModifiable):
             elif child.is_empty_key():
                 lines.append(f"{spaces}{extra_tab}" f"{stringify_yaml(child.value)}:  " f"{child.comment}".rstrip())
             # Leaf nodes are rendered as members in a list
-            elif child.is_leaf():
+            elif child.is_strong_leaf():
                 lines.append(f"{spaces}{extra_tab}- " f"{stringify_yaml(child.value)}  " f"{child.comment}".rstrip())
             else:
                 RecipeReader._render_tree(child, depth + depth_delta, lines, schema_version, node)
@@ -1040,7 +1040,7 @@ class RecipeReader(IsModifiable):
                 continue
 
             # Other (non list and non-empty-key) leaf nodes set values directly
-            if child.is_leaf():
+            if child.is_strong_leaf():
                 data[key] = value
                 continue
 
@@ -1113,11 +1113,15 @@ class RecipeReader(IsModifiable):
         path_stack = str_to_stack_path(path)
         node = traverse(self._root, path_stack)
 
-        # Handle if the path was not found
+        # Handle if the path was not found or is an empty key
         if node is None:
             if default == RecipeReader._sentinel or isinstance(default, SentinelType):
                 raise KeyError(f"No value/key found at path {path!r}")
             return default
+
+        # Handle empty keys
+        if node.is_empty_key():
+            return None
 
         return_value: JsonType = None
         # Handle unpacking of the last key-value set of nodes.
@@ -1134,7 +1138,7 @@ class RecipeReader(IsModifiable):
                 return cast(JsonType, yaml.load(multiline_str, Loader=SafeLoader))
             return_value = cast(Primitives, node.children[0].value)
         # Leaf nodes can return their value directly
-        elif node.is_leaf():
+        elif node.is_strong_leaf():
             return_value = cast(Primitives, node.value)
         else:
             # NOTE: Traversing the tree and generating our own data structures will be more efficient than rendering and
@@ -1175,7 +1179,7 @@ class RecipeReader(IsModifiable):
             #   - Empty keys imply a null value, although they don't contain a null child.
             #   - Types are checked so bools aren't simplified to "truthiness" evaluations.
             if (value is None and node.is_empty_key()) or (
-                node.is_leaf()
+                node.is_strong_leaf()
                 and type(node.value) == type(value)  # pylint: disable=unidiomatic-typecheck
                 and node.value == value
             ):
@@ -1311,7 +1315,11 @@ class RecipeReader(IsModifiable):
                 section_path = f"{path_prefix}/requirements/{section}"
                 # Relying on `get_value()` ensures that we will only examine literal values and ignore comments
                 # in-between dependencies.
-                dependencies = cast(list[str], self.get_value(section_path, []))
+                value = self.get_value(section_path, [])
+                # Handle empty keys
+                if value is None:
+                    continue
+                dependencies = cast(list[str], value)
                 for i in range(len(dependencies)):
                     paths.append(f"{section_path}/{i}")
 
@@ -1527,7 +1535,7 @@ class RecipeReader(IsModifiable):
             value = str(stringify_yaml(node.value))
             if include_comment and node.comment:
                 value = f"{value}{TAB_AS_SPACES}{node.comment}"
-            if node.is_leaf() and re_obj.search(value):
+            if node.is_strong_leaf() and re_obj.search(value):
                 paths.append(stack_path_to_str(path_stack))
 
         traverse_all(self._root, _search_paths)

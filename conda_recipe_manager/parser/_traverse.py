@@ -183,7 +183,7 @@ def traverse_all(
     elif node.list_member_flag:
         path = (str(idx_num),) + path
     # Leafs do not contain their values in the path, unless the leaf is an empty key (as the key is part of the path).
-    elif node.is_empty_key() or not node.is_leaf():
+    elif not node.is_strong_leaf():
         path = (str(node.value),) + path
     func(node, list(path))
     # Used for paths that contain lists of items

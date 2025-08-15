@@ -173,6 +173,22 @@ class Node:
         """
         return self.key_flag and self.is_leaf()
 
+    def is_strong_leaf(self) -> bool:
+        """
+        Indicates if a node is a strong leaf node. Used in the `is_single_key()` function.
+
+        A strong leaf node is a leaf node that is not a key.
+
+        Example strong leaf:
+          foo: bar
+
+        Example weak leaf:
+          foo:
+
+        :returns: True if the node represents a strong leaf. False otherwise.
+        """
+        return not self.key_flag and self.is_leaf()
+
     def is_single_key(self) -> bool:
         """
         Indicates if a node contains a single child node and is a key.
@@ -182,7 +198,7 @@ class Node:
 
         :returns: True if the node represents a single key. False otherwise.
         """
-        return self.key_flag and len(self.children) == 1 and self.children[0].is_leaf()
+        return self.key_flag and len(self.children) == 1 and self.children[0].is_strong_leaf()
 
     def is_collection_element(self) -> bool:
         """
