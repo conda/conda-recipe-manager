@@ -170,7 +170,7 @@ class V0RecipeFormatter:
                 # The following is a valid case:
                 #  - element:
                 #    section header:
-                #  - element:         # We want to leave this alone
+                #  - element:         # The added condition prevents this line from being indented
                 #    section header:
                 and next_cntr >= cur_cntr
             ):
