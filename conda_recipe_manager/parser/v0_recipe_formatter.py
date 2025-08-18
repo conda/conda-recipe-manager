@@ -61,11 +61,25 @@ class V0RecipeFormatter:
 
         :raises: Exception if the recipe file couldn't be formatted correctly.
         """
+
+        # Utility function
+        def _is_list_element_w_children(line: str) -> bool:
+            line = line.strip()
+            if line.startswith("- ") and line.endswith(":"):
+                return True
+            return False
+
         # Pre-processing checks
         if not self._lines:
             raise IndentFormattingException("The V0 recipe file couldn't be formatted correctly: the file is empty.")
         all_indents = [num_tab_spaces(line) if line.lstrip() else -1 for line in self._lines]
-        indents = [x for x in all_indents if x > -1]
+        all_list_elements_w_children = [_is_list_element_w_children(line) for line in self._lines]
+        indents = []
+        list_elements_w_children = []
+        for i in range(len(all_indents)):
+            if all_indents[i] > -1:
+                indents.append(all_indents[i])
+                list_elements_w_children.append(all_list_elements_w_children[i])
         if not indents:
             raise IndentFormattingException("The V0 recipe file couldn't be formatted correctly: the file is empty.")
         if indents[0] != 0:
@@ -77,9 +91,16 @@ class V0RecipeFormatter:
         cur_indent_level = 0
         indent_levels = [0]
         for idx in range(1, len(indents)):
-            if indents[idx] > indents[idx - 1]:
+            prev_index = idx - 1
+            if indents[idx] > indents[prev_index]:
                 cur_indent_level += 1
-            elif indents[idx] < indents[idx - 1]:
+                # Edge case: if the previous line is a list element with children,
+                # we need to add an additional indent level
+                # - element:
+                #     child
+                if list_elements_w_children[prev_index]:
+                    cur_indent_level += 1
+            elif indents[idx] < indents[prev_index]:
                 # Look for the first line above this one that has the same indent, and copy its indent level.
                 # If an exact match can't be found,
                 # assume that this is a child node of the closest line with a lower indent.
@@ -146,6 +167,13 @@ class V0RecipeFormatter:
                 Regex.V0_FMT_SECTION_HEADER.match(clean_line)
                 and next_clean_line.startswith("-")
                 and next_cntr != expected_lst_indent
+                # Don't intervene if the next line is indented less than the current line
+                # The following is a valid case:
+                #  - element:
+                #    section header:
+                #  - element:         # The added condition prevents this line from being indented
+                #    section header:
+                and next_cntr >= cur_cntr
             ):
                 bad_lst_block_indent_tracker = expected_lst_indent
             elif bad_lst_block_indent_tracker > 0 and (
