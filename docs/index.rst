@@ -3,8 +3,11 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to Conda Recipe Manager's documentation!
-================================================
+Conda Recipe Manager
+====================
+
+**Latest Version:** |release|
+
 Conda Recipe Manager (CRM) is a library and tool set capable of parsing conda recipe files. It is intended to be used
 by package builders and developers to automate the generation and editing of conda recipe files.
 
