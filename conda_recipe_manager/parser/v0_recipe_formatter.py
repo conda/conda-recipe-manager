@@ -91,15 +91,16 @@ class V0RecipeFormatter:
         cur_indent_level = 0
         indent_levels = [0]
         for idx in range(1, len(indents)):
-            if indents[idx] > indents[idx - 1]:
+            prev_index = idx - 1
+            if indents[idx] > indents[prev_index]:
                 cur_indent_level += 1
                 # Edge case: if the previous line is a list element with children,
                 # we need to add an additional indent level
                 # - element:
                 #     child
-                if list_elements_w_children[idx - 1]:
+                if list_elements_w_children[prev_index]:
                     cur_indent_level += 1
-            elif indents[idx] < indents[idx - 1]:
+            elif indents[idx] < indents[prev_index]:
                 # Look for the first line above this one that has the same indent, and copy its indent level.
                 # If an exact match can't be found,
                 # assume that this is a child node of the closest line with a lower indent.
