@@ -143,7 +143,7 @@ checks:
 
 ### Release process
 Here is a brief overview of our current release process:
-1. Update `CHANGELOG.md`
+1. Update `CHANGELOG.md`, including the "range of changes" link at the bottom of the file.
 1. Update the version number in `pyproject.toml`, `docs/conf.py`, and `recipe/meta.yaml`
 1. Ensure `environment.yaml` is up to date with the latest dependencies
 1. Create a new release on GitHub with a version tag.
