@@ -9,15 +9,24 @@ Note: version releases in the 0.x.y range may introduce breaking changes.
 
 ## [Unreleased]
 ### Added
+### Changed
+### Deprecated
+### Removed
+### Fixed
+### Security
+
+## [0.6.2]
+### Added
 - Logging support via the standard Python logging library. By default, all modules (except `commands`,
   which contains the CLI programs) default to use the `NullHandler` so that the client program can determine
   the best way to log for their needs.
 ### Changed
-- De-emphasized/redacted the `MessageTable` class in favor of the standard Python library logger. It is now only
-  used as part of the recipe conversion process and `crm convert`
+- De-emphasizes/redacts the `MessageTable` class in favor of the standard Python library logger. It is now only
+  used as part of the recipe conversion process in `crm convert`
 ### Deprecated
 ### Removed
 ### Fixed
+- Improves the V0 format correction algorithm used to increase V0 recipe compatibility.
 ### Security
 
 ## [0.6.1]
@@ -136,5 +145,6 @@ and continually changing.
 Migrates parser from [percy](https://github.com/anaconda-distribution/percy/tree/main)
 , ,
 
-[Unreleased]: https://github.com/conda/conda-recipe-manager/compare/v0.6.1...HEAD
+[Unreleased]: https://github.com/conda/conda-recipe-manager/compare/v0.6.2...HEAD
+[0.6.2]: https://github.com/conda/conda-recipe-manager/compare/v0.6.1...v0.6.2
 [0.6.1]: https://github.com/conda/conda-recipe-manager/compare/v0.6.0...v0.6.1
