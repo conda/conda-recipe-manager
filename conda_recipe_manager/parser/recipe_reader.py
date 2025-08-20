@@ -59,8 +59,13 @@ except ImportError:
 
 log = logging.getLogger(__name__)
 
-# Type for the internal recipe variables table.
-_VarTable = dict[str, NodeVar]
+# Type for the internal recipe variables table. Although relatively uncommon, variables may be defined multiple times
+# (in V0), usually in the context of string concatenation. Hence why the table contains a list of `NodeVar`s.
+# NOTE:
+#   - Support for editing multiple variable definitions will be limited at best.
+#   - If a key exists, the list will always have at least one entry.
+#   - V1 does not support multiple variable definitions as YAML does not support duplicate keys in an object.
+_VarTable = dict[str, list[NodeVar]]
 
 
 class RecipeReader(IsModifiable):
@@ -444,6 +449,22 @@ class RecipeReader(IsModifiable):
 
         return key, lower_match, upper_match, replace_match, split_match, join_match, idx_match, add_concat_match
 
+    def _eval_var(self, key: str) -> JsonType:
+        """
+        Evaluates a known variable by name to a V0 JINJA variable or a V1 context variable.
+
+        :param key: Target key that MUST exist in the variables table.
+        :returns: Variable's evaluated value
+        """
+        match self._schema_version:
+            case SchemaVersion.V0:
+                if len(self._vars_tbl[key]) == 1:
+                    return self._vars_tbl[key][0].get_value()
+                # TODO support recursive concatenation?
+                return self._vars_tbl[key][0].get_value()
+            case SchemaVersion.V1:
+                return self._vars_tbl[key][0].get_value()
+
     def _eval_jinja_token(self, s: str) -> JsonType:
         """
         Given a string that matches one of the two groups in the `JINJA_FUNCTION_ADD_CONCAT` regex, evaluate the
@@ -454,7 +475,7 @@ class RecipeReader(IsModifiable):
         """
         # Variable
         if s in self._vars_tbl:
-            return self._vars_tbl[s].get_value()
+            return self._eval_var(s)
 
         # int
         if s.isdigit():
@@ -506,7 +527,7 @@ class RecipeReader(IsModifiable):
                 s = s.replace(match, value)
             elif key in self._vars_tbl:
                 # Replace value as a string. Re-interpret the entire value before returning.
-                value = str(self._vars_tbl[key].get_value())
+                value = str(self._eval_var(key))
                 if Regex.JINJA_VAR_VALUE_TERNARY.match(value):
                     value = "${{" + value + "}}"
                 if lower_match:
@@ -565,7 +586,14 @@ class RecipeReader(IsModifiable):
                         value = cast(JsonType, ast.literal_eval(cast(str, value)))
                     except Exception:  # pylint: disable=broad-exception-caught
                         value = str(value)
-                    self._vars_tbl[key] = NodeVar(value, RecipeReader._parse_trailing_comment(line))
+                    node_var = NodeVar(value, RecipeReader._parse_trailing_comment(line))
+                    # Tracks multiple definitions. In the wild, this is rare, but does occur in the context of
+                    # concatenating strings together.
+                    if key not in self._vars_tbl:
+                        self._vars_tbl[key] = [node_var]
+                        continue
+                    self._vars_tbl[key].append(node_var)
+
             case SchemaVersion.V1:
                 # Abuse the fact that the `/context` section is pure YAML.
                 context: Final = cast(dict[str, JsonType], self.get_value("/context", {}))
@@ -574,7 +602,8 @@ class RecipeReader(IsModifiable):
                     # V1 only allows for scalar types as variables. So we should be able to recover all comments without
                     # recursing through `/context`
                     var_path = RecipeReader.append_to_path("/context", key)
-                    self._vars_tbl[key] = NodeVar(value, comments_tbl.get(var_path, None))
+                    # V1 does not support multiple definitions in `/context` because YAML keys must be unique.
+                    self._vars_tbl[key] = [NodeVar(value, comments_tbl.get(var_path, None))]
 
     def _rebuild_selectors(self) -> None:
         """
@@ -773,8 +802,9 @@ class RecipeReader(IsModifiable):
         s += f"{self.__class__.__name__} Instance\n"
         s += f"- Schema Version: {self._schema_version}\n"
         s += "- Variables Table:\n"
-        for key, node_var in self._vars_tbl.items():
-            s += f"{TAB_AS_SPACES}- {key}: {node_var.render_v0_value()}{node_var.render_comment()}\n"
+        for key, node_vars in self._vars_tbl.items():
+            for node_var in node_vars:
+                s += f"{TAB_AS_SPACES}- {key}: {node_var.render_v0_value()}{node_var.render_comment()}\n"
         s += "- Selectors Table:\n"
         for key, val in self._selector_tbl.items():
             s += f"{TAB_AS_SPACES}{key}\n"
@@ -955,8 +985,9 @@ class RecipeReader(IsModifiable):
                 # NOTE: Top of file comments must be owned by the root level and, therefore, do not need indentation.
                 lines.append(root_child.comment.rstrip())
 
-            for key, val in self._vars_tbl.items():
-                lines.append(f"{{% set {key} = {val.render_v0_value()} %}}{val.render_comment()}")
+            for key, node_vars in self._vars_tbl.items():
+                for node_var in node_vars:
+                    lines.append(f"{{% set {key} = {node_var.render_v0_value()} %}}{node_var.render_comment()}")
             # Add spacing if variables have been set
             if len(self._vars_tbl):
                 lines.append("")
@@ -1349,7 +1380,7 @@ class RecipeReader(IsModifiable):
             if default == RecipeReader._sentinel or isinstance(default, SentinelType):
                 raise KeyError
             return default
-        return self._vars_tbl[var].get_value()
+        return self._eval_var(var)
 
     def get_variable_references(self, var: str) -> list[str]:
         """

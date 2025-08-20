@@ -139,6 +139,7 @@ class RecipeParserConvert(RecipeParserDeps):
     ## Upgrade functions ##
 
     def _upgrade_jinja_to_context_obj(self) -> None:
+        # pylint: disable=too-complex
         """
         Upgrades the old proprietary JINJA templating usage to the new YAML-parsable `context` object and `$`-escaped
         JINJA substitutions.
@@ -148,7 +149,15 @@ class RecipeParserConvert(RecipeParserDeps):
         context_obj: dict[str, Primitives] = {}
         var_comments: dict[str, str] = {}
         # TODO Add selectors support? (I don't remember if V1 allows for selectors in `/context`)
-        for name, node_var in self._v1_recipe._vars_tbl.items():  # pylint: disable=protected-access
+        for name, node_vars in self._v1_recipe._vars_tbl.items():  # pylint: disable=protected-access
+            if len(node_vars) > 1:
+                self._msg_tbl.add_message(
+                    MessageCategory.WARNING,
+                    f"The variable `{name}` is defined multiple times. This is scenario is not currently supported.",
+                )
+                continue
+
+            node_var = node_vars[0]
             value = node_var.get_value()
             # Filter-out any value not covered in the V1 format
             if not isinstance(value, (str, int, float, bool)):
