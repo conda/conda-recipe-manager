@@ -28,6 +28,10 @@ class RecipeParserConvert(RecipeParserDeps):
     This was originally part of the RecipeParserDeps class but was broken-out for easier maintenance.
     """
 
+    # "Static", one-time initialization of the the SPDX utility class. As this module is "read-only", we only need one
+    # instance allocated for all converter-parsers that are initialized.
+    _SPDX_UTILS: Final = SpdxUtils()
+
     def __init__(self, content: str):
         """
         Constructs a convertible recipe object. This extension of the parser class keeps a modified copy of the original
@@ -41,7 +45,6 @@ class RecipeParserConvert(RecipeParserDeps):
         # is no development cost in utilizing tools we already must maintain.
         self._v1_recipe: RecipeParserDeps = RecipeParserDeps(self.render())
 
-        self._spdx_utils = SpdxUtils()
         self._msg_tbl = MessageTable()
 
     ## Patch utility functions ##
@@ -626,7 +629,9 @@ class RecipeParserConvert(RecipeParserDeps):
             self._msg_tbl.add_message(MessageCategory.WARNING, f"No `license` provided in `{about_path}`")
             return
 
-        corrected_license: Final[Optional[str]] = self._spdx_utils.find_closest_license_match(old_license)
+        corrected_license: Final[Optional[str]] = RecipeParserConvert._SPDX_UTILS.find_closest_license_match(
+            old_license
+        )
 
         if corrected_license is None:
             self._msg_tbl.add_message(MessageCategory.WARNING, f"Could not patch unrecognized license: `{old_license}`")
