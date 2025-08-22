@@ -1,6 +1,8 @@
 """
 :Description: Provides a class that reads in the SPDX licensing database file to support SPDX utilities.
 
+              This is a read-only class that cannot be modified once initialized.
+
                 SPDX Data Source (freely available for use):
                   - https://github.com/spdx/license-list-data/blob/main/json/licenses.json
 
@@ -50,6 +52,7 @@ class SpdxUtils:
             # want to map both options to the same ID.
             self._license_matching_table[license_name] = license_id
             self._license_matching_table[license_id] = license_id
+            # TODO make this a normalized -> actual name table. Add mixed-case tests for GPL.
             self._license_ids.add(license_id)
 
         # Custom patch table that attempts to correct common SPDX licensing mistakes that our other methodologies cannot
@@ -60,6 +63,39 @@ class SpdxUtils:
             # Some R packages use "Unlimited". This is the mapping the team agreed to use in a Slack thread.
             "UNLIMITED": "NOASSERTION",
         }
+
+        # There are enough GPL license variants that maintaining all of them in the patch table would be painful.
+        # So we attempt to upgrade the older names to the newer by appending the appropriate suffix.
+        self._gpl_only_suffixes: Final[list[str]] = [
+            "-only",
+            ".0-only",  # In case someone has written something like "GPL 3"
+        ]
+        self._gpl_or_later_suffixes: Final[list[str]] = [
+            "-or-later",
+            ".0-or-later",
+        ]
+
+    def _match_gpl_license(self, sanitized_license: str) -> Optional[str]:
+        """
+        Attempt to upgrade GPL licenses to their newer naming schemes. Annoyingly the JSON data does not map old
+        to new names for us.
+
+        :param sanitized_license: Clean license name to start with.
+        :returns: An adjusted GPL license name, if one is matched. Otherwise, `None`.
+        """
+        # Determine if we are in the "-or-later" case.
+        # NOTE: In the future, we could look into making a network call to match old to new(?)
+        target_suffixes: Final = (
+            self._gpl_or_later_suffixes if sanitized_license[-1] == "+" else self._gpl_only_suffixes
+        )
+        sanitized_gpl_license: Final = sanitized_license[:-1] if sanitized_license[-1] == "+" else sanitized_license
+
+        for suffix in target_suffixes:
+            license_with_suffix = f"{sanitized_gpl_license}{suffix}"
+            if license_with_suffix in self._license_ids:
+                return license_with_suffix
+
+        return None
 
     def find_closest_license_match(self, license_field: str) -> Optional[str]:
         """
@@ -74,11 +110,22 @@ class SpdxUtils:
         :param license_field: License string provided by the recipe to match
         :returns: The closest matching SPDX identifier, if found
         """
-        # Short-circuit on perfect matches
-        if license_field in self._license_ids:
-            return license_field
+        sanitized_license: Final = license_field.strip()
+        # Used when finding EXACT matches in the the patch table.
+        sanitized_license_upper: Final = sanitized_license.upper()
 
-        sanitized_license = license_field.strip().upper()
+        # Short-circuit on perfect matches
+        if sanitized_license in self._license_ids:
+            return sanitized_license
+
+        # Correct known commonly used licenses that can't be handled by `difflib`. NOTE: This table normalizes around
+        # upper-cased keys.
+        if sanitized_license_upper in self._license_matching_patch_tbl:
+            return self._license_matching_patch_tbl[sanitized_license_upper]
+
+        # Short-circuit on known deprecation upgrade paths.
+        if (gpl_match := self._match_gpl_license(sanitized_license)) is not None:
+            return gpl_match
 
         # TODO: Improve this logic to support SPDX expressions.
         # Don't simplify compound licenses that might get accidentally simplified
@@ -87,10 +134,6 @@ class SpdxUtils:
                 return None
         if "," in sanitized_license:
             return None
-
-        # Correct known commonly used licenses that can't be handled by `difflib`
-        if sanitized_license in self._license_matching_patch_tbl:
-            return self._license_matching_patch_tbl[sanitized_license]
 
         match_list = difflib.get_close_matches(license_field, self._license_matching_table.keys(), 1)
         if not match_list:
