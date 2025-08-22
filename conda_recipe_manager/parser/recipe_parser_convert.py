@@ -41,6 +41,7 @@ class RecipeParserConvert(RecipeParserDeps):
         # is no development cost in utilizing tools we already must maintain.
         self._v1_recipe: RecipeParserDeps = RecipeParserDeps(self.render())
 
+        # TODO make _spdx_utils static!
         self._spdx_utils = SpdxUtils()
         self._msg_tbl = MessageTable()
 

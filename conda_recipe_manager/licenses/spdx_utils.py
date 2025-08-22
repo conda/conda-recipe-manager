@@ -40,6 +40,10 @@ class SpdxUtils:
         self._license_matching_table: dict[str, str] = {}
         self._license_ids: set[str] = set()
         for license_data in self._raw_spdx_data["licenses"]:
+            # Filter-out deprecated licenses. Fixes #423.
+            if "isDeprecatedLicenseId" in license_data and license_data["isDeprecatedLicenseId"]:
+                continue
+
             license_id = license_data["licenseId"]
             license_name = license_data["name"]
             # SPDX IDs are unique and used for SPDX validation. Commonly recipes use variations on names or IDs, so we
