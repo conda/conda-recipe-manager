@@ -16,6 +16,7 @@ from conda_recipe_manager.licenses.spdx_utils import SpdxUtils
         ("Apache License 1.0", "Apache-1.0"),
         ("Apache License 1.1", "Apache-1.1"),
         ("Apache License 2.0", "Apache-2.0"),
+        ("APaCHE LIcenSe 2.0", "Apache-2.0"),
         #### BSD ####
         ("BSD 1-Clause", "BSD-1-Clause"),
         ("BSD_2_Clause", "BSD-2-Clause"),
@@ -39,6 +40,10 @@ from conda_recipe_manager.licenses.spdx_utils import SpdxUtils
         ("LGPL-2.1", "LGPL-2.1-only"),
         #### Special cases that are "manually" handled outside of `difflib` ####
         ('BSD 2-Clause "SIMPLIFIED"', "BSD-2-Clause"),
+        #### Matches that should work if casing is normalized ####
+        ("gPl-2", "GPL-2.0-only"),
+        ("gpL-2.0", "GPL-2.0-only"),
+        ("LgPl-2.1+", "LGPL-2.1-or-later"),
     ],
 )
 def test_find_closest_license_match_common_issues(license_field: str, expected: str) -> None:
