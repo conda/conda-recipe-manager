@@ -622,10 +622,11 @@ class RecipeReader(IsModifiable):
 
         traverse_all(self._root, _collect_selectors)
 
-    def _sanitize_v0_yaml(self, internal_call: bool) -> tuple[str, int]:
+    def _init_schema_version_and_sanitize_v0_yaml(self, internal_call: bool) -> tuple[str, int]:
         """
-        Runs a series of corrective actions to improve compatibility with V0 recipe files. Most of these actions
-        involve handling common indentation issues, seen in the field, that break the recipe parser.
+        Determines the schema version used by the recipe file and then runs a series of corrective actions to improve
+        compatibility with V0 recipe files. Most of these actions involve handling common indentation issues, seen in
+        the field, that break the recipe parser.
 
         The vast, vast majority of recipe files follow a standard 2-space-tab convention. Although technically not
         required by YAML/conda-build, it is an assumption this parser makes to simplify an already complex file format.
@@ -634,31 +635,35 @@ class RecipeReader(IsModifiable):
         :returns: A sanitized version of the original recipe file text and a counter indicating how many comments exist
             at the top of the recipe file, before the "canonical" variables section.
         """
-
-        # TODO return-early on `is_v0` checks?
-
         # Format the text for V0 recipe files in an attempt to improve compatibility with our whitespace-delimited
         # parser.
         fmt: Final[V0RecipeFormatter] = V0RecipeFormatter(self._init_content)
-        if fmt.is_v0_recipe() and not internal_call:
-            fmt.fmt_text()
+
+        # Auto-detect and deserialize the version of the recipe schema. This will change how the class behaves.
+        # NOTE: This will need to be improved when multiple schema versions exist.
+        self._schema_version = SchemaVersion.V0 if fmt.is_v0_recipe() else SchemaVersion.V1
+
+        # Early-escape for V1 and recursive calls. Remember that at this point, we have not parsed/set the version enum
+        # in the parser.
+        if not fmt.is_v0_recipe() or internal_call:
+            return self._init_content, 0
+
+        fmt.fmt_text()
         # Calculate the string equivalent once.
         fmt_str: Final = str(fmt)
 
         # For V0 recipe files, count the number of comment-only lines at the start, before the canonical "variables
         # section"
         tof_comment_cntr = 0
-        if fmt.is_v0_recipe() and not internal_call:
-            while fmt_str.splitlines()[tof_comment_cntr].startswith("#"):
-                tof_comment_cntr += 1
+        while fmt_str.splitlines()[tof_comment_cntr].startswith("#"):
+            tof_comment_cntr += 1
 
         # Replace all JINJA lines and fix excessive indentation. Then traverse line-by-line.
         sanitized_yaml_unfixed: Final = Regex.JINJA_V0_LINE.sub("", fmt_str)
         # We then must call for a second kind of text formatting, now that the JINJA has been removed.
         sanitized_fmt = V0RecipeFormatter(sanitized_yaml_unfixed)
-        if sanitized_fmt.is_v0_recipe() and not internal_call:
-            if not sanitized_fmt.fix_excessive_indentation():
-                log.error("The recipe parser was unable to correct indentation level in a V0 recipe file.")
+        if not sanitized_fmt.fix_excessive_indentation():
+            log.error("The recipe parser was unable to correct indentation level in a V0 recipe file.")
 
         return str(sanitized_fmt), tof_comment_cntr
 
@@ -676,7 +681,7 @@ class RecipeReader(IsModifiable):
         # See https://mypy.readthedocs.io/en/stable/final_attrs.html#syntax-variants
         self._init_content: str = content
 
-        sanitized_yaml, tof_comment_cntr = self._sanitize_v0_yaml(internal_call)
+        sanitized_yaml, tof_comment_cntr = self._init_schema_version_and_sanitize_v0_yaml(internal_call)
 
         # Root of the parse tree
         self._root = Node(value=ROOT_NODE_VALUE)
@@ -740,13 +745,6 @@ class RecipeReader(IsModifiable):
             parent.children.append(new_node)
             # Update the last node for the next line interpretation
             last_node = new_node
-
-        # Auto-detect and deserialize the version of the recipe schema. This will change how the class behaves.
-        self._schema_version = SchemaVersion.V0
-        # TODO bootstrap this better. `get_value()` has a circular dependency on `_vars_tbl` if `sub_vars` is used.
-        schema_version = cast(SchemaVersion | int, self.get_value("/schema_version", SchemaVersion.V0))
-        if isinstance(schema_version, int) and schema_version == 1:
-            self._schema_version = SchemaVersion.V1
 
         # Initialize the variables table. This behavior changes per `schema_version`
         self._init_vars_tbl()
