@@ -622,41 +622,20 @@ class RecipeReader(IsModifiable):
 
         traverse_all(self._root, _collect_selectors)
 
-    def __init__(self, content: str):  # pylint: disable=super-init-not-called
+    def _sanitize_v0_yaml(self, internal_call: bool) -> tuple[str, int]:
         """
-        Constructs a RecipeReader instance.
+        Runs a series of corrective actions to improve compatibility with V0 recipe files. Most of these actions
+        involve handling common indentation issues, seen in the field, that break the recipe parser.
 
-        :param content: conda-build formatted recipe file, as a single text string.
-        :raises ParsingException: In the event that the recipe parser was unable to be parsed.
-        """
-        try:
-            try:
-                self._private_init(content=content, internal_call=False)
-            except Exception as e0:  # pylint: disable=broad-exception-caught
-                raise ParsingException() from e0
-        except ParsingException as e1:
-            # Log the full chain of exceptions, then re-raise the expected exception.
-            log.exception(e1)
-            raise
+        The vast, vast majority of recipe files follow a standard 2-space-tab convention. Although technically not
+        required by YAML/conda-build, it is an assumption this parser makes to simplify an already complex file format.
 
-    def _private_init(self, content: str, internal_call: bool) -> None:
-        # pylint: disable=too-complex
-        # TODO Refactor and simplify ^
-        """
-        Private constructor for internal RecipeReader use. This constructor is called by `__init__()` and
-        `_create_private_recipe_reader()`, with internal_call set to False and True, respectively.
-
-        :param content: conda-build formatted recipe file, as a single text string.
         :param internal_call: Whether this is an internal call. If true, we cannot determine if the recipe is V0 or V1.
+        :returns: A sanitized version of the original recipe file text and a counter indicating how many comments exist
+            at the top of the recipe file, before the "canonical" variables section.
         """
-        super().__init__()
-        # The initial, raw, text is preserved for diffing and debugging purposes
-        # Note: _init_content should be Final, but mypy requires Final attributes to be declared in __init__
-        # See https://mypy.readthedocs.io/en/stable/final_attrs.html#syntax-variants
-        self._init_content: str = content
 
-        # Root of the parse tree
-        self._root = Node(value=ROOT_NODE_VALUE)
+        # TODO return-early on `is_v0` checks?
 
         # Format the text for V0 recipe files in an attempt to improve compatibility with our whitespace-delimited
         # parser.
@@ -673,13 +652,34 @@ class RecipeReader(IsModifiable):
             while fmt_str.splitlines()[tof_comment_cntr].startswith("#"):
                 tof_comment_cntr += 1
 
-        # Replace all Jinja lines and fix excessive indentation. Then traverse line-by-line
+        # Replace all JINJA lines and fix excessive indentation. Then traverse line-by-line.
         sanitized_yaml_unfixed: Final = Regex.JINJA_V0_LINE.sub("", fmt_str)
+        # We then must call for a second kind of text formatting, now that the JINJA has been removed.
         sanitized_fmt = V0RecipeFormatter(sanitized_yaml_unfixed)
         if sanitized_fmt.is_v0_recipe() and not internal_call:
             if not sanitized_fmt.fix_excessive_indentation():
                 log.error("The recipe parser was unable to correct indentation level in a V0 recipe file.")
-        sanitized_yaml: Final = str(sanitized_fmt)
+
+        return str(sanitized_fmt), tof_comment_cntr
+
+    def _private_init(self, content: str, internal_call: bool) -> None:
+        """
+        Private constructor for internal RecipeReader use. This constructor is called by `__init__()` and
+        `_create_private_recipe_reader()`, with internal_call set to False and True, respectively.
+
+        :param content: conda-build formatted recipe file, as a single text string.
+        :param internal_call: Whether this is an internal call. If true, we cannot determine if the recipe is V0 or V1.
+        """
+        super().__init__()
+        # The initial, raw, text is preserved for diffing and debugging purposes
+        # Note: _init_content should be Final, but mypy requires Final attributes to be declared in __init__
+        # See https://mypy.readthedocs.io/en/stable/final_attrs.html#syntax-variants
+        self._init_content: str = content
+
+        sanitized_yaml, tof_comment_cntr = self._sanitize_v0_yaml(internal_call)
+
+        # Root of the parse tree
+        self._root = Node(value=ROOT_NODE_VALUE)
 
         # Read the YAML line-by-line, maintaining a stack to manage the last owning node in the tree.
         node_stack: list[Node] = [self._root]
@@ -756,6 +756,23 @@ class RecipeReader(IsModifiable):
         #
         # This table will have to be re-built or modified when the tree is modified with `patch()`.
         self._rebuild_selectors()
+
+    def __init__(self, content: str):  # pylint: disable=super-init-not-called
+        """
+        Constructs a RecipeReader instance.
+
+        :param content: conda-build formatted recipe file, as a single text string.
+        :raises ParsingException: In the event that the recipe parser was unable to be parsed.
+        """
+        try:
+            try:
+                self._private_init(content=content, internal_call=False)
+            except Exception as e0:  # pylint: disable=broad-exception-caught
+                raise ParsingException() from e0
+        except ParsingException as e1:
+            # Log the full chain of exceptions, then re-raise the expected exception.
+            log.exception(e1)
+            raise
 
     @staticmethod
     def _canonical_sort_keys_comparison(n: Node, priority_tbl: dict[str, int]) -> int:
