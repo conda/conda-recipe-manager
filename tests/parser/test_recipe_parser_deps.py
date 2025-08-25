@@ -349,6 +349,24 @@ from tests.file_loading import load_recipe
             "/requirements/host/8",
             "[unix]",
         ),
+        # Regression: Add a dependency to an empty section
+        (
+            "empty_dependency_section.yaml",
+            Dependency(
+                "test-empty-dependency-section",
+                "/requirements/host/0",
+                DependencySection.HOST,
+                MatchSpec("python"),
+                None,
+            ),
+            DependencyConflictMode.REPLACE,
+            SelectorConflictMode.REPLACE,
+            True,
+            "/requirements/host",
+            ["python"],
+            "/requirements/host/0",
+            None,
+        ),
         # TODO Add V1 support
     ],
 )

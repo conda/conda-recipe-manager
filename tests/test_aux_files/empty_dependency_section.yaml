@@ -1,0 +1,9 @@
+package:
+  name: test-empty-dependency-section
+  version: 1.0
+
+build:
+  number: 0
+  
+requirements:
+  host:
