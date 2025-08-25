@@ -21,6 +21,7 @@ from conda_recipe_manager.types import JsonType
 # Dependency validation constants
 _SINGLE_OUTPUT_LEN: Final[int] = 4
 _MULTI_OUTPUT_LEN: Final[int] = 6
+_DEPENDENCY_SECTION_PARENT: Final[set[str]] = {"requirements", "test"}
 
 
 class RecipeParserDeps(RecipeParser, RecipeReaderDeps):
@@ -49,7 +50,7 @@ class RecipeParserDeps(RecipeParser, RecipeReaderDeps):
         if len_path == _SINGLE_OUTPUT_LEN:
             return (
                 not bool(path[0])
-                and path[1] == "requirements"
+                and path[1] in _DEPENDENCY_SECTION_PARENT
                 and str_to_dependency_section(path[2]) is not None
                 and path[3].isdigit()
             )
@@ -59,7 +60,7 @@ class RecipeParserDeps(RecipeParser, RecipeReaderDeps):
             not bool(path[0])
             and path[1] == "outputs"
             and path[2].isdigit()
-            and path[3] == "requirements"
+            and path[3] in _DEPENDENCY_SECTION_PARENT
             and str_to_dependency_section(path[4]) is not None
             and path[5].isdigit()
         )
@@ -169,9 +170,10 @@ class RecipeParserDeps(RecipeParser, RecipeReaderDeps):
         patch_path = RecipeParserDeps._init_patch_path(dep, dep_mode, base_path, is_new_section)
 
         # TODO: Add a "get dependencies at path" function to `RecipeReaderDeps`
-        cur_deps: Final[list[Optional[str]]] = cast(
-            list[Optional[str]], self.get_value(base_path, sub_vars=True, default=[])
-        )
+        opt_cur_deps = self.get_value(base_path, sub_vars=True, default=[])
+        # Handle empty section case
+        opt_cur_deps = [] if opt_cur_deps is None else opt_cur_deps
+        cur_deps: Final[list[Optional[str]]] = cast(list[Optional[str]], opt_cur_deps)
 
         # Check for duplicate dependencies, if applicable.
         if dep_mode not in {DependencyConflictMode.USE_BOTH, DependencyConflictMode.EXACT_POSITION}:
