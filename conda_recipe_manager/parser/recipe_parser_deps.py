@@ -49,7 +49,7 @@ class RecipeParserDeps(RecipeParser, RecipeReaderDeps):
         if len_path == _SINGLE_OUTPUT_LEN:
             return (
                 not bool(path[0])
-                and path[1] == "requirements"
+                and path[1] in {"requirements", "test"}
                 and str_to_dependency_section(path[2]) is not None
                 and path[3].isdigit()
             )
@@ -59,7 +59,7 @@ class RecipeParserDeps(RecipeParser, RecipeReaderDeps):
             not bool(path[0])
             and path[1] == "outputs"
             and path[2].isdigit()
-            and path[3] == "requirements"
+            and path[3] in {"requirements", "test"}
             and str_to_dependency_section(path[4]) is not None
             and path[5].isdigit()
         )
