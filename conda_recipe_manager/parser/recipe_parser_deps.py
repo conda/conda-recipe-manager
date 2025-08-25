@@ -169,9 +169,10 @@ class RecipeParserDeps(RecipeParser, RecipeReaderDeps):
         patch_path = RecipeParserDeps._init_patch_path(dep, dep_mode, base_path, is_new_section)
 
         # TODO: Add a "get dependencies at path" function to `RecipeReaderDeps`
-        cur_deps: Final[list[Optional[str]]] = cast(
-            list[Optional[str]], self.get_value(base_path, sub_vars=True, default=[])
-        )
+        opt_cur_deps = self.get_value(base_path, sub_vars=True, default=[])
+        # Handle empty section case
+        opt_cur_deps = [] if opt_cur_deps is None else opt_cur_deps
+        cur_deps: Final[list[Optional[str]]] = cast(list[Optional[str]], opt_cur_deps)
 
         # Check for duplicate dependencies, if applicable.
         if dep_mode not in {DependencyConflictMode.USE_BOTH, DependencyConflictMode.EXACT_POSITION}:
