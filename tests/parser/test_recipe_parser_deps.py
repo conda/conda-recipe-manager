@@ -349,7 +349,7 @@ from tests.file_loading import load_recipe
             "/requirements/host/8",
             "[unix]",
         ),
-        # Regression: Add a dependency to an empty section
+        # Regression: Add a dependency to an empty section. See Issue #425 for more details.
         (
             "empty_dependency_section.yaml",
             Dependency(
