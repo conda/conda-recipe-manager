@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import re
 from enum import StrEnum
 from typing import Final
 
@@ -99,6 +100,15 @@ JSON_PATCH_SCHEMA: Final[SchemaType] = {
     ],
     "additionalProperties": False,
 }
+
+# Definition of opposite operations to compute skip selectors from python version pinnings
+OPPOSITE_OPS: Final[list[tuple[str, str]]] = [
+    (">=", "<"),
+    (">", "<="),
+]
+
+# Python skip selector regex
+PYTHON_SKIP_PATTERN: Final[re.Pattern[str]] = re.compile(r"py([~!<>=]=|>|<)\d\d+")
 
 
 class MultilineVariant(StrEnum):
