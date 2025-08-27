@@ -731,7 +731,7 @@ class RecipeParser(RecipeReader):
         py_skip_expr: Final[str] = f"py{inverse_version}"
         selector_py_skip_expr: Final[str] = f"[{py_skip_expr}]"
         # If no skip statement is present: create one
-        skip_path = self.append_to_path(package_path, "/build/skip")
+        skip_path: Final = self.append_to_path(package_path, "/build/skip")
         skip_val_pre_add: Final = self.get_value(skip_path, None)
         if skip_val_pre_add is None:
             add_success = self.patch(
