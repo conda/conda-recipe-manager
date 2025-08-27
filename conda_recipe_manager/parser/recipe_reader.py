@@ -460,7 +460,7 @@ class RecipeReader(IsModifiable):
             case SchemaVersion.V0:
                 if len(self._vars_tbl[key]) == 1:
                     return self._vars_tbl[key][0].get_value()
-                # TODO support recursive concatenation?
+                # TODO Future: Support recursive concatenation here. Until then, this is just a duplicated line.
                 return self._vars_tbl[key][0].get_value()
             case SchemaVersion.V1:
                 return self._vars_tbl[key][0].get_value()
@@ -630,6 +630,8 @@ class RecipeReader(IsModifiable):
 
         The vast, vast majority of recipe files follow a standard 2-space-tab convention. Although technically not
         required by YAML/conda-build, it is an assumption this parser makes to simplify an already complex file format.
+        `V0RecipeFormatter::fix_excessive_indentation()` should correct n > 2 tab lengths. This is invoked in this
+        function.
 
         :param internal_call: Whether this is an internal call. If true, we cannot determine if the recipe is V0 or V1.
         :returns: A sanitized version of the original recipe file text and a counter indicating how many comments exist
