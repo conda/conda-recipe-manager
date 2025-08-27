@@ -149,6 +149,8 @@ Here is a brief overview of our current release process:
 1. Create a new release on GitHub with a version tag.
 1. Manage the conda-forge feedstock, as per [this doc](https://conda-forge.org/docs/maintainer/adding_pkgs/).
    - If you are an employ of Anaconda, also manage the feedstock on [AnacondaRecipes](https://github.com/AnacondaRecipes/conda-recipe-manager-feedstock).
+   - We can dog-food our own project by using: `crm bump-recipe -t <version> recipe/meta.yaml` in the applicable
+     feedstock repository.
 
 Don't forget, you can use `crm bump-recipe -t <version> recipe/meta.yaml` to help update the recipe file!
 
