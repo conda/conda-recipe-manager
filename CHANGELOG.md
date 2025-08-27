@@ -37,6 +37,8 @@ Note: version releases in the 0.x.y range may introduce breaking changes.
 - Logging support via the standard Python logging library. By default, all modules (except `commands`,
   which contains the CLI programs) default to use the `NullHandler` so that the client program can determine
   the best way to log for their needs.
+- A series of new parsing-related exceptions. Most notably, when there is a parsing failure at parser construction,
+  a `ParsingException` is raised `from` the original exception.
 ### Changed
 - De-emphasizes/redacts the `MessageTable` class in favor of the standard Python library logger. It is now only
   used as part of the recipe conversion process in `crm convert`
