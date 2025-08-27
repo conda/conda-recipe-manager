@@ -1247,3 +1247,27 @@ def test_diff() -> None:
         " multi_level:\n"
         "   list_1:"
     )
+
+
+@pytest.mark.parametrize(
+    "file,python_version,expected_status",
+    [
+        ("no_skip", ">=3.8", True),
+        ("skip_w_0py", ">= 3.8", True),
+        ("skip_w_1py", " >=3.8", True),
+        ("skip_w_2py", " >= 3.9", True),
+        ("no_skip", ">=3.8,<3.9", True),
+        ("skip_w_0py", ">=3.8, < 3.11", True),
+        ("skip_w_1py", ">=3.8, <3.0a1", True),
+        ("skip_w_2py", ">=3.9,< 3.10", True),
+        ("no_skip", "sdfsa", False),
+    ],
+)
+def test_update_skip_statement_python(file: str, python_version: str, expected_status: bool) -> None:
+    """
+    Tests the ability for the `RecipeParser` to update the python skip statement.
+    """
+    parser = load_recipe(f"skip_statement_update/{file}.yaml", RecipeParser)
+    assert parser.update_skip_statement_python("/", python_version) == expected_status
+    if expected_status:
+        assert parser.render() == load_file(f"skip_statement_update/{file}_updated.yaml")

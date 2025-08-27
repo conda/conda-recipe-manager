@@ -39,7 +39,7 @@ from conda_recipe_manager.parser.enums import SelectorConflictMode
 from conda_recipe_manager.parser.exceptions import JsonPatchValidationException
 from conda_recipe_manager.parser.recipe_reader import RecipeReader
 from conda_recipe_manager.parser.selector_parser import SelectorParser
-from conda_recipe_manager.parser.types import JSON_PATCH_SCHEMA
+from conda_recipe_manager.parser.types import JSON_PATCH_SCHEMA, OPPOSITE_OPS, PYTHON_SKIP_PATTERN
 from conda_recipe_manager.types import PRIMITIVES_TUPLE, JsonPatchType, JsonType
 
 # Callback that allows the caller to perform custom replacements using `search_and_patch_replace()`.
@@ -676,3 +676,94 @@ class RecipeParser(RecipeReader):
                 self._init_content.splitlines(), self.render().splitlines(), fromfile="original", tofile="current"
             )
         )
+
+    def _get_inverse_version(self, version: str) -> Optional[str]:
+        """
+        Computes the inverse version pinning for python skip statements
+        and removes the '.' in the version number. Example: `>=3.8` ---> `<38`
+
+        :param version: version pinning str, such as `>=3.8`
+        :returns: Inverse version pinning string, or None upon failure
+        """
+        # Handle the case where multiple version constraints are present
+        # Example: `python >=3.9,<4` ---> `py<39`
+        version = version.replace(" ", "")
+        if "," in version:
+            constraints: Final = version.split(",")
+            for constraint in constraints:
+                if constraint.startswith(">"):
+                    version = constraint
+                    break
+            else:
+                return None
+        for comp, opp in OPPOSITE_OPS:
+            if version.startswith(comp):
+                return version.replace(comp, opp).replace(".", "")
+        return None
+
+    def _contains_single_py_skip_expr(self, selector: str) -> Optional[str]:
+        """
+        Determines wether a selector specifies a python version constraint
+        such as [... or py<37].
+
+        :param selector: The selector to analyze
+        :returns: The selector specifies a python version constraint, if found. Otherwise, `None`.
+        """
+        matches: Final = list(PYTHON_SKIP_PATTERN.finditer(selector))
+        if len(matches) == 1:
+            return matches[0].group(0)
+        return None
+
+    def update_skip_statement_python(self, package_path: str, version: str) -> bool:  # pylint: disable=too-complex
+        """
+        Computes the equivalent lower bound from the python dependency. Searches for a `py<NNN` pattern and replaces it
+        with the new lower bound. Otherwise, adds an or clause to the existing skip. If the skip statement is not
+        present, it is created.
+
+        :param package_path: The path to the root or output to update the skip statement for
+        :param version: The python version pinning to create the skip statement for
+        :returns: True if the operation was succesfully applied, False otherwise
+        """
+        # Compute inverse version
+        inverse_version: Final = self._get_inverse_version(version)
+        if not inverse_version:
+            return False
+        py_skip_expr: Final[str] = f"py{inverse_version}"
+        selector_py_skip_expr: Final[str] = f"[{py_skip_expr}]"
+        # If no skip statement is present: create one
+        skip_path: Final = self.append_to_path(package_path, "/build/skip")
+        skip_val_pre_add: Final = self.get_value(skip_path, None)
+        if skip_val_pre_add is None:
+            add_success = self.patch(
+                {
+                    "op": "add",
+                    "path": skip_path,
+                    "value": True,
+                }
+            )
+            if not add_success:
+                return False
+        # A skip statement is now present, perform checks
+        skip_val: Final = bool(self.get_value(skip_path, None))
+        if not skip_val:
+            return False
+        selector = None
+        try:
+            selector = self.get_selector_at_path(skip_path)
+        except KeyError:
+            try:
+                self.add_selector(skip_path, selector_py_skip_expr)
+                return True
+            except (KeyError, ValueError):
+                return False
+        # At this point, a skip statement with a selector is present
+        old_py_skip_expr: Final = self._contains_single_py_skip_expr(selector)
+        new_selector: Final = (
+            selector.replace(old_py_skip_expr, py_skip_expr) if old_py_skip_expr else selector_py_skip_expr
+        )
+        selector_conflict_mode: Final = SelectorConflictMode.REPLACE if old_py_skip_expr else SelectorConflictMode.OR
+        try:
+            self.add_selector(skip_path, new_selector, selector_conflict_mode)
+            return True
+        except (KeyError, ValueError):
+            return False
