@@ -757,7 +757,7 @@ class RecipeParser(RecipeReader):
             except (KeyError, ValueError):
                 return False
         # At this point, a skip statement with a selector is present
-        old_py_skip_expr = self._contains_single_py_skip_expr(selector)
+        old_py_skip_expr: Final = self._contains_single_py_skip_expr(selector)
         if old_py_skip_expr:
             new_selector = selector.replace(old_py_skip_expr, py_skip_expr)
             try:
