@@ -709,7 +709,7 @@ class RecipeParser(RecipeReader):
         :param selector: The selector to analyze
         :returns: The selector specifies a python version constraint, if found. Otherwise, `None`.
         """
-        matches = list(PYTHON_SKIP_PATTERN.finditer(selector))
+        matches: Final = list(PYTHON_SKIP_PATTERN.finditer(selector))
         if len(matches) == 1:
             return matches[0].group(0)
         return None
