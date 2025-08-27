@@ -132,6 +132,15 @@ class Regex:
     # group. Failure to mark this may cause `findall()` to return empty strings if no other group is present in the
     # regex.
     _JINJA_OPTIONAL_EOL_COMMENT: Final[str] = r"[ \t]*(?:#[^\n]*)?$"
+    # Pattern that describes a single token in a JINJA concatenation expression. This could be a JINJA variable name or
+    # a quoted string or a number that allows spaces and other special characters. NOTE: The outer capture group
+    # captures the token, not the alternative inner forms.
+    #
+    # Examples:
+    #   number + 1
+    #   "foo" + var_bar
+    #   tests_to_ignore + " --ignore=streamlit_tests/lib/tests/streamlit/elements/cache_spinner_test.py"
+    _JINJA_FUNCTION_ADD_CONCAT_TOKEN: Final[str] = r"((?:[\w\.!]+)|(?:[\"\'][\w\.! \t\-=\/]+[\"\']))"
 
     # Pattern that attempts to identify YAML strings that need to be quote-escaped in the parsing process. Including:
     #   - Strings that start with a quote marker, close the same quote marker, and then are trailed by characters.
@@ -229,7 +238,7 @@ class Regex:
     )
     JINJA_FUNCTION_IDX_ACCESS: Final[re.Pattern[str]] = re.compile(r"(.+)\[(-?\d+)\]")
     JINJA_FUNCTION_ADD_CONCAT: Final[re.Pattern[str]] = re.compile(
-        r"([\"\']?[\w\.!]+[\"\']?)[ \t]+\+[ \t]*([\"\']?[\w\.!]+[\"\']?)"
+        _JINJA_FUNCTION_ADD_CONCAT_TOKEN + r"[ \t]+\+[ \t]*" + _JINJA_FUNCTION_ADD_CONCAT_TOKEN
     )
     # `match()` is a JINJA function available in the V1 recipe format
     JINJA_FUNCTION_MATCH: Final[re.Pattern[str]] = re.compile(r"match\(.*,.*\)")
