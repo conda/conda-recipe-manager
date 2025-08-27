@@ -725,7 +725,7 @@ class RecipeParser(RecipeReader):
         :returns: True if the operation was succesfully applied, False otherwise
         """
         # Compute inverse version
-        inverse_version = self._get_inverse_version(version)
+        inverse_version: Final = self._get_inverse_version(version)
         if not inverse_version:
             return False
         py_skip_expr: Final[str] = f"py{inverse_version}"
