@@ -680,14 +680,13 @@ class RecipeParser(RecipeReader):
     def _get_inverse_version(self, version: str) -> Optional[str]:
         """
         Computes the inverse version pinning for python skip statements
-        and removes the '.' in the version number
-        Example: >=3.8 ---> <38
+        and removes the '.' in the version number. Example: `>=3.8` ---> `<38`
 
-        :param version: version pinning str, such as ">=3.8"
+        :param version: version pinning str, such as `>=3.8`
         :returns: Inverse version pinning string, or None upon failure
         """
         # Handle the case where multiple version constraints are present
-        # Example: python >=3.9,<4 ---> py<39
+        # Example: `python >=3.9,<4` ---> `py<39`
         if "," in version:
             constraints: Final = version.split(",")
             for constraint in constraints:
