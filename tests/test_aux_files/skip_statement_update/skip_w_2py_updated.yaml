@@ -7,7 +7,7 @@ package:
 
 build:
   number: 0
-  skip: true  # [osx or py<37 or py>312 or py<38]
+  skip: true  # [osx or py<37 or py>312 or py<39]
   is_true: true
 
 # Comment above a top-level structure
