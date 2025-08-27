@@ -1,0 +1,210 @@
+{% set name = "streamlit" %}
+{% set version = "1.48.0" %}
+{% set tests_to_skip = "test_run_warning_absence" %}
+{% set tests_to_skip = tests_to_skip + " or test_user_login" %}
+{% set tests_to_skip = tests_to_skip + " or test_check_conflicts_server_csrf" %}
+{% set tests_to_skip = tests_to_skip + " or test_importtime_median_under_threshold" %}
+{% set tests_to_skip = tests_to_skip + " or test_prompt_welcome_message_2" %}
+{% set tests_to_ignore = " --ignore=streamlit_tests/lib/tests/streamlit/git_util_test.py" %}
+{% set tests_to_ignore = tests_to_ignore + " --ignore=streamlit_tests/lib/tests/streamlit/runtime/runtime_test.py" %}
+{% set tests_to_ignore = tests_to_ignore + " --ignore=streamlit_tests/lib/tests/streamlit/web/server/component_request_handler_test.py" %}
+{% set tests_to_ignore = tests_to_ignore + " --ignore=streamlit_tests/lib/tests/streamlit/web/server/server_test.py" %}
+{% set tests_to_ignore = tests_to_ignore + " --ignore=streamlit_tests/lib/tests/streamlit/web/server/media_file_handler_test.py" %}
+{% set tests_to_ignore = tests_to_ignore + " --ignore=streamlit_tests/lib/tests/streamlit/web/server/routes_test.py" %}
+{% set tests_to_ignore = tests_to_ignore + " --ignore=streamlit_tests/lib/tests/streamlit/web/server/upload_file_request_handler_test.py" %}
+{% set tests_to_ignore = tests_to_ignore + " --ignore=streamlit_tests/lib/tests/streamlit/elements/cache_spinner_test.py" %}  # [osx]
+
+package:
+  name: {{ name|lower }}-split
+  version: {{ version }}
+
+source:
+  - url: https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz
+    sha256: 64da4819f4b897c8d1e9eb6396f4618b2eb5029d25af61472422d4eb0688bb75
+    folder: streamlit
+    patches:
+      - patches/0001-move-pydeck-to-extra-deps.patch
+  - url: https://github.com/{{ name }}/{{ name }}/archive/{{ version }}.tar.gz
+    sha256: 67dc94d90e89f7b77df85e64fb8f6cf9353e9e0d53e59f6d47c5834e013d6142
+    folder: streamlit_tests
+
+build:
+  number: 0
+  entry_points:
+    - streamlit = streamlit.web.cli:main
+  skip: true  # [py<39]
+
+requirements:
+  host:
+    - python
+  run:
+    - python
+
+outputs:
+  - name: streamlit
+    script: build-output.sh  # [not win]
+    script: build-output.bat  # [win]
+    build:
+      entry_points:
+        - streamlit = streamlit.web.cli:main
+    requirements:
+      host:
+        - pip
+        - python
+        - wheel
+        - setuptools
+      run:
+        - python
+        # Altair 5.4.0 and 5.4.1 have compatibility issues with narwhals library
+        # that cause st.line_chart and other built-in charts to fail rendering.
+        # See: https://github.com/streamlit/streamlit/issues/12064
+        - altair >=4.0,<6,!=5.4.0,!=5.4.1
+        - blinker >=1.5.0,<2
+        - cachetools >=4.0,<7
+        - click >=7.0,<9
+        - numpy >=1.23,<3
+        - packaging >=20,<26
+        # Pandas <1.4 has a bug related to deleting columns in a DataFrame changing
+        # the index dtype.
+        - pandas >=1.4.0,<3
+        - pillow >=7.1.0,<12
+        # `protoc` < 3.20 is not able to generate protobuf code compatible with protobuf >= 3.20.
+        - protobuf >=3.20,<7
+        # pyarrow is not semantically versioned, gets new major versions frequently, and
+        # doesn't tend to break the API on major version upgrades, so we don't put an
+        # upper bound on it.
+        - pyarrow >=7.0
+        - requests >=2.27,<3
+        - tenacity >=8.1.0,<10
+        # Starting from Python 3.11, Python has built in support for reading TOML files.
+        # Let's make sure to remove this "toml" library when we stop supporting Python 3.10.
+        - toml >=0.10.1,<2
+        - typing_extensions >=4.4.0,<5
+        # Don't require watchdog on MacOS, since it'll fail without xcode tools.
+        # Without watchdog, we fallback to a polling file watcher to check for app changes.
+        - watchdog >=2.1.5,<7  # [not osx]
+        # SNOWPARK_CONDA_EXCLUDED_DEPENDENCIES:
+        # We want to exclude some dependencies in our internal Snowpark conda distribution of
+        # Streamlit. These dependencies will be installed normally for both regular conda builds
+        # and PyPI builds (that is, for people installing streamlit using either
+        # `pip install streamlit` or `conda install -c conda-forge streamlit`)
+        - gitpython >=3.0.7,<4,!=3.1.19
+        # Tornado 6.0.3 was the current version when Python 3.8 was released (Oct 14, 2019).
+        # Tornado 6.5.0 is skipped due to a bug with Unicode characters in the filename.
+        # See https://github.com/tornadoweb/tornado/commit/62c276434dc5b13e10336666348408bf8c062391
+        - tornado >=6.0.3,<7,!=6.5.0
+      run_constrained:
+        - python !=3.9.7
+        - rich >=11.0.0
+        # snowflake
+        - snowflake-snowpark-python >=1.17.0  # [py<312]
+        - snowflake-connector-python >=3.3.0  # [py<312]
+        # SNOWPARK_CONDA_EXCLUDED_DEPENDENCIES:
+        # pydeck 0.9.1 and below restrict ipywidgets to version 7
+        # This leads to non-functional systems when installed with recent jupyterlab versions.
+        # Pydeck supports creating interactive map visualization, which is not the main feature of streamlit.
+        - pydeck >=0.8.0b4,<1
+        # auth
+        - authlib >=1.3.2
+        # charts
+        - matplotlib-base >=3.0.0
+        - python-graphviz >=0.19.0
+        - plotly >=4.0.0
+        - orjson >=3.5.0
+        # sql
+        - sqlalchemy >=2.0.0
+    test:
+      imports:
+        - streamlit
+      commands:
+        - pip check
+        - streamlit --help
+      requires:
+        - pip
+  - name: streamlit-tests
+    build:
+    requirements:
+      host:
+        - python
+      run:
+        - python
+        - {{ pin_subpackage('streamlit', exact=True) }}
+    # The test fails because "streamlit run" appears in the captured logs, likely due to Streamlit emitting a warning message that wasn't suppressed or filtered out.
+    # streamlit_tests\lib\tests\streamlit\delta_generator_test.py::RunWarningTest::test_run_warning_absence
+    # >       self.assertNotRegex("".join(logs.output), r"streamlit run")
+    # E       AssertionError: Regex matched: 'streamlit run' matches 'streamlit run' in 'WARNING:streamlit:\n  \x1b[33m\x1b[1mWarning:\x1b[0m to view a Streamlit app on a browser, use Streamlit in a file and\n  run it with the following command:\n\n    streamlit run [FILE_NAME] [ARGUMENTS]WARNING:streamlit:irrelevant warning so assertLogs passes'
+    # This tests needs Google Microsoft credentials in .streamlit/secrets.toml to login with authlib. Won`t fix.
+    # >      assert (
+    #            "Authentication credentials in `.streamlit/secrets.toml` are missing for the "
+    #            'authentication provider "invalid_provider". Please check your configuration.'
+    #        ) == str(ex.exception)
+    # streamlit_tests\lib\tests\streamlit\config_test.py::ConfigTest::test_check_conflicts_server_csrf
+    # Logger troubles. For some reason mock_logger.warning.assert_called_once() return 0;
+    # >       raise AssertionError(msg)
+    # E       AssertionError: Expected 'warning' to have been called once. Called 0 times.
+    # E       AssertionError: Median import time 864183us of streamlit exceeded the max allowed threshold 700000us (percentage: 123%).In case this is expected and justified, you can change the threshold in the test.
+    # E       assert 864183 <= 700000
+    # E       AssertionError: Welcome message mode is True and headless mode is False yet output is:
+    # E       assert ((True and not False)) == ('like to receive helpful onboarding emails, news, offers, promotions,' in '')
+    # E        +  where '' = <Result okay>.output
+    # The git_util_test.py tests skipped, no need to test git.
+    # Problems in MockSessionClient. Data frame can`t have enough time to make push in the MockSessionClient::list. I think await self.tick_runtime_loop() broken. Tests failed randomly on linux and windows.
+    # The test fails with RuntimeError: Runtime instance already exists!, which suggests that the server is already running when self.server.start() is called.
+    # The test class may not be properly resetting the environment between tests - setUp() or tearDown() issues.
+    # >       assert el.spinner.show_time is True
+    # E       assert False is True
+    # E        +  where False = .show_time
+    # E        +    where  = empty {\n}\n.spinner
+    test:
+      source_files:
+        - streamlit_tests/lib/tests
+        - streamlit_tests/lib/setup.py
+        - streamlit_tests/lib/pytest.ini
+      imports:
+        - streamlit
+      commands:
+        - pip check
+        - streamlit --help
+        - python -c "from importlib.metadata import version; assert(version('{{ name }}')=='{{ version }}')"
+        # Adds missing MIME types to mimetypes to prevent ie: AssertionError: assert 'application/octet-stream' == 'font/otf'
+        - cat $RECIPE_DIR/parent/add_missing_mime_types.py >> streamlit_tests/lib/tests/conftest.py  # [linux]
+        - pytest -n 1 -v -m "not (require_integration or slow or performance)" -k "not ({{ tests_to_skip }})" {{ tests_to_ignore }} streamlit_tests/lib/tests  # [not win]
+      requires:
+        - pip
+        - pytest >=8.3.5
+        - parameterized
+        - authlib >=1.3.2
+        - requests-mock
+        - watchdog >=2.1.5
+        - plotly >=5.3.1
+        - pydeck
+        - testfixtures
+        - matplotlib-base >=3.3.4
+        - hypothesis >=6.17.4
+        - python-graphviz >=0.17
+        - pytest-benchmark 5.1.0
+        - pytest-xdist >=3.6.1
+        - pytest-rerunfailures
+        - pytest-cov
+
+about:
+  home: https://streamlit.io
+  license: Apache-2.0
+  license_family: Apache
+  license_file: LICENSE
+  summary: The fastest way to build data apps in Python
+  description: |
+    Streamlit lets you turn data scripts into sharable web apps in minutes, not weeks.
+    It's all Python, open-source, and free!
+  doc_url: https://docs.streamlit.io
+  dev_url: https://github.com/streamlit/streamlit
+
+extra:
+  recipe-maintainers:
+    - raybellwaves
+    - randyzwitch
+    - kmcgrady
+  skip-lints:
+    # As we are only running the pytests in streamlit-tests we do not require python build tools
+    - missing_python_build_tool
+    - missing_wheel

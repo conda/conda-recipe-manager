@@ -52,8 +52,8 @@ def test_construction(file: str, schema_version: SchemaVersion) -> None:
     parser = RecipeReader(types_toml)
     assert parser._init_content == types_toml  # pylint: disable=protected-access
     assert parser._vars_tbl == {  # pylint: disable=protected-access
-        "name": NodeVar("types-toml", None),
-        "version": NodeVar("0.10.8.6", None),
+        "name": [NodeVar("types-toml", None)],
+        "version": [NodeVar("0.10.8.6", None)],
     }
     assert parser.get_schema_version() == schema_version
     assert not parser.is_modified()
@@ -172,7 +172,7 @@ def test_loading_obj_in_list() -> None:
 @pytest.mark.parametrize(
     "file",
     [
-        # V0 Recipe Files
+        #### V0 Recipe Files ####
         "types-toml.yaml",  # "Easy-difficulty" recipe, representative of common/simple recipes.
         "simple-recipe.yaml",  # "Medium-difficulty" recipe, containing several contrived examples
         "multi-output.yaml",  # Contains a multi-output recipe
@@ -189,7 +189,7 @@ def test_loading_obj_in_list() -> None:
         "x264.yaml",
         "parser_regressions/issue-366_quote_regressions_round_trip.yaml",
         "parser_regressions/issue-378_colon_quote_regression.yaml",
-        # V1 Recipe Files
+        #### V1 Recipe Files ####
         "v1_format/v1_types-toml.yaml",
         "v1_format/v1_simple-recipe.yaml",
         "v1_format/v1_multi-output.yaml",
@@ -207,10 +207,39 @@ def test_round_trip(file: str) -> None:
     """
     Test "eating our own dog food"/round-tripping the parser: Take a recipe, construct a parser, re-render and
     ensure the output matches the input.
+
+    :param file: Recipe file to round-trip.
     """
-    expected: Final[str] = load_file(file)
-    parser = RecipeReader(expected)
+    expected: Final = load_file(file)
+    parser: Final = RecipeReader(expected)
     assert parser.render() == expected
+
+
+@pytest.mark.parametrize(
+    "file,expected",
+    [
+        #### V0 Recipe Files ####
+        # Issue #407 is only partially resolved. But the partial solution is enough of a step in the right direction
+        # that it has been added.
+        # TODO Fix comments applying to JINJA variables are not moved with the JINJA set lines.
+        # TODO Add support to `RecipeReader::get_value()` for self-referenced concatenations(?)
+        (
+            "parser_regressions/issue-407_duplicate_jinja_vars_input_streamlit.yaml",
+            "parser_regressions/issue-407_duplicate_jinja_vars_parsed_streamlit.yaml",
+        ),
+        #### V1 Recipe Files ####
+    ],
+)
+def test_round_trip_with_changes(file: str, expected: str) -> None:
+    """
+    Like `test_round_trip()`, but for recipe files where we _expect_ changes in the final recipe. This includes recipe
+    files that can be parsed and rendered, but the rendered file is not identical to the input for one or more reasons.
+
+    :param file: Recipe file to parse.
+    :param expected: Expected rendered output of the parsed recipe file.
+    """
+    parser: Final = RecipeReader(load_file(file))
+    assert parser.render() == load_file(expected)
 
 
 @pytest.mark.parametrize(

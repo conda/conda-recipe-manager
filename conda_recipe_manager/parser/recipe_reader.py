@@ -59,8 +59,13 @@ except ImportError:
 
 log = logging.getLogger(__name__)
 
-# Type for the internal recipe variables table.
-_VarTable = dict[str, NodeVar]
+# Type for the internal recipe variables table. Although relatively uncommon, variables may be defined multiple times
+# (in V0), usually in the context of string concatenation. Hence why the table contains a list of `NodeVar`s.
+# NOTE:
+#   - Support for editing multiple variable definitions will be limited at best.
+#   - If a key exists, the list will always have at least one entry.
+#   - V1 does not support multiple variable definitions as YAML does not support duplicate keys in an object.
+_VarTable = dict[str, list[NodeVar]]
 
 
 class RecipeReader(IsModifiable):
@@ -444,6 +449,22 @@ class RecipeReader(IsModifiable):
 
         return key, lower_match, upper_match, replace_match, split_match, join_match, idx_match, add_concat_match
 
+    def _eval_var(self, key: str) -> JsonType:
+        """
+        Evaluates a known variable by name to a V0 JINJA variable or a V1 context variable.
+
+        :param key: Target key that MUST exist in the variables table.
+        :returns: Variable's evaluated value
+        """
+        match self._schema_version:
+            case SchemaVersion.V0:
+                if len(self._vars_tbl[key]) == 1:
+                    return self._vars_tbl[key][0].get_value()
+                # TODO Future: Support recursive concatenation here. Until then, this is just a duplicated line.
+                return self._vars_tbl[key][0].get_value()
+            case SchemaVersion.V1:
+                return self._vars_tbl[key][0].get_value()
+
     def _eval_jinja_token(self, s: str) -> JsonType:
         """
         Given a string that matches one of the two groups in the `JINJA_FUNCTION_ADD_CONCAT` regex, evaluate the
@@ -454,7 +475,7 @@ class RecipeReader(IsModifiable):
         """
         # Variable
         if s in self._vars_tbl:
-            return self._vars_tbl[s].get_value()
+            return self._eval_var(s)
 
         # int
         if s.isdigit():
@@ -506,7 +527,7 @@ class RecipeReader(IsModifiable):
                 s = s.replace(match, value)
             elif key in self._vars_tbl:
                 # Replace value as a string. Re-interpret the entire value before returning.
-                value = str(self._vars_tbl[key].get_value())
+                value = str(self._eval_var(key))
                 if Regex.JINJA_VAR_VALUE_TERNARY.match(value):
                     value = "${{" + value + "}}"
                 if lower_match:
@@ -565,7 +586,14 @@ class RecipeReader(IsModifiable):
                         value = cast(JsonType, ast.literal_eval(cast(str, value)))
                     except Exception:  # pylint: disable=broad-exception-caught
                         value = str(value)
-                    self._vars_tbl[key] = NodeVar(value, RecipeReader._parse_trailing_comment(line))
+                    node_var = NodeVar(value, RecipeReader._parse_trailing_comment(line))
+                    # Tracks multiple definitions. In the wild, this is rare, but does occur in the context of
+                    # concatenating strings together.
+                    if key not in self._vars_tbl:
+                        self._vars_tbl[key] = [node_var]
+                        continue
+                    self._vars_tbl[key].append(node_var)
+
             case SchemaVersion.V1:
                 # Abuse the fact that the `/context` section is pure YAML.
                 context: Final = cast(dict[str, JsonType], self.get_value("/context", {}))
@@ -574,7 +602,8 @@ class RecipeReader(IsModifiable):
                     # V1 only allows for scalar types as variables. So we should be able to recover all comments without
                     # recursing through `/context`
                     var_path = RecipeReader.append_to_path("/context", key)
-                    self._vars_tbl[key] = NodeVar(value, comments_tbl.get(var_path, None))
+                    # V1 does not support multiple definitions in `/context` because YAML keys must be unique.
+                    self._vars_tbl[key] = [NodeVar(value, comments_tbl.get(var_path, None))]
 
     def _rebuild_selectors(self) -> None:
         """
@@ -593,26 +622,54 @@ class RecipeReader(IsModifiable):
 
         traverse_all(self._root, _collect_selectors)
 
-    def __init__(self, content: str):  # pylint: disable=super-init-not-called
+    def _init_schema_version_and_sanitize_v0_yaml(self, internal_call: bool) -> tuple[str, int]:
         """
-        Constructs a RecipeReader instance.
+        Determines the schema version used by the recipe file and then runs a series of corrective actions to improve
+        compatibility with V0 recipe files. Most of these actions involve handling common indentation issues, seen in
+        the field, that break the recipe parser.
 
-        :param content: conda-build formatted recipe file, as a single text string.
-        :raises ParsingException: In the event that the recipe parser was unable to be parsed.
+        The vast, vast majority of recipe files follow a standard 2-space-tab convention. Although technically not
+        required by YAML/conda-build, it is an assumption this parser makes to simplify an already complex file format.
+        `V0RecipeFormatter::fix_excessive_indentation()` should correct n > 2 tab lengths. This is invoked in this
+        function.
+
+        :param internal_call: Whether this is an internal call. If true, we cannot determine if the recipe is V0 or V1.
+        :returns: A sanitized version of the original recipe file text and a counter indicating how many comments exist
+            at the top of the recipe file, before the "canonical" variables section.
         """
-        try:
-            try:
-                self._private_init(content=content, internal_call=False)
-            except Exception as e0:  # pylint: disable=broad-exception-caught
-                raise ParsingException() from e0
-        except ParsingException as e1:
-            # Log the full chain of exceptions, then re-raise the expected exception.
-            log.exception(e1)
-            raise
+        # Format the text for V0 recipe files in an attempt to improve compatibility with our whitespace-delimited
+        # parser.
+        fmt: Final[V0RecipeFormatter] = V0RecipeFormatter(self._init_content)
+
+        # Auto-detect and deserialize the version of the recipe schema. This will change how the class behaves.
+        # NOTE: This will need to be improved when multiple schema versions exist.
+        self._schema_version = SchemaVersion.V0 if fmt.is_v0_recipe() else SchemaVersion.V1
+
+        # Early-escape for V1 and recursive calls. Remember that at this point, we have not parsed/set the version enum
+        # in the parser.
+        if not fmt.is_v0_recipe() or internal_call:
+            return self._init_content, 0
+
+        fmt.fmt_text()
+        # Calculate the string equivalent once.
+        fmt_str: Final = str(fmt)
+
+        # For V0 recipe files, count the number of comment-only lines at the start, before the canonical "variables
+        # section"
+        tof_comment_cntr = 0
+        while fmt_str.splitlines()[tof_comment_cntr].startswith("#"):
+            tof_comment_cntr += 1
+
+        # Replace all JINJA lines and fix excessive indentation. Then traverse line-by-line.
+        sanitized_yaml_unfixed: Final = Regex.JINJA_V0_LINE.sub("", fmt_str)
+        # We then must call for a second kind of text formatting, now that the JINJA has been removed.
+        sanitized_fmt = V0RecipeFormatter(sanitized_yaml_unfixed)
+        if not sanitized_fmt.fix_excessive_indentation():
+            log.error("The recipe parser was unable to correct indentation level in a V0 recipe file.")
+
+        return str(sanitized_fmt), tof_comment_cntr
 
     def _private_init(self, content: str, internal_call: bool) -> None:
-        # pylint: disable=too-complex
-        # TODO Refactor and simplify ^
         """
         Private constructor for internal RecipeReader use. This constructor is called by `__init__()` and
         `_create_private_recipe_reader()`, with internal_call set to False and True, respectively.
@@ -626,31 +683,10 @@ class RecipeReader(IsModifiable):
         # See https://mypy.readthedocs.io/en/stable/final_attrs.html#syntax-variants
         self._init_content: str = content
 
+        sanitized_yaml, tof_comment_cntr = self._init_schema_version_and_sanitize_v0_yaml(internal_call)
+
         # Root of the parse tree
         self._root = Node(value=ROOT_NODE_VALUE)
-
-        # Format the text for V0 recipe files in an attempt to improve compatibility with our whitespace-delimited
-        # parser.
-        fmt: Final[V0RecipeFormatter] = V0RecipeFormatter(self._init_content)
-        if fmt.is_v0_recipe() and not internal_call:
-            fmt.fmt_text()
-        # Calculate the string equivalent once.
-        fmt_str: Final = str(fmt)
-
-        # For V0 recipe files, count the number of comment-only lines at the start, before the canonical "variables
-        # section"
-        tof_comment_cntr = 0
-        if fmt.is_v0_recipe() and not internal_call:
-            while fmt_str.splitlines()[tof_comment_cntr].startswith("#"):
-                tof_comment_cntr += 1
-
-        # Replace all Jinja lines and fix excessive indentation. Then traverse line-by-line
-        sanitized_yaml_unfixed: Final = Regex.JINJA_V0_LINE.sub("", fmt_str)
-        sanitized_fmt = V0RecipeFormatter(sanitized_yaml_unfixed)
-        if sanitized_fmt.is_v0_recipe() and not internal_call:
-            if not sanitized_fmt.fix_excessive_indentation():
-                log.error("The recipe parser was unable to correct indentation level in a V0 recipe file.")
-        sanitized_yaml: Final = str(sanitized_fmt)
 
         # Read the YAML line-by-line, maintaining a stack to manage the last owning node in the tree.
         node_stack: list[Node] = [self._root]
@@ -712,13 +748,6 @@ class RecipeReader(IsModifiable):
             # Update the last node for the next line interpretation
             last_node = new_node
 
-        # Auto-detect and deserialize the version of the recipe schema. This will change how the class behaves.
-        self._schema_version = SchemaVersion.V0
-        # TODO bootstrap this better. `get_value()` has a circular dependency on `_vars_tbl` if `sub_vars` is used.
-        schema_version = cast(SchemaVersion | int, self.get_value("/schema_version", SchemaVersion.V0))
-        if isinstance(schema_version, int) and schema_version == 1:
-            self._schema_version = SchemaVersion.V1
-
         # Initialize the variables table. This behavior changes per `schema_version`
         self._init_vars_tbl()
 
@@ -727,6 +756,23 @@ class RecipeReader(IsModifiable):
         #
         # This table will have to be re-built or modified when the tree is modified with `patch()`.
         self._rebuild_selectors()
+
+    def __init__(self, content: str):  # pylint: disable=super-init-not-called
+        """
+        Constructs a RecipeReader instance.
+
+        :param content: conda-build formatted recipe file, as a single text string.
+        :raises ParsingException: In the event that the recipe parser was unable to be parsed.
+        """
+        try:
+            try:
+                self._private_init(content=content, internal_call=False)
+            except Exception as e0:  # pylint: disable=broad-exception-caught
+                raise ParsingException() from e0
+        except ParsingException as e1:
+            # Log the full chain of exceptions, then re-raise the expected exception.
+            log.exception(e1)
+            raise
 
     @staticmethod
     def _canonical_sort_keys_comparison(n: Node, priority_tbl: dict[str, int]) -> int:
@@ -773,8 +819,9 @@ class RecipeReader(IsModifiable):
         s += f"{self.__class__.__name__} Instance\n"
         s += f"- Schema Version: {self._schema_version}\n"
         s += "- Variables Table:\n"
-        for key, node_var in self._vars_tbl.items():
-            s += f"{TAB_AS_SPACES}- {key}: {node_var.render_v0_value()}{node_var.render_comment()}\n"
+        for key, node_vars in self._vars_tbl.items():
+            for node_var in node_vars:
+                s += f"{TAB_AS_SPACES}- {key}: {node_var.render_v0_value()}{node_var.render_comment()}\n"
         s += "- Selectors Table:\n"
         for key, val in self._selector_tbl.items():
             s += f"{TAB_AS_SPACES}{key}\n"
@@ -955,8 +1002,9 @@ class RecipeReader(IsModifiable):
                 # NOTE: Top of file comments must be owned by the root level and, therefore, do not need indentation.
                 lines.append(root_child.comment.rstrip())
 
-            for key, val in self._vars_tbl.items():
-                lines.append(f"{{% set {key} = {val.render_v0_value()} %}}{val.render_comment()}")
+            for key, node_vars in self._vars_tbl.items():
+                for node_var in node_vars:
+                    lines.append(f"{{% set {key} = {node_var.render_v0_value()} %}}{node_var.render_comment()}")
             # Add spacing if variables have been set
             if len(self._vars_tbl):
                 lines.append("")
@@ -1349,7 +1397,7 @@ class RecipeReader(IsModifiable):
             if default == RecipeReader._sentinel or isinstance(default, SentinelType):
                 raise KeyError
             return default
-        return self._vars_tbl[var].get_value()
+        return self._eval_var(var)
 
     def get_variable_references(self, var: str) -> list[str]:
         """
