@@ -1253,9 +1253,9 @@ def test_diff() -> None:
     "file,python_version,expected_status",
     [
         ("no_skip", ">=3.8", True),
-        ("skip_w_0py", ">=3.8", True),
-        ("skip_w_1py", ">=3.8", True),
-        ("skip_w_2py", ">=3.9", True),
+        ("skip_w_0py", ">= 3.8", True),
+        ("skip_w_1py", " >=3.8", True),
+        ("skip_w_2py", " >= 3.9", True),
         ("no_skip", ">=3.8,<3.9", True),
         ("skip_w_0py", ">=3.8, < 3.11", True),
         ("skip_w_1py", ">=3.8, <3.0a1", True),
