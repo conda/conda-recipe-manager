@@ -689,7 +689,7 @@ class RecipeParser(RecipeReader):
         # Handle the case where multiple version constraints are present
         # Example: python >=3.9,<4 ---> py<39
         if "," in version:
-            constraints = version.split(",")
+            constraints: Final = version.split(",")
             for constraint in constraints:
                 clean_constraint = constraint.strip()
                 if clean_constraint.startswith(">"):
