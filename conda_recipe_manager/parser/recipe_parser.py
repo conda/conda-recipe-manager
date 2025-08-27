@@ -744,8 +744,8 @@ class RecipeParser(RecipeReader):
             if not add_success:
                 return False
         # A skip statement is now present, perform checks
-        skip_val = self.get_value(skip_path, None)
-        if skip_val is not True:
+        skip_val: Final = bool(self.get_value(skip_path, None))
+        if not skip_val:
             return False
         selector = None
         try:
