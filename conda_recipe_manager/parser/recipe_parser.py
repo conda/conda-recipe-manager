@@ -732,8 +732,8 @@ class RecipeParser(RecipeReader):
         selector_py_skip_expr: Final[str] = f"[{py_skip_expr}]"
         # If no skip statement is present: create one
         skip_path = self.append_to_path(package_path, "/build/skip")
-        skip_val = self.get_value(skip_path, None)
-        if skip_val is None:
+        skip_val_pre_add: Final = self.get_value(skip_path, None)
+        if skip_val_pre_add is None:
             add_success = self.patch(
                 {
                     "op": "add",
@@ -758,15 +758,12 @@ class RecipeParser(RecipeReader):
                 return False
         # At this point, a skip statement with a selector is present
         old_py_skip_expr: Final = self._contains_single_py_skip_expr(selector)
-        if old_py_skip_expr:
-            new_selector = selector.replace(old_py_skip_expr, py_skip_expr)
-            try:
-                self.add_selector(skip_path, new_selector, SelectorConflictMode.REPLACE)
-                return True
-            except (KeyError, ValueError):
-                return False
+        new_selector: Final = (
+            selector.replace(old_py_skip_expr, py_skip_expr) if old_py_skip_expr else selector_py_skip_expr
+        )
+        selector_conflict_mode: Final = SelectorConflictMode.REPLACE if old_py_skip_expr else SelectorConflictMode.OR
         try:
-            self.add_selector(skip_path, selector_py_skip_expr, SelectorConflictMode.OR)
+            self.add_selector(skip_path, new_selector, selector_conflict_mode)
             return True
         except (KeyError, ValueError):
             return False
