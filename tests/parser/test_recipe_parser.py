@@ -1247,3 +1247,21 @@ def test_diff() -> None:
         " multi_level:\n"
         "   list_1:"
     )
+
+
+@pytest.mark.parametrize(
+    "file,",
+    [
+        ("no_skip"),
+        ("skip_w_0py"),
+        ("skip_w_1py"),
+        ("skip_w_2py"),
+    ],
+)
+def test_update_skip_statement_python(file: str) -> None:
+    """
+    Tests the ability for the `RecipeParser` to update the python skip statement.
+    """
+    parser = load_recipe(f"skip_statement_update/{file}.yaml", RecipeParser)
+    assert parser.update_skip_statement_python("/", ">=3.8")
+    assert parser.render() == load_file(f"skip_statement_update/{file}_updated.yaml")
