@@ -15,6 +15,23 @@ Note: version releases in the 0.x.y range may introduce breaking changes.
 ### Fixed
 ### Security
 
+## [0.6.3]
+### Added
+- The CRM software version to the API docs.
+- Support for duplicate JINJA variable names for V0 recipes. There are some missing features around this change, but
+  at least duplicate JINJA variables are no longer dropped. This is commonly seen when a string variable needs a
+  conditional concatenation.
+- `RecipeParser::update_skip_statement_python()` which provides the ability to upgrade the commonly used `[py>=3*]`
+  version selector to a new python version for V0 recipe files.
+### Changed
+### Deprecated
+### Removed
+### Fixed
+- Some formatting issues in the API docs.
+- Issue #423 by making improvements to the `SpdxUtils` class.
+- An issue with handling empty dependency sections in `RecipeParserDeps::add_dependency()`
+### Security
+
 ## [0.6.2]
 ### Added
 - Logging support via the standard Python logging library. By default, all modules (except `commands`,
@@ -145,6 +162,7 @@ and continually changing.
 Migrates parser from [percy](https://github.com/anaconda-distribution/percy/tree/main)
 , ,
 
-[Unreleased]: https://github.com/conda/conda-recipe-manager/compare/v0.6.2...HEAD
+[Unreleased]: https://github.com/conda/conda-recipe-manager/compare/v0.6.3...HEAD
+[0.6.3]: https://github.com/conda/conda-recipe-manager/compare/v0.6.2...v0.6.3
 [0.6.2]: https://github.com/conda/conda-recipe-manager/compare/v0.6.1...v0.6.2
 [0.6.1]: https://github.com/conda/conda-recipe-manager/compare/v0.6.0...v0.6.1
