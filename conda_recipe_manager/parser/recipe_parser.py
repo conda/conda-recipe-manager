@@ -716,9 +716,9 @@ class RecipeParser(RecipeReader):
 
     def update_skip_statement_python(self, package_path: str, version: str) -> bool:  # pylint: disable=too-complex
         """
-        Computes the equivalent lower bound from the python dependency.
-        Searches for a "py<NNN" pattern, replaces it with new lower bound.
-        Otherwise, adds an or clause to the existing skip.
+        Computes the equivalent lower bound from the python dependency. Searches for a `py<NNN` pattern and replaces it
+        with the new lower bound. Otherwise, adds an or clause to the existing skip. If the skip statement is not
+        present, it is created.
 
         :param package_path: The path to the root or output to update the skip statement for
         :param version: The python version pinning to create the skip statement for
