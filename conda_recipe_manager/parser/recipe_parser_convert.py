@@ -156,7 +156,7 @@ class RecipeParserConvert(RecipeParserDeps):
             if len(node_vars) > 1:
                 self._msg_tbl.add_message(
                     MessageCategory.WARNING,
-                    f"The variable `{name}` is defined multiple times. This is scenario is not currently supported.",
+                    f"The variable `{name}` is defined multiple times. This scenario is not currently supported.",
                 )
                 continue
 
