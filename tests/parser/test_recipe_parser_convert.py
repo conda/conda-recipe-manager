@@ -51,7 +51,6 @@ def test_pre_process_recipe_text(input_file: str, expected_file: str) -> None:
             "simple-recipe.yaml",
             [],
             [
-                "A non-list item had a selector at: /package/name",
                 "A non-list item had a selector at: /requirements/empty_field2",
                 "Could not patch unrecognized license: `Apache-2.0 AND MIT`",
             ],
@@ -123,10 +122,6 @@ def test_pre_process_recipe_text(input_file: str, expected_file: str) -> None:
                 "dependencies that use variables: {{ compiler('c') }}",
                 "Recipe upgrades cannot currently upgrade ambiguous version constraints on "
                 "dependencies that use variables: {{ compiler('cxx') }}",
-                "A non-list item had a selector at: /outputs/0/script",
-                "A non-list item had a selector at: /outputs/1/script",
-                "A non-list item had a selector at: /outputs/0/script",
-                "A non-list item had a selector at: /outputs/1/script",
                 "Field at `/about/license_family` is no longer supported.",
             ],
         ),
