@@ -18,6 +18,7 @@ build:
   script:
     env:
       FOO: BAR
+      BAR: BAZ=1
     secrets:
       - SECRET_SAUCE
       - if: linux

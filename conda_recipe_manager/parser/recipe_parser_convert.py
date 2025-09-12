@@ -513,8 +513,8 @@ class RecipeParserConvert(RecipeParserDeps):
             tokens = [i.strip() for i in item.split("=")]
             if len(tokens) == 1:
                 new_secrets.append(tokens[0])
-            elif len(tokens) == 2:
-                new_env[tokens[0]] = tokens[1]
+            elif len(tokens) >= 2:
+                new_env[tokens[0]] = "=".join(tokens[1:])
             else:
                 self._msg_tbl.add_message(MessageCategory.ERROR, f"Could not parse `{item}` found in {script_env_path}")
 
