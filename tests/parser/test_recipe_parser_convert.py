@@ -51,7 +51,7 @@ def test_pre_process_recipe_text(input_file: str, expected_file: str) -> None:
             "simple-recipe.yaml",
             [],
             [
-                "A non-list item had a selector at: /requirements/empty_field2",
+                "A key item had a selector at: /requirements/empty_field2",
                 "Could not patch unrecognized license: `Apache-2.0 AND MIT`",
             ],
         ),
@@ -298,7 +298,7 @@ def test_pre_process_recipe_text(input_file: str, expected_file: str) -> None:
         #    "curl.yaml",
         #    [],
         #    [
-        #        "A non-list item had a selector at: /outputs/0/build/ignore_run_exports",
+        #        "A key item had a selector at: /outputs/0/build/ignore_run_exports",
         #    ],
         # ),
     ],
