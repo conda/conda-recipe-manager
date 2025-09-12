@@ -7,7 +7,7 @@ context:
   version: 0.10.8.6  # bar
 
 package:
-  name: ${{ name|lower }}
+  name: ${{ name|lower if unix else '' }}
 
 build:
   number: 0

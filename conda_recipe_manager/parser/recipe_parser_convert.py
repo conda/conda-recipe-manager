@@ -304,6 +304,7 @@ class RecipeParserConvert(RecipeParserDeps):
         conda docs for common selectors:
           https://docs.conda.io/projects/conda-build/en/latest/resources/define-metadata.html#preprocessing-selectors
         """
+        selector_path_map: dict[str, str] = {}
         for selector, instances in self._v1_recipe._selector_tbl.items():  # pylint: disable=protected-access
             for info in instances:
                 # Selectors can be applied to the parent node if they appear on the same line. We'll ignore these when
@@ -351,20 +352,37 @@ class RecipeParserConvert(RecipeParserDeps):
                     patch["value"] = bool_expression
                 if not isinstance(info.node.value, bool):
                     # CEP-13 states that ONLY list members may use the `if/then/else` blocks
+                    # For other scalar items we use a ${{ value if bool_expression else '' }} expression
                     if not info.node.list_member_flag:
-                        self._msg_tbl.add_message(
-                            MessageCategory.WARNING, f"A non-list item had a selector at: {selector_path}"
-                        )
-                        continue
-                    bool_object = {
-                        "if": bool_expression,
-                        "then": None if isinstance(info.node.value, SentinelType) else info.node.value,
-                    }
-                    patch = {
-                        "op": "replace",
-                        "path": selector_path,
-                        "value": cast(JsonType, bool_object),
-                    }
+                        # When the selector is on a dictionary
+                        if info.node.key_flag:
+                            self._msg_tbl.add_message(
+                                MessageCategory.WARNING, f"A key item had a selector at: {selector_path}"
+                            )
+                            continue
+                        default_value = "''" if isinstance(info.node.value, str) else "0"
+                        prev_value = selector_path_map.get(selector_path, None)
+                        if prev_value is None:
+                            prev_value = default_value
+                        else:
+                            remove_patch: JsonPatchType = {"op": "remove", "path": selector_path}
+                            self._patch_and_log(remove_patch)
+                        value_repr = repr(info.node.value)
+                        if value_repr.startswith("'{{"):
+                            value_repr = value_repr[3:-3].strip()
+                        value = value_repr + " if " + bool_expression + " else " + prev_value
+                        selector_path_map[selector_path] = value
+                        patch["value"] = "${{ " + value + " }}"
+                    else:
+                        bool_object = {
+                            "if": bool_expression,
+                            "then": None if isinstance(info.node.value, SentinelType) else info.node.value,
+                        }
+                        patch = {
+                            "op": "replace",
+                            "path": selector_path,
+                            "value": cast(JsonType, bool_object),
+                        }
                 # Apply the patch
                 self._patch_and_log(patch)
                 self._v1_recipe.remove_selector(selector_path)
@@ -840,6 +858,13 @@ class RecipeParserConvert(RecipeParserDeps):
                 self._patch_add_missing_path(output_path, "/package")
             self._patch_move_base_path(output_path, "/name", "/package/name")
             self._patch_move_base_path(output_path, "/version", "/package/version")
+
+            # Move `script` under `build`
+            if self._v1_recipe.contains_value(RecipeParser.append_to_path(output_path, "/script")):
+                self._patch_add_missing_path(output_path, "/build")
+                self._patch_add_missing_path(output_path, "/build/script")
+                self._patch_add_missing_path(output_path, "/build/script/file")
+                self._patch_move_base_path(output_path, "/script", "/build/script/file")
 
             # Not all the top-level keys are found in each output section, but all the output section keys are
             # found at the top-level. So for consistency, we sort on that ordering.

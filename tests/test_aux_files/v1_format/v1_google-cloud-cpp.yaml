@@ -36,6 +36,9 @@ requirements:
 outputs:
   - package:
       name: libgoogle-cloud-all
+    build:
+      script:
+        file: ${{ 'install-libgoogle-cloud.bat' if win else 'install-libgoogle-cloud.sh' if unix else '' }}
     requirements:
       build:
         - ${{ compiler('c') }}
@@ -94,11 +97,11 @@ outputs:
             then: test ! -f $PREFIX/lib/cmake/google_cloud_cpp_kms/google_cloud_cpp_kms-config.cmake
           - if: win
             then: if exist %LIBRARY_PREFIX%\\lib\\cmake\\google_cloud_cpp_kms\\google_cloud_cpp_kms-config.cmake exit 1
-    script: install-libgoogle-cloud.sh  # [unix]
-    script: install-libgoogle-cloud.bat  # [win]
   - package:
       name: libgoogle-cloud-all-devel
     build:
+      script:
+        file: ${{ 'install-libgoogle-cloud.bat' if win else 'install-libgoogle-cloud.sh' if unix else '' }}
     requirements:
       build:
         - ${{ compiler('c') }}
@@ -164,8 +167,6 @@ outputs:
             then: ./run_test_feature.sh
           - if: win
             then: ./run_test_feature.bat
-    script: install-libgoogle-cloud.sh  # [unix]
-    script: install-libgoogle-cloud.bat  # [win]
   # compatibility wrapper for legacy all-in-one output
   - package:
       name: google-cloud-cpp
