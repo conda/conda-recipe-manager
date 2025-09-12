@@ -152,7 +152,7 @@ class RecipeReaderDeps(RecipeReader):
             dep = RecipeReaderDeps._sanitize_dep(dep)
             if dep is None:
                 continue
-
+            # TODO add V1 support, the test section is different.
             dep_path = RecipeReader.append_to_path(path, f"/test/requires/{i}")
             dep_map[package].append(
                 Dependency(
