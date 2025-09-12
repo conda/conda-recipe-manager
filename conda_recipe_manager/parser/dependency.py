@@ -28,7 +28,6 @@ class DependencySection(Enum):
     # NOTE:
     #   - Test dependencies are not found under the `requirements/` section, they are found under the testing section.
     #   - There are major changes to the testing section in V1.
-    # TODO TEST not covered in get_all_dependencies()
     TESTS = auto()
 
 
