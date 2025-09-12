@@ -56,7 +56,7 @@ def test_get_package_names_to_path(file: str, expected: dict[str, str]) -> None:
 
 
 @pytest.mark.parametrize(
-    "file,expected",
+    "file,expected,include_test_dependencies",
     [
         (
             "types-toml.yaml",
@@ -71,6 +71,7 @@ def test_get_package_names_to_path(file: str, expected: dict[str, str]) -> None:
                     Dependency("types-toml", "/requirements/run/0", DependencySection.RUN, MatchSpec("python"), None),
                 ]
             },
+            False,
         ),
         (
             "v1_format/v1_types-toml.yaml",
@@ -85,6 +86,7 @@ def test_get_package_names_to_path(file: str, expected: dict[str, str]) -> None:
                     Dependency("types-toml", "/requirements/run/0", DependencySection.RUN, MatchSpec("python"), None),
                 ]
             },
+            False,
         ),
         # simple-recipe.yaml tests that unrecognized requirements fields are ignored
         (
@@ -108,6 +110,7 @@ def test_get_package_names_to_path(file: str, expected: dict[str, str]) -> None:
                     Dependency("types-toml", "/requirements/run/0", DependencySection.RUN, MatchSpec("python"), None),
                 ]
             },
+            False,
         ),
         (
             "boto.yaml",
@@ -117,6 +120,7 @@ def test_get_package_names_to_path(file: str, expected: dict[str, str]) -> None:
                     Dependency("boto", "/requirements/run/0", DependencySection.RUN, MatchSpec("python"), None),
                 ]
             },
+            False,
         ),
         (
             "v1_format/v1_boto.yaml",
@@ -126,6 +130,7 @@ def test_get_package_names_to_path(file: str, expected: dict[str, str]) -> None:
                     Dependency("boto", "/requirements/run/0", DependencySection.RUN, MatchSpec("python"), None),
                 ]
             },
+            False,
         ),
         # TODO Future: Add V1 variant of this test when V1 selector support is added.
         (
@@ -264,6 +269,7 @@ def test_get_package_names_to_path(file: str, expected: dict[str, str]) -> None:
                     ),
                 ],
             },
+            False,
         ),
         # Regression Test: The parser previously crashed when trying to substitute `{{ compiler('c' ) }}`
         (
@@ -514,10 +520,119 @@ def test_get_package_names_to_path(file: str, expected: dict[str, str]) -> None:
                     ),
                 ],
             },
+            False,
+        ),
+        # Test dependencies
+        (
+            "h5py.yaml",
+            {
+                "h5py": [
+                    # Build dependencies
+                    Dependency(
+                        "h5py",
+                        "/requirements/build/0",
+                        DependencySection.BUILD,
+                        DependencyVariable('{{ compiler("c") }}'),
+                        None,
+                    ),
+                    # Host dependencies
+                    Dependency("h5py", "/requirements/host/0", DependencySection.HOST, MatchSpec("python"), None),
+                    Dependency(
+                        "h5py",
+                        "/requirements/host/1",
+                        DependencySection.HOST,
+                        MatchSpec("cython[version='>=0.29.15,<4']"),
+                        None,
+                    ),
+                    Dependency(
+                        "h5py",
+                        "/requirements/host/2",
+                        DependencySection.HOST,
+                        MatchSpec("hdf5[version='1.12.1']"),
+                        None,
+                    ),
+                    Dependency(
+                        "h5py",
+                        "/requirements/host/3",
+                        DependencySection.HOST,
+                        DependencyVariable("numpy {{ numpy }}"),
+                        None,
+                    ),
+                    Dependency("h5py", "/requirements/host/4", DependencySection.HOST, MatchSpec("pip"), None),
+                    Dependency("h5py", "/requirements/host/5", DependencySection.HOST, MatchSpec("pkgconfig"), None),
+                    Dependency("h5py", "/requirements/host/6", DependencySection.HOST, MatchSpec("setuptools"), None),
+                    Dependency("h5py", "/requirements/host/7", DependencySection.HOST, MatchSpec("wheel"), None),
+                    # Run dependencies
+                    Dependency("h5py", "/requirements/run/0", DependencySection.RUN, MatchSpec("python"), None),
+                    Dependency("h5py", "/requirements/run/1", DependencySection.RUN, MatchSpec("hdf5"), None),
+                    Dependency(
+                        "h5py",
+                        "/requirements/run/2",
+                        DependencySection.RUN,
+                        DependencyVariable("{{ pin_compatible('numpy') }}"),
+                        None,
+                    ),
+                    # Test dependencies
+                    Dependency("h5py", "/test/requires/0", DependencySection.TESTS, MatchSpec("pip"), None),
+                    Dependency("h5py", "/test/requires/1", DependencySection.TESTS, MatchSpec("pytest"), None),
+                    Dependency("h5py", "/test/requires/2", DependencySection.TESTS, MatchSpec("pytest-mpi"), None),
+                    Dependency("h5py", "/test/requires/3", DependencySection.TESTS, MatchSpec("curl"), None),
+                ],
+            },
+            True,
+        ),
+        (
+            "rust.yaml",
+            {
+                "rust-suite": [],
+                "rust": [
+                    # Build dependencies
+                    Dependency(
+                        "rust",
+                        "/outputs/0/requirements/build/0",
+                        DependencySection.BUILD,
+                        DependencyVariable("{{ compiler('c') }}"),
+                        SelectorParser("[osx]", SchemaVersion.V0),
+                    ),
+                    Dependency(
+                        "rust",
+                        "/outputs/0/requirements/build/1",
+                        DependencySection.BUILD,
+                        MatchSpec("posix"),
+                        SelectorParser("[win]", SchemaVersion.V0),
+                    ),
+                    # Test dependencies
+                    Dependency(
+                        "rust",
+                        "/outputs/0/test/requires/0",
+                        DependencySection.TESTS,
+                        DependencyVariable("{{ compiler('c') }}"),
+                        None,
+                    ),
+                    Dependency(
+                        "rust",
+                        "/outputs/0/test/requires/1",
+                        DependencySection.TESTS,
+                        DependencyVariable("{{ compiler('cxx') }}"),
+                        None,
+                    ),
+                ],
+                "rust-gnu": [
+                    # Build dependencies
+                    Dependency(
+                        "rust-gnu",
+                        "/outputs/1/requirements/build/0",
+                        DependencySection.BUILD,
+                        MatchSpec("posix"),
+                        SelectorParser("[win]", SchemaVersion.V0),
+                    ),
+                ],
+            },
+            True,
         ),
     ],
 )
-def test_get_all_dependencies(file: str, expected: DependencyMap) -> None:
+def test_get_all_dependencies(file: str, expected: DependencyMap, include_test_dependencies: bool) -> None:
     """
     Validates generating all the dependency meta data associated with a recipe file.
 
@@ -525,4 +640,4 @@ def test_get_all_dependencies(file: str, expected: DependencyMap) -> None:
     :param expected: Expected output
     """
     parser = load_recipe(file, RecipeReaderDeps)
-    assert parser.get_all_dependencies() == expected
+    assert parser.get_all_dependencies(include_test_dependencies=include_test_dependencies) == expected
