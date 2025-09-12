@@ -581,6 +581,55 @@ def test_get_package_names_to_path(file: str, expected: dict[str, str]) -> None:
             },
             True,
         ),
+        (
+            "rust.yaml",
+            {
+                "rust-suite": [],
+                "rust": [
+                    # Build dependencies
+                    Dependency(
+                        "rust",
+                        "/outputs/0/requirements/build/0",
+                        DependencySection.BUILD,
+                        DependencyVariable("{{ compiler('c') }}"),
+                        SelectorParser("[osx]", SchemaVersion.V0),
+                    ),
+                    Dependency(
+                        "rust",
+                        "/outputs/0/requirements/build/1",
+                        DependencySection.BUILD,
+                        MatchSpec("posix"),
+                        SelectorParser("[win]", SchemaVersion.V0),
+                    ),
+                    # Test dependencies
+                    Dependency(
+                        "rust",
+                        "/outputs/0/test/requires/0",
+                        DependencySection.TESTS,
+                        DependencyVariable("{{ compiler('c') }}"),
+                        None,
+                    ),
+                    Dependency(
+                        "rust",
+                        "/outputs/0/test/requires/1",
+                        DependencySection.TESTS,
+                        DependencyVariable("{{ compiler('cxx') }}"),
+                        None,
+                    ),
+                ],
+                "rust-gnu": [
+                    # Build dependencies
+                    Dependency(
+                        "rust-gnu",
+                        "/outputs/1/requirements/build/0",
+                        DependencySection.BUILD,
+                        MatchSpec("posix"),
+                        SelectorParser("[win]", SchemaVersion.V0),
+                    ),
+                ],
+            },
+            True,
+        ),
     ],
 )
 def test_get_all_dependencies(file: str, expected: DependencyMap, include_test_dependencies: bool) -> None:
