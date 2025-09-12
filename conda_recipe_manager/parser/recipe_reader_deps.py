@@ -168,6 +168,8 @@ class RecipeReaderDeps(RecipeReader):
         """
         Get a parsed representation of all the dependencies found in the recipe.
 
+        :param include_test_dependencies: (Optional) If True, include test dependencies.
+            Defaults to False, which will exclude test dependencies, for backwards compatibility.
         :raises KeyError: If a package in the recipe does not have a name
         :raises ValueError: If a recipe contains a package with duplicate names
         :returns: A structured representation of the dependencies.
