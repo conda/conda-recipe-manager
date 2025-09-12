@@ -23,7 +23,7 @@ RecipeReader Instance
       |- 0.10.8.6
   |- package
     |- name
-      |- ${{ name|lower }}
+      |- ${{ name|lower if unix else '' }}
   |- build
     |- number
       |- 0
