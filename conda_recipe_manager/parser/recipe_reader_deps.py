@@ -10,6 +10,7 @@ from conda_recipe_manager.parser._types import ROOT_NODE_VALUE
 from conda_recipe_manager.parser.dependency import (
     Dependency,
     DependencyMap,
+    DependencySection,
     dependency_data_from_str,
     str_to_dependency_section,
 )
@@ -102,10 +103,73 @@ class RecipeReaderDeps(RecipeReader):
             package_tbl[name] = path
         return package_tbl
 
-    def get_all_dependencies(self) -> DependencyMap:
+    def _extract_requirements(
+        self, requirements: dict[str, list[Optional[str]]], dep_map: DependencyMap, path: str, package: str
+    ) -> None:
+        """
+        Extracts dependencies from a requirements section.
+
+        :param requirements: The requirements section to extract dependencies from.
+        :param dep_map: The dependency map to add the dependencies to.
+        :param path: The path to the requirements section.
+        :param package: The package to add the dependencies to.
+        """
+        for section_str, deps in requirements.items():
+            section = str_to_dependency_section(section_str)
+            # Unrecognized sections will be skipped as "junk" data
+            if section is None or deps is None:
+                continue
+
+            for i, dep in enumerate(deps):
+                dep = RecipeReaderDeps._sanitize_dep(dep)
+                if dep is None:
+                    continue
+
+                # NOTE: `get_dependency_paths()` uses the same approach for calculating dependency paths.
+                dep_path = RecipeReader.append_to_path(path, f"/requirements/{section_str}/{i}")
+                dep_map[package].append(
+                    Dependency(
+                        required_by=package,
+                        path=dep_path,
+                        type=section,
+                        data=dependency_data_from_str(dep),
+                        selector=self._fetch_optional_selector(dep_path),
+                    )
+                )
+
+    def _extract_test_requirements(
+        self, test_requirements: list[Optional[str]], dep_map: DependencyMap, path: str, package: str
+    ) -> None:
+        """
+        Extracts test dependencies from a test requirements section.
+
+        :param test_requirements: The test requirements section to extract dependencies from.
+        :param dep_map: The dependency map to add the dependencies to.
+        :param path: The path to the test requirements section.
+        :param package: The package to add the dependencies to.
+        """
+        for i, dep in enumerate(test_requirements):
+            dep = RecipeReaderDeps._sanitize_dep(dep)
+            if dep is None:
+                continue
+            # TODO add V1 support, the test section is different.
+            dep_path = RecipeReader.append_to_path(path, f"/test/requires/{i}")
+            dep_map[package].append(
+                Dependency(
+                    required_by=package,
+                    path=dep_path,
+                    type=DependencySection.TESTS,
+                    data=dependency_data_from_str(dep),
+                    selector=self._fetch_optional_selector(dep_path),
+                )
+            )
+
+    def get_all_dependencies(self, include_test_dependencies: bool = False) -> DependencyMap:
         """
         Get a parsed representation of all the dependencies found in the recipe.
 
+        :param include_test_dependencies: (Optional) If True, include test dependencies.
+            Defaults to False, which will exclude test dependencies, for backwards compatibility.
         :raises KeyError: If a package in the recipe does not have a name
         :raises ValueError: If a recipe contains a package with duplicate names
         :returns: A structured representation of the dependencies.
@@ -119,36 +183,28 @@ class RecipeReaderDeps(RecipeReader):
             if path == ROOT_NODE_VALUE:
                 root_package = package
 
+            # Requirements
             requirements = cast(
                 Optional[str | dict[str, list[Optional[str]]]],
                 self.get_value(RecipeReader.append_to_path(path, "/requirements"), default={}, sub_vars=True),
             )
             # Skip over empty/malformed requirements sections
-            if requirements is None or isinstance(requirements, str):
+            if requirements is not None and not isinstance(requirements, str):
+                dep_map[package] = []
+                self._extract_requirements(requirements, dep_map, path, package)
+
+            # Test requirements
+            if not include_test_dependencies:
                 continue
-            dep_map[package] = []
-            for section_str, deps in requirements.items():
-                section = str_to_dependency_section(section_str)
-                # Unrecognized sections will be skipped as "junk" data
-                if section is None or deps is None:
-                    continue
-
-                for i, dep in enumerate(deps):
-                    dep = RecipeReaderDeps._sanitize_dep(dep)
-                    if dep is None:
-                        continue
-
-                    # NOTE: `get_dependency_paths()` uses the same approach for calculating dependency paths.
-                    dep_path = RecipeReader.append_to_path(path, f"/requirements/{section_str}/{i}")
-                    dep_map[package].append(
-                        Dependency(
-                            required_by=package,
-                            path=dep_path,
-                            type=section,
-                            data=dependency_data_from_str(dep),
-                            selector=self._fetch_optional_selector(dep_path),
-                        )
-                    )
+            test_requirements = cast(
+                Optional[list[Optional[str]]],
+                self.get_value(RecipeReader.append_to_path(path, "/test/requires"), default=[], sub_vars=True),
+            )
+            # Skip over empty/malformed test requirements sections
+            if test_requirements is not None and isinstance(test_requirements, list):
+                if package not in dep_map:
+                    dep_map[package] = []
+                self._extract_test_requirements(test_requirements, dep_map, path, package)
 
         # Apply top-level dependencies to multi-output recipe packages
         RecipeReaderDeps._add_top_level_dependencies(root_package, dep_map)
