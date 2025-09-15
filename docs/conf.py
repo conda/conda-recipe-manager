@@ -13,7 +13,7 @@ conf.py file
 project = "Conda Recipe Manager"
 author = "various"
 # TODO make this automatic, update README
-release = "0.6.3"
+release = "0.6.4"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
