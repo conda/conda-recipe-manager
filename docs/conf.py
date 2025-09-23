@@ -10,6 +10,9 @@
 """
 conf.py file
 """
+from datetime import date, datetime
+from typing import Final
+
 project = "Conda Recipe Manager"
 author = "various"
 # TODO make this automatic, update README
@@ -45,5 +48,15 @@ language = "English"
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = "sphinx_rtd_theme"
+html_theme = "sphinx_book_theme"
+today_str: Final = date.today().strftime("%B %d, %Y")
+html_theme_options = {
+    "repository_provider": "github",
+    "repository_url": "https://github.com/conda/conda-recipe-manager",
+    "use_repository_button": True,
+    "extra_footer": f"Last updated on: {today_str}",
+}
+author = "The Conda Community Maintainers"
+copyright = str(datetime.now().year)  # pylint: disable=redefined-builtin
+
 # html_static_path = ["_static"]

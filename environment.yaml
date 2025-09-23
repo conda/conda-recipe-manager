@@ -33,5 +33,4 @@ dependencies:
   - pre-commit
   # Documentation generation packages
   - sphinx
-  # TODO use furo instead, tracked in Issue #345
-  - sphinx-rtd-theme
+  - sphinx-book-theme
