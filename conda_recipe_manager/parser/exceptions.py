@@ -87,8 +87,8 @@ class ParsingJinjaException(ParsingException):
         :param jinja_statement: The JINJA statement that was encountered.
         """
         super().__init__(
-            "The recipe parser was unable to interpret the provided Conda"
-            f"recipe because of an unsupported JINJA statement: {jinja_statement}.\n"
+            "The recipe parser was unable to interpret the provided Conda "
+            f"recipe because of an unsupported JINJA statement: {jinja_statement.strip()}.\n"
             "Please consider reformating the recipe file to use the supported JINJA syntax:\n"
             "    - If using {% if %} statements, please consider replacing them with selectors.\n"
             "    - If using {% for %} statements, especially in testing logic, "

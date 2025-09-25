@@ -5,7 +5,8 @@
 
 from __future__ import annotations
 
-from typing import Final, Optional, cast
+import json
+from typing import Final, Optional
 
 from conda_recipe_manager.parser._types import Regex
 from conda_recipe_manager.parser._utils import search_any_regex
@@ -89,8 +90,10 @@ class NodeVar:
             return f"'{self._value}'" if '"' in self._value else f'"{self._value}"'
         # Render lists as multiline strings for better readability.
         if isinstance(self._value, list):
-            white_space = "\n" + " " * 4
-            return f"[{white_space}{white_space.join(cast(list[str], self._value))}\n]"
+            repr_list = [json.dumps(item) for item in self._value]
+            nl_white_space = "\n" + " " * 4
+            comma_nl_white_space = "," + nl_white_space
+            return f"[{nl_white_space}{comma_nl_white_space.join(repr_list)}\n]"
         return str(self._value)
 
     def render_comment(self) -> str:

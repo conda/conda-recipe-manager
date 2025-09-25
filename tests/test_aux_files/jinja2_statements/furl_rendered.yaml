@@ -1,0 +1,62 @@
+{% set name = "furl" %}
+{% set version = "2.1.4" %}
+{% set skip_broken_tests = [
+    "test_hosts",
+    "test_netloc",
+    "test_odd_urls"
+] %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  url: https://pypi.org/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz
+  sha256: 877657501266c929269739fb5f5980534a41abd6bbabcb367c136d1d3b2a6015
+
+build:
+  number: 0
+  skip: true  # [py<38]
+  script: {{ PYTHON }} -m pip install . --no-deps --no-build-isolation --ignore-installed --no-cache-dir -vv
+
+requirements:
+  host:
+    - python
+    - pip
+    - setuptools
+    - wheel
+  run:
+    - python
+    - six >=1.8.0
+    - orderedmultidict >=1.0.1
+
+# test_hosts, test_netloc: invalid IPv6 address triggers stricter ipaddress validation.
+# test_odd_urls: mismatch due to urlsplit() behavior with slashes.
+test:
+  source_files:
+    - tests
+  requires:
+    - pytest
+    - pip
+  imports:
+    - furl
+    - furl.compat
+    - furl.omdict1D
+  commands:
+    - pip check
+    - python -c "from importlib.metadata import version; assert(version('{{ name }}')=='{{ version }}')"
+    - pytest tests -vv --color=yes -k "not ({{ skip_broken_tests | join(' or ') }})"
+
+about:
+  home: https://github.com/gruns/furl
+  license_file: LICENSE.md
+  license: Unlicense
+  license_family: Other
+  summary: Furl is a small Python library that makes parsing and manipulating URLs easy
+  description: Furl makes parsing and manipulating URLs easy
+  dev_url: https://github.com/gruns/furl
+  doc_url: https://github.com/gruns/furl/blob/master/README.md
+
+extra:
+  recipe-maintainers:
+    - pmlandwehr
