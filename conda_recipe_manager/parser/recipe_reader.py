@@ -43,7 +43,7 @@ from conda_recipe_manager.parser.dependency import (
     dependency_section_to_str,
 )
 from conda_recipe_manager.parser.enums import SchemaVersion
-from conda_recipe_manager.parser.exceptions import ParsingException
+from conda_recipe_manager.parser.exceptions import ParsingException, ParsingJinjaException
 from conda_recipe_manager.parser.selector_parser import SelectorParser
 from conda_recipe_manager.parser.types import TAB_AS_SPACES, TAB_SPACE_COUNT, MultilineVariant
 from conda_recipe_manager.parser.v0_recipe_formatter import V0RecipeFormatter
@@ -573,9 +573,12 @@ class RecipeReader(IsModifiable):
         match self._schema_version:
             case SchemaVersion.V0:
                 # Find all the set statements and record the values
-                for line in cast(list[str], Regex.JINJA_V0_SET_LINE.findall(self._init_content)):
-                    key = line[line.find("set") + len("set") : line.find("=")].strip()
-                    value: str | JsonType = line[line.find("=") + len("=") : line.find("%}")].strip()
+                for set_match in cast(list[re.Match[str]], Regex.JINJA_V0_SET_MULTI_LINE.finditer(self._init_content)):
+                    jinja_match: str = set_match.group("jinja")
+                    key = jinja_match[jinja_match.find("set") + len("set") : jinja_match.find("=")].strip()
+                    value: str | JsonType = jinja_match[
+                        jinja_match.find("=") + len("=") : jinja_match.find("%}")
+                    ].strip()
                     # Fall-back to string interpretation.
                     # TODO: Ideally we use `_parse_yaml()` in the future. However, as discovered in the work to solve
                     # issue #366, that is easier said than done. `_parse_yaml()` was never expected to run on V0 JINJA
@@ -586,7 +589,9 @@ class RecipeReader(IsModifiable):
                         value = cast(JsonType, ast.literal_eval(cast(str, value)))
                     except Exception:  # pylint: disable=broad-exception-caught
                         value = str(value)
-                    node_var = NodeVar(value, RecipeReader._parse_trailing_comment(line))
+                    raw_comment: Optional[str] = set_match.group("comment")
+                    comment: Optional[str] = raw_comment.rstrip() if isinstance(raw_comment, str) else None
+                    node_var = NodeVar(value, comment)
                     # Tracks multiple definitions. In the wild, this is rare, but does occur in the context of
                     # concatenating strings together.
                     if key not in self._vars_tbl:
@@ -660,8 +665,14 @@ class RecipeReader(IsModifiable):
         while fmt_str.splitlines()[tof_comment_cntr].startswith("#"):
             tof_comment_cntr += 1
 
+        # Before removing JINJA statements, we need to ensure that they are all set statements.
+        set_statements: set[str] = {match.group() for match in Regex.JINJA_V0_SET_MULTI_LINE.finditer(fmt_str)}
+        for match in Regex.JINJA_V0_MULTI_LINE.finditer(fmt_str):
+            if match.group() not in set_statements:
+                raise ParsingJinjaException(match.group())
+
         # Replace all JINJA lines and fix excessive indentation. Then traverse line-by-line.
-        sanitized_yaml_unfixed: Final = Regex.JINJA_V0_LINE.sub("", fmt_str)
+        sanitized_yaml_unfixed: Final = Regex.JINJA_V0_MULTI_LINE.sub("", fmt_str)
         # We then must call for a second kind of text formatting, now that the JINJA has been removed.
         sanitized_fmt = V0RecipeFormatter(sanitized_yaml_unfixed)
         if not sanitized_fmt.fix_excessive_indentation():

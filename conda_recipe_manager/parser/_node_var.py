@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Final, Optional
+from typing import Final, Optional, cast
 
 from conda_recipe_manager.parser._types import Regex
 from conda_recipe_manager.parser._utils import search_any_regex
@@ -87,6 +87,10 @@ class NodeVar:
             and not search_any_regex(Regex.JINJA_FUNCTIONS_SET, self._value)
         ):
             return f"'{self._value}'" if '"' in self._value else f'"{self._value}"'
+        # Render lists as multiline strings for better readability.
+        if isinstance(self._value, list):
+            white_space = "\n" + " " * 4
+            return f"[{white_space}{white_space.join(cast(list[str], self._value))}\n]"
         return str(self._value)
 
     def render_comment(self) -> str:
