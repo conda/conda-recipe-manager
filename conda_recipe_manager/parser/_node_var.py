@@ -11,7 +11,7 @@ from typing import Final, Optional
 from conda_recipe_manager.parser._types import Regex
 from conda_recipe_manager.parser._utils import search_any_regex
 from conda_recipe_manager.parser.selector_parser import SelectorParser
-from conda_recipe_manager.parser.types import SchemaVersion
+from conda_recipe_manager.parser.types import TAB_SPACE_COUNT, SchemaVersion
 from conda_recipe_manager.types import JsonType
 
 
@@ -90,9 +90,9 @@ class NodeVar:
             return f"'{self._value}'" if '"' in self._value else f'"{self._value}"'
         # Render lists as multiline strings for better readability.
         if isinstance(self._value, list):
-            repr_list = [json.dumps(item) for item in self._value]
-            nl_white_space = "\n" + " " * 4
-            comma_nl_white_space = "," + nl_white_space
+            repr_list: Final[list[str]] = [json.dumps(item) for item in self._value]
+            nl_white_space: Final[str] = "\n" + " " * TAB_SPACE_COUNT
+            comma_nl_white_space: Final[str] = "," + nl_white_space
             return f"[{nl_white_space}{comma_nl_white_space.join(repr_list)}\n]"
         return str(self._value)
 

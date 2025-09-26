@@ -1,9 +1,9 @@
 {% set name = "furl" %}
 {% set version = "2.1.4" %}
 {% set skip_broken_tests = [
-    "test_hosts",
-    "test_netloc",
-    "test_odd_urls"
+  "test_hosts",
+  "test_netloc",
+  "test_odd_urls"
 ] %}
 
 package:
