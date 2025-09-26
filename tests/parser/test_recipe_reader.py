@@ -4,12 +4,13 @@
 
 from __future__ import annotations
 
-from typing import Final
+from typing import Final, Optional
 
 import pytest
 
 from conda_recipe_manager.parser._node_var import NodeVar
 from conda_recipe_manager.parser.enums import SchemaVersion
+from conda_recipe_manager.parser.exceptions import ParsingJinjaException
 from conda_recipe_manager.parser.recipe_parser import RecipeReader
 from conda_recipe_manager.types import JsonType, Primitives
 from tests.constants import SIMPLE_DESCRIPTION
@@ -1358,6 +1359,7 @@ def test_contains_variable(file: str, var: str, expected: bool) -> None:
         ("simple-recipe.yaml", "zz_non_alpha_first", 42),
         ("simple-recipe.yaml", "name", "types-toml"),
         ("simple-recipe.yaml", "version", "0.10.8.6"),
+        ("jinja2_statements/furl.yaml", "skip_broken_tests", ["test_hosts", "test_netloc", "test_odd_urls"]),
         ("v1_format/v1_simple-recipe.yaml", "zz_non_alpha_first", 42),
         ("v1_format/v1_simple-recipe.yaml", "name", "types-toml"),
         ("v1_format/v1_simple-recipe.yaml", "version", "0.10.8.6"),
@@ -1588,3 +1590,42 @@ def test_calc_sha256(file: str, expected: str) -> None:
     """
     parser = load_recipe(file, RecipeReader)
     assert parser.calc_sha256() == expected
+
+
+@pytest.mark.parametrize(
+    "package_name,exception,jinja_statement",
+    [
+        ("pdfium-binaries", True, "{% for each_header in headers %}"),  # for statement
+        ("gettext", True, "{% if from_git == 'yes' %}"),  # if statement
+        ("furl", False, None),  # multi-line and single-line set statements exclusively
+    ],
+)
+def test_unsupported_jinja2_statements_parsing(
+    package_name: str, exception: bool, jinja_statement: Optional[str]
+) -> None:
+    """
+    Tests that the recipe parser correctly handles JINJA2 statements
+
+    :param package_name: Name of the package to test
+    :param exception: Whether an exception should be raised
+    :param jinja_statement: The JINJA statement that should be raised
+    """
+    file: Final[str] = f"jinja2_statements/{package_name}.yaml"
+
+    if exception:
+        expected_message: Final[str] = (
+            "The recipe parser was unable to interpret the provided Conda "
+            f"recipe because of an unsupported JINJA statement: {jinja_statement}.\n"
+            "Please consider reformatting the recipe file to use the supported JINJA syntax:\n"
+            "    - If using {% if %} statements, please consider replacing them with selectors.\n"
+            "    - If using {% for %} statements, especially in testing logic, "
+            "please consider using a test script instead.\n"
+        )
+        with pytest.raises(ParsingJinjaException) as e:
+            load_recipe(file, RecipeReader)
+        assert str(e.value) == expected_message
+        return
+
+    rendered_file: Final[str] = f"jinja2_statements/{package_name}_rendered.yaml"
+    parser = load_recipe(file, RecipeReader)
+    assert parser.render() == load_file(rendered_file)

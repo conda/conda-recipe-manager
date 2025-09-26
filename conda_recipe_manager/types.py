@@ -18,6 +18,16 @@ PRIMITIVES_TUPLE: Final[tuple[type[str], type[int], type[float], type[bool], typ
     type(None),
 )
 
+# Primitives without `None`
+PrimitivesNoNone = Union[str, int, float, bool]
+# Same primitives, as a tuple. Used with `isinstance()`
+PRIMITIVES_NO_NONE_TUPLE: Final[tuple[type[str], type[int], type[float], type[bool]]] = (
+    str,
+    int,
+    float,
+    bool,
+)
+
 # Type that represents a JSON-like type
 JsonType = Union[dict[str, "JsonType"], list["JsonType"], Primitives]
 

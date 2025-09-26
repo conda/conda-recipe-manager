@@ -1,0 +1,131 @@
+{% set name = "gettext" %}
+{% set version = "0.21.0" %}
+{% set pversion = "0.21" %}
+{% set sha256 = "d20fcbb537e02dcf1383197ba05bd0734ef7bf5db06bdb241eb69b7d16b73192" %}
+{% set am_version = "1.15" %} #  keep synchronized with build.sh
+{% set posix = 'm2-' if win else '' %}
+{% set native = 'm2w64-' if win else '' %}
+{% set from_git = 'no' %}
+{% set source_gnulib = 'no' %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+{% if from_git == 'yes' %}
+  # caching the gnulib submodule stands a chance of working via
+  # this URL:
+  - git_url: git://git.sv.gnu.org/gettext.git
+  # .. rather than this one:
+  # - git_url: https://git.savannah.gnu.org/git/gettext.git
+    git_ref: v{{ version }}
+{% if source_gnulib == 'no' %}
+    git_depth: 0
+{% endif %}
+  # Just so we get a configure to diff against.
+  - url: https://ftp.gnu.org/pub/gnu/gettext/gettext-{{ pversion }}.tar.xz
+    sha256: {{ sha256 }}
+    folder: release-tarball-src
+{% else %}
+  - url: https://ftp.gnu.org/pub/gnu/gettext/gettext-{{ pversion }}.tar.xz
+    sha256: {{ sha256 }}
+{% endif %}
+    patches:
+      # See https://savannah.gnu.org/bugs/?59929: AC_INIT with proper package and version
+      - use-acinit-for-libtextstyle.patch
+      - 0000-Add-ax_with_curses.m4-and-try-to-use-it.patch
+      # - 0001-Mark-v-snprintf-as-available.patch                          # [win]
+      # - 0002-Prevent-libtool-from-worrying-about-dependent-librar.patch  # [win]
+      # - 0003-Fix-some-DLL-export-markings-in-libintl.patch               # [win]
+      # - 0004-Fix-quoting-when-invoking-windres.patch                     # [win]
+      # - 0005-CXXLD-is-not-a-thing.patch                                  # [win]
+      # - 0006-Fix-an-inconsistent-noreturn-marking-in-gettext-tool.patch  # [win]
+      # - 0007-Work-around-Unixisms-in-libgettextpo.patch                  # [win]
+      # - 0008-Add-missing-extern-C-protectors.patch                       # [win]
+      # - 0009-Use-the-C-hack-in-a-few-more-files.patch                    # [win]
+{% if from_git == 'no' %}
+{% if source_gnulib == 'yes' %}
+  - git_url: git://git.sv.gnu.org/gnulib.git
+    git_ref: 7397561e64f9b96a4a1638117ce18d06133a60f1
+    folder: gnulib
+{% endif %}
+{% endif %}
+
+build:
+  number: 2
+  skip: true          # [win]
+  run_exports:
+    # Seems pretty good: https://abi-laboratory.pro/tracker/timeline/gettext/
+    - {{ pin_subpackage('gettext') }}
+  env:
+{% if source_gnulib == 'yes' %}
+    - SKIP_GNULIB=
+{% else %}
+    - SKIP_GNULIB=--skip-gnulib
+{% endif %}
+
+requirements:
+  build:
+    - posix                              # [win]
+    - {{posix}}autoconf                  # [win]
+    - {{posix}}automake{{ am_version }}  # [win]
+    - {{posix}}libtool                   # [win]
+    - {{posix}}patch                     # [win]
+    - {{native}}binutils                 # [win]
+    - {{native}}crt-git                  # [win]
+    - {{ compiler('c') }}                # [not win]
+    - {{ compiler('cxx') }}              # [osx or not win]
+    - pkg-config                         # [not win]
+    - libtool                            # [not win]
+    - automake                           # [not win]
+    - autoconf                           # [not win]
+    - autoconf-archive                   # [not win]
+    - make                               # [unix]
+    - vs2015_win-64                      # [win]
+    - wget                               # [unix]
+    - patch                              # [unix]
+  host:
+    - ncurses                            # [not win]
+    - libiconv                           # [osx]
+    - libxml2 {{ libxml2 }}
+    - llvm-openmp                        # [osx]
+  run:
+    - libstdcxx-ng                       # [linux]
+    - _openmp_mutex                      # [linux]
+    - llvm-openmp                        # [osx]
+
+test:
+  commands:
+    {% set lib_idents = [ "gettextlib", "gettextpo", "gettextsrc" ] %}
+    {% set lib_idents = lib_idents + [ "intl" ] %}                         # [not linux]
+    {% for lib_ident in lib_idents %}
+    - test -f ${PREFIX}/lib/lib{{ lib_ident }}$SHLIB_EXT                   # [not win]
+    - if not exist %PREFIX%\Library\lib\{{ lib_ident }}.dll.lib exit /b 1  # [win]
+    - if not exist %PREFIX%\Library\bin\{{ lib_ident }}-*.dll exit /b 1    # [win]
+    {% endfor %}
+
+about:
+  home: https://www.gnu.org/software/gettext/
+  license: GPL-3.0-or-later
+  license_family: GPL
+  license_file: COPYING
+  summary: Internationalization package
+  description: |
+    GNU gettext is an important step for the GNU Translation Project, 
+    as it is an asset on which we may build many other steps. 
+    This package offers to programmers, translators, and even users, 
+    a well integrated set of tools and documentation. 
+    Specifically, the GNU gettext utilities are a set of tools 
+    that provides a framework to help other GNU packages produce multi-lingual messages. 
+    These tools include a set of conventions about how programs should be written 
+    to support message catalogs, a directory and file naming organization for the message catalogs themselves, 
+    a runtime library supporting the retrieval of translated messages, and a few stand-alone programs 
+    to massage in various ways the sets of translatable strings, or already translated strings.
+  doc_url: https://www.gnu.org/software/gettext/manual/gettext.html
+  dev_url: https://git.savannah.gnu.org/gitweb/?p=gettext.git
+
+extra:
+  recipe-maintainers:
+    - scopatz
+    - ocefpaf
