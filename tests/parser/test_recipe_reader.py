@@ -1359,6 +1359,7 @@ def test_contains_variable(file: str, var: str, expected: bool) -> None:
         ("simple-recipe.yaml", "zz_non_alpha_first", 42),
         ("simple-recipe.yaml", "name", "types-toml"),
         ("simple-recipe.yaml", "version", "0.10.8.6"),
+        ("jinja2_statements/furl.yaml", "skip_broken_tests", ["test_hosts", "test_netloc", "test_odd_urls"]),
         ("v1_format/v1_simple-recipe.yaml", "zz_non_alpha_first", 42),
         ("v1_format/v1_simple-recipe.yaml", "name", "types-toml"),
         ("v1_format/v1_simple-recipe.yaml", "version", "0.10.8.6"),
