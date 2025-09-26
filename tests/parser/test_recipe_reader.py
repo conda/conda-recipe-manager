@@ -1625,7 +1625,8 @@ def test_unsupported_jinja2_statements_parsing(
         cause = exc_info.value.__cause__
         assert isinstance(cause, ParsingJinjaException)
         assert str(cause) == expected_message
-    else:
-        rendered_file: Final[str] = f"jinja2_statements/{package_name}_rendered.yaml"
-        parser = load_recipe(file, RecipeReader)
-        assert parser.render() == load_file(rendered_file)
+        return
+
+    rendered_file: Final[str] = f"jinja2_statements/{package_name}_rendered.yaml"
+    parser = load_recipe(file, RecipeReader)
+    assert parser.render() == load_file(rendered_file)
