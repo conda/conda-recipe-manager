@@ -10,7 +10,7 @@ import pytest
 
 from conda_recipe_manager.parser._node_var import NodeVar
 from conda_recipe_manager.parser.enums import SchemaVersion
-from conda_recipe_manager.parser.exceptions import ParsingException, ParsingJinjaException
+from conda_recipe_manager.parser.exceptions import ParsingJinjaException
 from conda_recipe_manager.parser.recipe_parser import RecipeReader
 from conda_recipe_manager.types import JsonType, Primitives
 from tests.constants import SIMPLE_DESCRIPTION
@@ -1621,11 +1621,9 @@ def test_unsupported_jinja2_statements_parsing(
             "    - If using {% for %} statements, especially in testing logic, "
             "please consider using a test script instead.\n"
         )
-        with pytest.raises(ParsingException) as exc_info:
+        with pytest.raises(ParsingJinjaException) as e:
             load_recipe(file, RecipeReader)
-        cause = exc_info.value.__cause__
-        assert isinstance(cause, ParsingJinjaException)
-        assert str(cause) == expected_message
+        assert str(e.value) == expected_message
         return
 
     rendered_file: Final[str] = f"jinja2_statements/{package_name}_rendered.yaml"
