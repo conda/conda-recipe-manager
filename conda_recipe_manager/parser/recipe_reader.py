@@ -778,13 +778,17 @@ class RecipeReader(IsModifiable):
         try:
             self._private_init(content=content, internal_call=False)
         # If the expected exception is thrown, re-raise it.
-        except ParsingException:
+        except ParsingException as e:
+            log.exception(e)
             raise
         # If an unexpected exception is thrown, log the full chain of exceptions,
         # then re-raise the expected exception from it.
         except Exception as e0:  # pylint: disable=broad-exception-caught
-            log.exception(e0)
-            raise ParsingException() from e0
+            try:
+                raise ParsingException() from e0
+            except ParsingException as e1:
+                log.exception(e1)
+                raise
 
     @staticmethod
     def _canonical_sort_keys_comparison(n: Node, priority_tbl: dict[str, int]) -> int:
