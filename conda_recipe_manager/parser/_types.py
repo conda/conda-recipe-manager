@@ -206,9 +206,17 @@ class Regex:
 
     ## Jinja regular expressions ##
     JINJA_V0_SUB: Final[re.Pattern[str]] = re.compile(r"{{\s*" + _JINJA_VAR_FUNCTION_PATTERN + r"\s*}}")
+    # Detects multi-line JINJA statements.
+    # re.DOTALL is used to allow for multiline matches and '?' is used to make the quantifier '.+' non-greedy,
+    # allowing for the shortest possible match, in order to avoid matching all the way to the last JINJA statement
+    # in the file.
     JINJA_V0_MULTI_LINE: Final[re.Pattern[str]] = re.compile(
         r"^[ \t]*(?P<jinja>{%.+?%}|{#.+?#})" + _JINJA_OPTIONAL_EOL_COMMENT, flags=re.MULTILINE | re.DOTALL
     )
+    # Detects multi-line JINJA set statements.
+    # re.DOTALL and '.+?' are used for the same reasons as above.
+    # The named capture group 'jinja' is used to capture the JINJA statement,
+    # and allows for easier NodeVar construction.
     JINJA_V0_SET_MULTI_LINE: Final[re.Pattern[str]] = re.compile(
         r"^[ \t]*(?P<jinja>{%[ \t]*set[ \t]*"
         + _JINJA_VAR_FUNCTION_PATTERN
