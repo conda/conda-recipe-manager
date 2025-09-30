@@ -1,13 +1,18 @@
 {% set name = "TYPES-toml" %}
 {% set version = "0.10.8.6" %}
 {% set number = 42 %}
+{% set skip_broken_tests = [
+  "test_hosts",
+  "test_netloc",
+  "test_odd_urls"
+] %}
 
 package:
   name: {{ name|lower }}
   version: {{ version }}
 
 source:
-  url: https://pypi.io/packages/source/{{ name[0]|lower }}/{{ name|upper }}/{{ name[42] | lower}}-{{ version[7] }}.tar.gz
+  url: https://pypi.io/packages/source/{{ name[0]|lower }}/{{ name|upper }}/{{ name | lower}}-{{ version[7] }}.tar.gz
   sha256: 6d3ac79e36c9ee593c5d4fb33a50cca0e3adceb6ef5cff8b8e5aef67b4c4aaf2
 
 build:
@@ -57,6 +62,7 @@ requirements:
     - {{ name[-1] }}
     - {{ name[-10] }}
     - {{ name[-11] }}
+    - {{ skip_broken_tests | join(' or ') }}
 
 test:
   imports:

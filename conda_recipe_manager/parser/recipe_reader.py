@@ -14,6 +14,7 @@ from collections.abc import Callable
 from typing import Final, Optional, cast, no_type_check
 
 import yaml
+from jinja2 import Environment, StrictUndefined
 
 from conda_recipe_manager.parser._is_modifiable import IsModifiable
 from conda_recipe_manager.parser._node import CommentPosition, Node
@@ -47,7 +48,7 @@ from conda_recipe_manager.parser.exceptions import ParsingException, ParsingJinj
 from conda_recipe_manager.parser.selector_parser import SelectorParser
 from conda_recipe_manager.parser.types import TAB_AS_SPACES, TAB_SPACE_COUNT, MultilineVariant
 from conda_recipe_manager.parser.v0_recipe_formatter import V0RecipeFormatter
-from conda_recipe_manager.types import PRIMITIVES_TUPLE, JsonType, Primitives, SentinelType
+from conda_recipe_manager.types import PRIMITIVES_NO_NONE_TUPLE, PRIMITIVES_TUPLE, JsonType, Primitives, SentinelType
 from conda_recipe_manager.utils.cryptography.hashing import hash_str
 from conda_recipe_manager.utils.typing import optional_str
 
@@ -368,87 +369,6 @@ class RecipeReader(IsModifiable):
             case SchemaVersion.V1:
                 return 3, Regex.JINJA_V1_SUB
 
-    @staticmethod
-    def _set_key_and_matches(
-        key: str,
-    ) -> tuple[
-        str,
-        Optional[re.Match[str]],
-        Optional[re.Match[str]],
-        Optional[re.Match[str]],
-        Optional[re.Match[str]],
-        Optional[re.Match[str]],
-        Optional[re.Match[str]],
-        Optional[re.Match[str]],
-    ]:
-        """
-        Helper function for `_render_jinja_vars()` that takes a JINJA statement (string inside the braces) and attempts
-        to match and apply any currently supported "JINJA functions" to the statement.
-
-        :param key: Sanitized key to perform JINJA functions on.
-        :returns: The modified key, if any JINJA functions apply. Also returns any applicable match objects.
-        """
-
-        # Helper function that strips-out JINJA ops out of the string, `key`.
-        def _strip_op(k: str, m: Optional[re.Match[str]]) -> str:
-            if not m:
-                return k
-            return k.replace(m.group(), "").strip()
-
-        # Example: {{ name | lower }}
-        lower_match = Regex.JINJA_FUNCTION_LOWER.search(key)
-        key = _strip_op(key, lower_match)
-
-        # Example: {{ name | upper }}
-        upper_match = Regex.JINJA_FUNCTION_UPPER.search(key)
-        key = _strip_op(key, upper_match)
-
-        # Example: {{ name | replace('-', '_') }
-        replace_match = Regex.JINJA_FUNCTION_REPLACE.search(key)
-        key = _strip_op(key, replace_match)
-
-        # Example: {{ name | split('.') }
-        split_match = Regex.JINJA_FUNCTION_SPLIT.search(key)
-        # Example: {{ '.'.join(version.split(".")[:2]) }}
-        join_match = Regex.JINJA_FUNCTION_JOIN.search(key)
-
-        # Example: {{ name[0] }}
-        idx_match = Regex.JINJA_FUNCTION_IDX_ACCESS.search(key)
-        if idx_match:
-            key = key.replace(f"[{cast(str, idx_match.group(2))}]", "").strip()
-
-        # NOTE: `split` and `join` are special. `split` changes the type from a string to a list and `join` requires
-        # a list to work as expected. As a workaround, we only apply `split` if a `join` or `index` operation is
-        # present. Additionally, we only apply a `join` if a `split` is present.
-        if split_match and join_match:
-            key = _strip_op(key, split_match)
-            # Re-calculate the join's match now that `split` has been removed.
-            join_match = Regex.JINJA_FUNCTION_JOIN.search(key)
-            if join_match:
-                # If we are in the | form, remove the `join()` portion entirely
-                if join_match.groups()[0] is not None:
-                    key = _strip_op(key, join_match)
-                # If we are in the `.` form, extract the key from the `.join()` call.
-                else:
-                    key = join_match.group(5)
-            # This should not be possible, but we still want to guard against accidental list evaluation if a `join` is
-            # no longer possible.
-            else:
-                join_match = None
-                split_match = None
-        elif split_match and idx_match:
-            key = _strip_op(key, split_match)
-        else:
-            join_match = None
-            split_match = None
-
-        # Addition/concatenation. Note the key(s) will need to be evaluated later.
-        # Example: {{ build_number + 100 }}
-        # Example: {{ version + ".1" }}
-        add_concat_match = Regex.JINJA_FUNCTION_ADD_CONCAT.search(key)
-
-        return key, lower_match, upper_match, replace_match, split_match, join_match, idx_match, add_concat_match
-
     def _eval_var(self, key: str) -> JsonType:
         """
         Evaluates a known variable by name to a V0 JINJA variable or a V1 context variable.
@@ -464,33 +384,6 @@ class RecipeReader(IsModifiable):
                 return self._vars_tbl[key][0].get_value()
             case SchemaVersion.V1:
                 return self._vars_tbl[key][0].get_value()
-
-    def _eval_jinja_token(self, s: str) -> JsonType:
-        """
-        Given a string that matches one of the two groups in the `JINJA_FUNCTION_ADD_CONCAT` regex, evaluate the
-        string's intended value. NOTE: This does not invoke `eval()` for security reasons.
-
-        :param s: The string to evaluate.
-        :returns: The evaluated value of the string.
-        """
-        # Variable
-        if s in self._vars_tbl:
-            return self._eval_var(s)
-
-        # int
-        if s.isdigit():
-            return int(s)
-
-        # float
-        try:
-            return float(s)
-        except ValueError:
-            pass
-
-        # Strip outer quotes, if applicable (unrecognized variables will be treated as strings).
-        if s and s[0] == s[-1] and (s[0] == "'" or s[0] == '"'):
-            return s[1:-1]
-        return s
 
     def _render_jinja_vars(self, s: str) -> JsonType:
         # pylint: disable=too-complex
@@ -510,50 +403,20 @@ class RecipeReader(IsModifiable):
         # Search the string, replacing all substitutions we can recognize
         for match in cast(list[str], sub_regex.findall(s)):
             # The regex guarantees the string starts and ends with double braces
-            key = match[start_idx:-2].strip()
-            # Check for and interpret common JINJA functions
-            key, lower_match, upper_match, replace_match, split_match, join_match, idx_match, add_concat_match = (
-                RecipeReader._set_key_and_matches(key)
-            )
-
-            if add_concat_match:
-                lhs = self._eval_jinja_token(cast(str, add_concat_match.group(1)))
-                rhs = self._eval_jinja_token(cast(str, add_concat_match.group(2)))
-                # By default concat two strings and quote them. This ensures YAML will interpret the type correctly.
-                value = f'"{str(lhs) + str(rhs)}"'
-                # Otherwise, perform arithmetic addition, IFF both sides are numeric types.
-                if isinstance(lhs, (int, float)) and isinstance(rhs, (int, float)):
-                    value = str(lhs + rhs)
-                s = s.replace(match, value)
-            elif key in self._vars_tbl:
-                # Replace value as a string. Re-interpret the entire value before returning.
-                value = str(self._eval_var(key))
-                if Regex.JINJA_VAR_VALUE_TERNARY.match(value):
-                    value = "${{" + value + "}}"
-                if lower_match:
-                    value = value.lower()
-                if upper_match:
-                    value = value.upper()
-                # NOTE: We previously guarantee in `_set_key_and_matches()` that `split` is accompanied by a operation
-                # that will normalize it back to a string. But for this to work, we must perform the `split` before a
-                # `join` or an index access.
-                if split_match:
-                    value = value.split(split_match.group(2))  # type: ignore[assignment]
-                if join_match:
-                    # The index of the string that we join on changes depending on which form of the function is used.
-                    # NOTE: `.groups()` does not return the top-level 0th grouping, so the indices are 1-off.
-                    join_str_idx = 3 if join_match.groups()[2] is not None else 2
-                    value = join_match.group(join_str_idx).join(value)
-                if idx_match:
-                    idx = int(cast(str, idx_match.group(2)))
-                    # From our research, it looks like string indexing on JINJA variables is almost exclusively used
-                    # get the first character in a string. If the index is out of bounds, we will default to the
-                    # variable's value as a fall-back. Although rare, negative indexing is supported.
-                    if -len(value) <= idx < len(value):
-                        value = value[idx]
-                if replace_match:
-                    value = value.replace(replace_match.group(2), replace_match.group(3))
-                s = s.replace(match, value)
+            expression = match[start_idx:-2].strip()
+            context = {k: self.get_variable(k) for k in self._vars_tbl}
+            # If the expression can't be evaluated, skip it.
+            try:
+                env = Environment(undefined=StrictUndefined)  # type: ignore[misc]
+                compiled_expression = env.compile_expression(expression)
+                result = compiled_expression(**context)  # type: ignore[misc]
+            except Exception:  # pylint: disable=broad-exception-caught
+                continue
+            # Do not replace the match if the result is not a primitive type. None signals an undefined expression.
+            if not isinstance(result, PRIMITIVES_NO_NONE_TUPLE):  # type: ignore[misc]
+                continue
+            result = str(result)
+            s = s.replace(match, result)
 
         # If there is leading V0 (unescaped) JINJA that was not able to be fully rendered, it will not be able to be
         # parsed by PyYaml. So it is best to just return the value as a string, without evaluating the type (which, to
