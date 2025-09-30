@@ -40,15 +40,22 @@ def test_set_variable(file: str) -> None:
     parser.set_variable("zz_non_alpha_first", 24)
     # Ensure a missing variable gets added
     parser.set_variable("DNE", "The limit doesn't exist")
+    # Test adding lists
+    parser.set_variable("skip_broken_tests", ["test_hosts", "test_netloc", "test_odd_urls"])
+    parser.set_variable("int_list", [1, 2, 3])
     assert parser.is_modified()
     assert parser.list_variables() == [
         "zz_non_alpha_first",
         "name",
         "version",
         "DNE",
+        "skip_broken_tests",
+        "int_list",
     ]
     assert parser.get_variable("name") == "foobar"
     assert parser.get_variable("zz_non_alpha_first") == 24
+    assert parser.get_variable("skip_broken_tests") == ["test_hosts", "test_netloc", "test_odd_urls"]
+    assert parser.get_variable("int_list") == [1, 2, 3]
     assert parser.get_variable("DNE") == "The limit doesn't exist"
 
 
