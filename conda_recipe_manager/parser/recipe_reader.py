@@ -777,12 +777,12 @@ class RecipeReader(IsModifiable):
         """
         try:
             self._private_init(content=content, internal_call=False)
-        # If the expected exception is thrown, re-raise it.
+        # If the expected exception is thrown, log then raise it.
         except ParsingException as e:
             log.exception(e)
             raise
-        # If an unexpected exception is thrown, log the full chain of exceptions,
-        # then re-raise the expected exception from it.
+        # If an unexpected exception is thrown, raise the expected exception from it.
+        # Then log and raise.
         except Exception as e0:  # pylint: disable=broad-exception-caught
             try:
                 raise ParsingException() from e0
