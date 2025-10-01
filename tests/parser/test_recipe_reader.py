@@ -1600,30 +1600,38 @@ def test_calc_sha256(file: str, expected: str) -> None:
     assert parser.calc_sha256() == expected
 
 
+@pytest.mark.parametrize("force_remove_jinja", [True, False])
 @pytest.mark.parametrize(
     "package_name,exception,jinja_statement",
     [
         ("pdfium-binaries", True, "{% for each_header in headers %}"),  # for statement
-        ("gettext", True, "{% if from_git == 'yes' %}"),  # if statement
         ("furl", False, ""),  # multi-line and single-line set statements exclusively
     ],
 )
-def test_unsupported_jinja2_statements_parsing(package_name: str, exception: bool, jinja_statement: str) -> None:
+def test_unsupported_jinja2_statements_parsing(
+    package_name: str, exception: bool, jinja_statement: str, force_remove_jinja: bool
+) -> None:
     """
     Tests that the recipe parser correctly handles JINJA2 statements
 
     :param package_name: Name of the package to test
     :param exception: Whether an exception should be raised
     :param jinja_statement: The JINJA statement that caused the exception
+    :param force_remove_jinja: Whether to force remove JINJA statements from the recipe file.
+        If this is set to True,
+            then JINJA statements will be removed from the recipe file without checking if they are valid.
+        If this is set to False,
+            then JINJA statements will be checked for validity
+            and a ParsingJinjaException will be raised if they are invalid.
     """
     file: Final[str] = f"jinja2_statements/{package_name}.yaml"
 
-    if exception:
+    if exception and not force_remove_jinja:
         with pytest.raises(ParsingJinjaException) as e:
-            load_recipe(file, RecipeReader)
+            load_recipe(file, RecipeReader, force_remove_jinja)
         assert jinja_statement in str(e.value)
         return
 
     rendered_file: Final[str] = f"jinja2_statements/{package_name}_rendered.yaml"
-    parser = load_recipe(file, RecipeReader)
+    parser = load_recipe(file, RecipeReader, force_remove_jinja)
     assert parser.render() == load_file(rendered_file)

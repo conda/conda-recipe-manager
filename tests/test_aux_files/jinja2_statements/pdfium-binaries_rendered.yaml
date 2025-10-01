@@ -1,0 +1,89 @@
+{% set name = "pdfium-binaries" %}
+{% set version = "118.0.5975" %}
+{% set patch = version.split(".")[2] %}
+{% set headers = [
+  "fpdf_annot.h",
+  "fpdf_attachment.h",
+  "fpdf_catalog.h",
+  "fpdf_dataavail.h",
+  "fpdf_doc.h",
+  "fpdf_edit.h",
+  "fpdf_ext.h",
+  "fpdf_flatten.h",
+  "fpdf_formfill.h",
+  "fpdf_fwlevent.h",
+  "fpdf_javascript.h",
+  "fpdf_ppo.h",
+  "fpdf_progressive.h",
+  "fpdf_save.h",
+  "fpdf_searchex.h",
+  "fpdf_signature.h",
+  "fpdf_structtree.h",
+  "fpdf_sysfontinfo.h",
+  "fpdf_text.h",
+  "fpdf_thumbnail.h",
+  "fpdf_transformpage.h",
+  "fpdfview.h"
+] %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  url: https://github.com/bblanchon/{{ name }}/releases/download/chromium%2F{{ patch }}/{{ name.split('-')[0] }}-mac-arm64.tgz  # [osx and arm64]
+  sha256: e7b6e394544adaeb1ec4d1aaeffebf81b90199829c905c2d3668e05203f4eaa9  # [osx and arm64]
+  fn: {{ name }}-{{ version }}-osx-arm64.tgz  # [osx and arm64]
+  url: https://github.com/bblanchon/{{ name }}/releases/download/chromium%2F{{ patch }}/{{ name.split('-')[0] }}-mac-x64.tgz  # [osx and x86_64]
+  sha256: c3639b236f1a6f1a0db4d30abab63f6acb167eb5067701846e1c3dbe15aea2c1  # [osx and x86_64]
+  fn: {{ name }}-{{ version }}-osx-64.tgz  # [osx and x86_64]
+  url: https://github.com/bblanchon/{{ name }}/releases/download/chromium%2F{{ patch }}/{{ name.split('-')[0] }}-linux-x64.tgz  # [linux and x86_64]
+  sha256: 5faa540e7ec91a2cb4509fd113ad40807f6b8e3b8da758089040b77f024e8246  # [linux and x86_64]
+  fn: {{ name }}-{{ version }}-linux-64.tgz  # [linux and x86_64]
+  url: https://github.com/bblanchon/{{ name }}/releases/download/chromium%2F{{ patch }}/{{ name.split('-')[0] }}-linux-arm64.tgz  # [linux and aarch64]
+  sha256: 70fbd9b99e7655680606ac42bf2320d4291e6fabfba11c75f51c17d08844a247  # [linux and aarch64]
+  fn: {{ name }}-{{ version }}-linux-aarch64.tgz  # [linux and aarch64]
+  url: https://github.com/bblanchon/{{ name }}/releases/download/chromium%2F{{ patch }}/{{ name.split('-')[0] }}-win-x64.tgz  # [win]
+  sha256: 6801ce35274aafefb64ce92efefc8f3f514e2430889a5c47880eee555c9b540e  # [win]
+  fn: {{ name }}-{{ version }}-win-64.tgz  # [win]
+
+build:
+  number: 1
+  skip: true  # [linux and (s390x or ppc64le)]
+  missing_dso_whitelist:  # [linux]
+    - /lib64/libpthread.so.0  # [linux]
+    - /lib64/libm.so.6  # [linux]
+    - /lib64/libc.so.6  # [linux]
+    - /lib/libgcc_s.so.1  # [linux]
+    - /lib64/libgcc_s.so.1  # [linux]
+    - /lib64/ld-linux-aarch64.so.1  # [linux and aarch64]
+    - /lib64/ld-linux-x86-64.so.2  # [linux and x86_64]
+
+test:
+  commands:
+    - test -f $PREFIX/lib/libpdfium.dylib  # [osx]
+    - test -f $PREFIX/lib/libpdfium.so  # [linux]
+    - if not exist "%LIBRARY_LIB%\\pdfium.dll.lib" exit 1  # [win]
+    - if not exist "%LIBRARY_BIN%\\pdfium.dll" exit 1  # [win]
+    - test -f "${PREFIX}/include/{{ each_header }}"  # [osx or linux]
+    - if not exist "%LIBRARY_LIB%\\..\\include\\{{ each_header }}" exit 1  # [win]
+
+about:
+  home: https://github.com/bblanchon/pdfium-binaries
+  summary: repack of pdfium-binaries
+  description: |
+    Pre-compiled binaries of the PDFium library, an open-source library for PDF manipulation and rendering.
+    Note: This is a third-party repack. It includes builds from pdfium-binaries, but is managed by
+    Anaconda Inc., not bblanchon. Upstream also provide their own conda builds at bblanchon::pdfium-binaries.
+  license: Apache-2.0
+  license_family: Apache
+  license_file: LICENSE
+  doc_url: https://pdfium.googlesource.com/pdfium
+  dev_url: https://github.com/bblanchon/pdfium-binaries
+
+extra:
+  recipe-maintainers:
+    - boldorider4
+  skip-lints:
+    - missing_section
+    - invalid_url

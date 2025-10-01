@@ -49,15 +49,24 @@ def load_file(file: Path | str) -> str:
     return (get_test_path() / file).read_text(encoding="utf-8")
 
 
-def load_recipe(file_name: Path | str, recipe_parser: Type[R]) -> R:
+def load_recipe(file_name: Path | str, recipe_parser: Type[R], force_remove_jinja: bool = False) -> R:
     """
     Convenience function that simplifies initializing a recipe parser.
 
     :param file_name: File name of the test recipe to load
+    :param recipe_parser: Recipe parser class to use
+    :param force_remove_jinja: Whether to force remove JINJA statements from the recipe file.
+        If this is set to True,
+            then JINJA statements will be removed from the recipe file without checking if they are valid.
+        If this is set to False,
+            then JINJA statements will be checked for validity
+            and a ParsingJinjaException will be raised if they are invalid.
+    :raises ParsingJinjaException: If some JINJA statements are invalid and force_remove_jinja is set to False.
+    :raises ParsingException: If the recipe file cannot be parsed.
     :returns: RecipeParser instance, based on the file
     """
     recipe: Final[str] = load_file(file_name)
-    return recipe_parser(recipe)
+    return recipe_parser(recipe, force_remove_jinja)
 
 
 def load_recipe_graph(recipes: list[str]) -> RecipeGraph:

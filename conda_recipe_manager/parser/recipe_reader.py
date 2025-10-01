@@ -490,7 +490,9 @@ class RecipeReader(IsModifiable):
 
         traverse_all(self._root, _collect_selectors)
 
-    def _init_schema_version_and_sanitize_v0_yaml(self, internal_call: bool) -> tuple[str, int]:
+    def _init_schema_version_and_sanitize_v0_yaml(
+        self, internal_call: bool, force_remove_jinja: bool
+    ) -> tuple[str, int]:
         """
         Determines the schema version used by the recipe file and then runs a series of corrective actions to improve
         compatibility with V0 recipe files. Most of these actions involve handling common indentation issues, seen in
@@ -502,6 +504,13 @@ class RecipeReader(IsModifiable):
         function.
 
         :param internal_call: Whether this is an internal call. If true, we cannot determine if the recipe is V0 or V1.
+        :param force_remove_jinja: Whether to force remove JINJA statements from the recipe file.
+            If this is set to True,
+                then JINJA statements will be removed from the recipe file without checking if they are valid.
+            If this is set to False,
+                then JINJA statements will be checked for validity
+                and a ParsingJinjaException will be raised if they are invalid.
+        :raises ParsingJinjaException: If some JINJA statements are invalid and force_remove_jinja is set to False.
         :returns: A sanitized version of the original recipe file text and a counter indicating how many comments exist
             at the top of the recipe file, before the "canonical" variables section.
         """
@@ -529,10 +538,12 @@ class RecipeReader(IsModifiable):
             tof_comment_cntr += 1
 
         # Before removing JINJA statements, we need to ensure that they are all set statements.
-        set_statements: set[str] = {match.group() for match in Regex.JINJA_V0_SET_MULTI_LINE.finditer(fmt_str)}
-        for match in Regex.JINJA_V0_MULTI_LINE.finditer(fmt_str):
-            if match.group() not in set_statements:
-                raise ParsingJinjaException(match.group())
+        # Unless we are forcefully removing JINJA statements.
+        if not force_remove_jinja:
+            set_statements: set[str] = {match.group() for match in Regex.JINJA_V0_SET_MULTI_LINE.finditer(fmt_str)}
+            for match in Regex.JINJA_V0_MULTI_LINE.finditer(fmt_str):
+                if match.group() not in set_statements:
+                    raise ParsingJinjaException(match.group())
 
         # Replace all JINJA lines and fix excessive indentation. Then traverse line-by-line.
         sanitized_yaml_unfixed: Final = Regex.JINJA_V0_MULTI_LINE.sub("", fmt_str)
@@ -543,13 +554,20 @@ class RecipeReader(IsModifiable):
 
         return str(sanitized_fmt), tof_comment_cntr
 
-    def _private_init(self, content: str, internal_call: bool) -> None:
+    def _private_init(self, content: str, internal_call: bool, force_remove_jinja: bool = False) -> None:
         """
         Private constructor for internal RecipeReader use. This constructor is called by `__init__()` and
         `_create_private_recipe_reader()`, with internal_call set to False and True, respectively.
 
         :param content: conda-build formatted recipe file, as a single text string.
         :param internal_call: Whether this is an internal call. If true, we cannot determine if the recipe is V0 or V1.
+        :param force_remove_jinja: Whether to force remove JINJA statements from the recipe file.
+            If this is set to True,
+                then JINJA statements will be removed from the recipe file without checking if they are valid.
+            If this is set to False,
+                then JINJA statements will be checked for validity
+                and a ParsingJinjaException will be raised if they are invalid.
+        :raises ParsingJinjaException: If some JINJA statements are invalid and force_remove_jinja is set to False.
         """
         super().__init__()
         # The initial, raw, text is preserved for diffing and debugging purposes
@@ -557,7 +575,9 @@ class RecipeReader(IsModifiable):
         # See https://mypy.readthedocs.io/en/stable/final_attrs.html#syntax-variants
         self._init_content: str = content
 
-        sanitized_yaml, tof_comment_cntr = self._init_schema_version_and_sanitize_v0_yaml(internal_call)
+        sanitized_yaml, tof_comment_cntr = self._init_schema_version_and_sanitize_v0_yaml(
+            internal_call, force_remove_jinja
+        )
 
         # Root of the parse tree
         self._root = Node(value=ROOT_NODE_VALUE)
@@ -631,15 +651,21 @@ class RecipeReader(IsModifiable):
         # This table will have to be re-built or modified when the tree is modified with `patch()`.
         self._rebuild_selectors()
 
-    def __init__(self, content: str):  # pylint: disable=super-init-not-called
+    def __init__(self, content: str, force_remove_jinja: bool = False):  # pylint: disable=super-init-not-called
         """
         Constructs a RecipeReader instance.
 
         :param content: conda-build formatted recipe file, as a single text string.
+        :param force_remove_jinja: Whether to force remove JINJA statements from the recipe file.
+            If this is set to True,
+                then JINJA statements will be removed from the recipe file without checking if they are valid.
+            If this is set to False,
+                then JINJA statements will be checked for validity
+                and a ParsingJinjaException will be raised if they are invalid.
         :raises ParsingException: In the event that the recipe parser was unable to be parsed.
         """
         try:
-            self._private_init(content=content, internal_call=False)
+            self._private_init(content=content, internal_call=False, force_remove_jinja=force_remove_jinja)
         # If the expected exception is thrown, log then raise it.
         except ParsingException as e:
             log.exception(e)

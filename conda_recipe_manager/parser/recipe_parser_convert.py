@@ -32,18 +32,26 @@ class RecipeParserConvert(RecipeParserDeps):
     # instance allocated for all converter-parsers that are initialized.
     _SPDX_UTILS: Final = SpdxUtils()
 
-    def __init__(self, content: str):
+    def __init__(self, content: str, force_remove_jinja: bool = False):
         """
         Constructs a convertible recipe object. This extension of the parser class keeps a modified copy of the original
         recipe to work on and tracks some debugging state.
 
         :param content: conda-build formatted recipe file, as a single text string.
+        :param force_remove_jinja: Whether to force remove JINJA statements from the recipe file.
+            If this is set to True,
+                then JINJA statements will be removed from the recipe file without checking if they are valid.
+            If this is set to False,
+                then JINJA statements will be checked for validity
+                and a ParsingJinjaException will be raised if they are invalid.
+        :raises ParsingJinjaException: If some JINJA statements are invalid and force_remove_jinja is set to False.
+        :raises ParsingException: If the recipe file cannot be parsed.
         """
-        super().__init__(content)
+        super().__init__(content, force_remove_jinja)
         # `copy.deepcopy()` produced some bizarre artifacts, namely single-line comments were being incorrectly rendered
         # as list members. Although inefficient, we have tests that validate round-tripping the parser and there
         # is no development cost in utilizing tools we already must maintain.
-        self._v1_recipe: RecipeParserDeps = RecipeParserDeps(self.render())
+        self._v1_recipe: RecipeParserDeps = RecipeParserDeps(self.render(), force_remove_jinja)
 
         self._msg_tbl = MessageTable()
 

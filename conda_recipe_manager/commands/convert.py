@@ -20,7 +20,7 @@ from conda_recipe_manager.commands.utils.print import print_err, print_out
 from conda_recipe_manager.commands.utils.types import CONTEXT_SETTINGS, ExitCode
 from conda_recipe_manager.parser._message_table import MessageCategory, MessageTable
 from conda_recipe_manager.parser.enums import SchemaVersion
-from conda_recipe_manager.parser.exceptions import ParsingException
+from conda_recipe_manager.parser.exceptions import ParsingException, ParsingJinjaException
 from conda_recipe_manager.parser.recipe_parser_convert import RecipeParserConvert
 from conda_recipe_manager.parser.types import V0_FORMAT_RECIPE_FILE_NAME, V1_FORMAT_RECIPE_FILE_NAME
 
@@ -131,6 +131,24 @@ def convert_file(file_path: Path, output: Optional[Path], print_output: bool, de
     parser: RecipeParserConvert
     try:
         parser = RecipeParserConvert(recipe_content)
+    except ParsingJinjaException:
+        # If parsing fails because of unsupported JINJA statements, warn the user and continue.
+        print_err(
+            "WARNING: The recipe file contains unsupported JINJA statements. "
+            "They will be removed and parsing will be attempted again.",
+            print_enabled=print_output,
+        )
+        try:
+            parser = RecipeParserConvert(recipe_content, force_remove_jinja=True)
+        except ParsingException as e:
+            return _record_unrecoverable_failure(
+                conversion_result,
+                ExitCode.PARSE_EXCEPTION,
+                "EXCEPTION: An exception occurred while parsing the recipe file",
+                print_output,
+                debug,
+                e,
+            )
     except ParsingException as e:
         return _record_unrecoverable_failure(
             conversion_result,
