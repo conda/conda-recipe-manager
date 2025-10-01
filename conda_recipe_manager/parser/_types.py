@@ -262,6 +262,10 @@ class Regex:
         JINJA_FUNCTION_MATCH,
     }
 
+    # Matches a JINJA variable's value that contains a ternary operation. Example value: 'm2-' if win else ''
+    # Full support for evaluating is tracked in #285, but it is unclear if support for this in V1 is needed.
+    JINJA_VAR_VALUE_TERNARY: Final[re.Pattern[str]] = re.compile(r"^.*\s+if\s+(\w|-)+\s+else\s+.*")
+
     SELECTOR: Final[re.Pattern[str]] = re.compile(r"\[.*\]")
     # Detects the 6 common variants (3 |'s, 3 >'s). See this guide for more info:
     #   https://stackoverflow.com/questions/3790454/how-do-i-break-a-string-in-yaml-over-multiple-lines/21699210

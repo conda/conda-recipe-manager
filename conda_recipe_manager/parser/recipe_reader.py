@@ -416,6 +416,8 @@ class RecipeReader(IsModifiable):
             if not isinstance(result, PRIMITIVES_NO_NONE_TUPLE):  # type: ignore[misc]
                 continue
             result = str(result)
+            if Regex.JINJA_VAR_VALUE_TERNARY.match(result):
+                result = "${{" + result + "}}"
             s = s.replace(match, result)
 
         # If there is leading V0 (unescaped) JINJA that was not able to be fully rendered, it will not be able to be
