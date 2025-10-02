@@ -14,6 +14,7 @@ from collections.abc import Callable
 from typing import Final, Optional, cast, no_type_check
 
 import yaml
+from jinja2 import Environment, StrictUndefined
 
 from conda_recipe_manager.parser._is_modifiable import IsModifiable
 from conda_recipe_manager.parser._node import CommentPosition, Node
@@ -43,11 +44,11 @@ from conda_recipe_manager.parser.dependency import (
     dependency_section_to_str,
 )
 from conda_recipe_manager.parser.enums import SchemaVersion
-from conda_recipe_manager.parser.exceptions import ParsingException
+from conda_recipe_manager.parser.exceptions import ParsingException, ParsingJinjaException
 from conda_recipe_manager.parser.selector_parser import SelectorParser
 from conda_recipe_manager.parser.types import TAB_AS_SPACES, TAB_SPACE_COUNT, MultilineVariant
 from conda_recipe_manager.parser.v0_recipe_formatter import V0RecipeFormatter
-from conda_recipe_manager.types import PRIMITIVES_TUPLE, JsonType, Primitives, SentinelType
+from conda_recipe_manager.types import PRIMITIVES_NO_NONE_TUPLE, PRIMITIVES_TUPLE, JsonType, Primitives, SentinelType
 from conda_recipe_manager.utils.cryptography.hashing import hash_str
 from conda_recipe_manager.utils.typing import optional_str
 
@@ -368,87 +369,6 @@ class RecipeReader(IsModifiable):
             case SchemaVersion.V1:
                 return 3, Regex.JINJA_V1_SUB
 
-    @staticmethod
-    def _set_key_and_matches(
-        key: str,
-    ) -> tuple[
-        str,
-        Optional[re.Match[str]],
-        Optional[re.Match[str]],
-        Optional[re.Match[str]],
-        Optional[re.Match[str]],
-        Optional[re.Match[str]],
-        Optional[re.Match[str]],
-        Optional[re.Match[str]],
-    ]:
-        """
-        Helper function for `_render_jinja_vars()` that takes a JINJA statement (string inside the braces) and attempts
-        to match and apply any currently supported "JINJA functions" to the statement.
-
-        :param key: Sanitized key to perform JINJA functions on.
-        :returns: The modified key, if any JINJA functions apply. Also returns any applicable match objects.
-        """
-
-        # Helper function that strips-out JINJA ops out of the string, `key`.
-        def _strip_op(k: str, m: Optional[re.Match[str]]) -> str:
-            if not m:
-                return k
-            return k.replace(m.group(), "").strip()
-
-        # Example: {{ name | lower }}
-        lower_match = Regex.JINJA_FUNCTION_LOWER.search(key)
-        key = _strip_op(key, lower_match)
-
-        # Example: {{ name | upper }}
-        upper_match = Regex.JINJA_FUNCTION_UPPER.search(key)
-        key = _strip_op(key, upper_match)
-
-        # Example: {{ name | replace('-', '_') }
-        replace_match = Regex.JINJA_FUNCTION_REPLACE.search(key)
-        key = _strip_op(key, replace_match)
-
-        # Example: {{ name | split('.') }
-        split_match = Regex.JINJA_FUNCTION_SPLIT.search(key)
-        # Example: {{ '.'.join(version.split(".")[:2]) }}
-        join_match = Regex.JINJA_FUNCTION_JOIN.search(key)
-
-        # Example: {{ name[0] }}
-        idx_match = Regex.JINJA_FUNCTION_IDX_ACCESS.search(key)
-        if idx_match:
-            key = key.replace(f"[{cast(str, idx_match.group(2))}]", "").strip()
-
-        # NOTE: `split` and `join` are special. `split` changes the type from a string to a list and `join` requires
-        # a list to work as expected. As a workaround, we only apply `split` if a `join` or `index` operation is
-        # present. Additionally, we only apply a `join` if a `split` is present.
-        if split_match and join_match:
-            key = _strip_op(key, split_match)
-            # Re-calculate the join's match now that `split` has been removed.
-            join_match = Regex.JINJA_FUNCTION_JOIN.search(key)
-            if join_match:
-                # If we are in the | form, remove the `join()` portion entirely
-                if join_match.groups()[0] is not None:
-                    key = _strip_op(key, join_match)
-                # If we are in the `.` form, extract the key from the `.join()` call.
-                else:
-                    key = join_match.group(5)
-            # This should not be possible, but we still want to guard against accidental list evaluation if a `join` is
-            # no longer possible.
-            else:
-                join_match = None
-                split_match = None
-        elif split_match and idx_match:
-            key = _strip_op(key, split_match)
-        else:
-            join_match = None
-            split_match = None
-
-        # Addition/concatenation. Note the key(s) will need to be evaluated later.
-        # Example: {{ build_number + 100 }}
-        # Example: {{ version + ".1" }}
-        add_concat_match = Regex.JINJA_FUNCTION_ADD_CONCAT.search(key)
-
-        return key, lower_match, upper_match, replace_match, split_match, join_match, idx_match, add_concat_match
-
     def _eval_var(self, key: str) -> JsonType:
         """
         Evaluates a known variable by name to a V0 JINJA variable or a V1 context variable.
@@ -464,33 +384,6 @@ class RecipeReader(IsModifiable):
                 return self._vars_tbl[key][0].get_value()
             case SchemaVersion.V1:
                 return self._vars_tbl[key][0].get_value()
-
-    def _eval_jinja_token(self, s: str) -> JsonType:
-        """
-        Given a string that matches one of the two groups in the `JINJA_FUNCTION_ADD_CONCAT` regex, evaluate the
-        string's intended value. NOTE: This does not invoke `eval()` for security reasons.
-
-        :param s: The string to evaluate.
-        :returns: The evaluated value of the string.
-        """
-        # Variable
-        if s in self._vars_tbl:
-            return self._eval_var(s)
-
-        # int
-        if s.isdigit():
-            return int(s)
-
-        # float
-        try:
-            return float(s)
-        except ValueError:
-            pass
-
-        # Strip outer quotes, if applicable (unrecognized variables will be treated as strings).
-        if s and s[0] == s[-1] and (s[0] == "'" or s[0] == '"'):
-            return s[1:-1]
-        return s
 
     def _render_jinja_vars(self, s: str) -> JsonType:
         # pylint: disable=too-complex
@@ -510,50 +403,24 @@ class RecipeReader(IsModifiable):
         # Search the string, replacing all substitutions we can recognize
         for match in cast(list[str], sub_regex.findall(s)):
             # The regex guarantees the string starts and ends with double braces
-            key = match[start_idx:-2].strip()
-            # Check for and interpret common JINJA functions
-            key, lower_match, upper_match, replace_match, split_match, join_match, idx_match, add_concat_match = (
-                RecipeReader._set_key_and_matches(key)
-            )
-
-            if add_concat_match:
-                lhs = self._eval_jinja_token(cast(str, add_concat_match.group(1)))
-                rhs = self._eval_jinja_token(cast(str, add_concat_match.group(2)))
-                # By default concat two strings and quote them. This ensures YAML will interpret the type correctly.
-                value = f'"{str(lhs) + str(rhs)}"'
-                # Otherwise, perform arithmetic addition, IFF both sides are numeric types.
-                if isinstance(lhs, (int, float)) and isinstance(rhs, (int, float)):
-                    value = str(lhs + rhs)
-                s = s.replace(match, value)
-            elif key in self._vars_tbl:
-                # Replace value as a string. Re-interpret the entire value before returning.
-                value = str(self._eval_var(key))
-                if Regex.JINJA_VAR_VALUE_TERNARY.match(value):
-                    value = "${{" + value + "}}"
-                if lower_match:
-                    value = value.lower()
-                if upper_match:
-                    value = value.upper()
-                # NOTE: We previously guarantee in `_set_key_and_matches()` that `split` is accompanied by a operation
-                # that will normalize it back to a string. But for this to work, we must perform the `split` before a
-                # `join` or an index access.
-                if split_match:
-                    value = value.split(split_match.group(2))  # type: ignore[assignment]
-                if join_match:
-                    # The index of the string that we join on changes depending on which form of the function is used.
-                    # NOTE: `.groups()` does not return the top-level 0th grouping, so the indices are 1-off.
-                    join_str_idx = 3 if join_match.groups()[2] is not None else 2
-                    value = join_match.group(join_str_idx).join(value)
-                if idx_match:
-                    idx = int(cast(str, idx_match.group(2)))
-                    # From our research, it looks like string indexing on JINJA variables is almost exclusively used
-                    # get the first character in a string. If the index is out of bounds, we will default to the
-                    # variable's value as a fall-back. Although rare, negative indexing is supported.
-                    if -len(value) <= idx < len(value):
-                        value = value[idx]
-                if replace_match:
-                    value = value.replace(replace_match.group(2), replace_match.group(3))
-                s = s.replace(match, value)
+            expression = match[start_idx:-2].strip()
+            context = {k: self.get_variable(k) for k in self._vars_tbl}
+            # If the expression can't be evaluated, skip it.
+            try:
+                env = Environment(undefined=StrictUndefined)  # type: ignore[misc]
+                compiled_expression = env.compile_expression(expression)
+                result = compiled_expression(**context)  # type: ignore[misc]
+            except Exception:  # pylint: disable=broad-exception-caught
+                log.warning("The recipe parser was unable to evaluate the JINJA expression: %s", expression)
+                continue
+            # Do not replace the match if the result is not a primitive type. None signals an undefined expression.
+            if not isinstance(result, PRIMITIVES_NO_NONE_TUPLE):  # type: ignore[misc]
+                log.warning("The recipe parser was unable to evaluate the JINJA expression: %s", expression)
+                continue
+            result = str(result)
+            if Regex.JINJA_VAR_VALUE_TERNARY.match(result):
+                result = "${{" + result + "}}"
+            s = s.replace(match, result)
 
         # If there is leading V0 (unescaped) JINJA that was not able to be fully rendered, it will not be able to be
         # parsed by PyYaml. So it is best to just return the value as a string, without evaluating the type (which, to
@@ -573,9 +440,12 @@ class RecipeReader(IsModifiable):
         match self._schema_version:
             case SchemaVersion.V0:
                 # Find all the set statements and record the values
-                for line in cast(list[str], Regex.JINJA_V0_SET_LINE.findall(self._init_content)):
-                    key = line[line.find("set") + len("set") : line.find("=")].strip()
-                    value: str | JsonType = line[line.find("=") + len("=") : line.find("%}")].strip()
+                for set_match in cast(list[re.Match[str]], Regex.JINJA_V0_SET_MULTI_LINE.finditer(self._init_content)):
+                    jinja_match: str = set_match.group("jinja")
+                    key = jinja_match[jinja_match.find("set") + len("set") : jinja_match.find("=")].strip()
+                    value: str | JsonType = jinja_match[
+                        jinja_match.find("=") + len("=") : jinja_match.find("%}")
+                    ].strip()
                     # Fall-back to string interpretation.
                     # TODO: Ideally we use `_parse_yaml()` in the future. However, as discovered in the work to solve
                     # issue #366, that is easier said than done. `_parse_yaml()` was never expected to run on V0 JINJA
@@ -586,7 +456,9 @@ class RecipeReader(IsModifiable):
                         value = cast(JsonType, ast.literal_eval(cast(str, value)))
                     except Exception:  # pylint: disable=broad-exception-caught
                         value = str(value)
-                    node_var = NodeVar(value, RecipeReader._parse_trailing_comment(line))
+                    raw_comment: Optional[str] = set_match.group("comment")
+                    comment: Optional[str] = raw_comment.rstrip() if isinstance(raw_comment, str) else None
+                    node_var = NodeVar(value, comment)
                     # Tracks multiple definitions. In the wild, this is rare, but does occur in the context of
                     # concatenating strings together.
                     if key not in self._vars_tbl:
@@ -622,7 +494,9 @@ class RecipeReader(IsModifiable):
 
         traverse_all(self._root, _collect_selectors)
 
-    def _init_schema_version_and_sanitize_v0_yaml(self, internal_call: bool) -> tuple[str, int]:
+    def _init_schema_version_and_sanitize_v0_yaml(
+        self, internal_call: bool, force_remove_jinja: bool
+    ) -> tuple[str, int]:
         """
         Determines the schema version used by the recipe file and then runs a series of corrective actions to improve
         compatibility with V0 recipe files. Most of these actions involve handling common indentation issues, seen in
@@ -634,6 +508,13 @@ class RecipeReader(IsModifiable):
         function.
 
         :param internal_call: Whether this is an internal call. If true, we cannot determine if the recipe is V0 or V1.
+        :param force_remove_jinja: Whether to force remove unsupported JINJA statements from the recipe file.
+            If this is set to True,
+                then unsupported JINJA statements will silently be removed from the recipe file.
+            If this is set to False,
+                then unsupported JINJA statements will trigger a ParsingJinjaException.
+        :raises ParsingJinjaException: If unsupported JINJA statements are present
+            and force_remove_jinja is set to False.
         :returns: A sanitized version of the original recipe file text and a counter indicating how many comments exist
             at the top of the recipe file, before the "canonical" variables section.
         """
@@ -660,8 +541,16 @@ class RecipeReader(IsModifiable):
         while fmt_str.splitlines()[tof_comment_cntr].startswith("#"):
             tof_comment_cntr += 1
 
+        # Before removing JINJA statements, we need to ensure that they are all set statements.
+        # Unless we are forcefully removing JINJA statements.
+        if not force_remove_jinja:
+            set_statements: set[str] = {match.group() for match in Regex.JINJA_V0_SET_MULTI_LINE.finditer(fmt_str)}
+            for match in Regex.JINJA_V0_MULTI_LINE.finditer(fmt_str):
+                if match.group() not in set_statements:
+                    raise ParsingJinjaException(match.group())
+
         # Replace all JINJA lines and fix excessive indentation. Then traverse line-by-line.
-        sanitized_yaml_unfixed: Final = Regex.JINJA_V0_LINE.sub("", fmt_str)
+        sanitized_yaml_unfixed: Final = Regex.JINJA_V0_MULTI_LINE.sub("", fmt_str)
         # We then must call for a second kind of text formatting, now that the JINJA has been removed.
         sanitized_fmt = V0RecipeFormatter(sanitized_yaml_unfixed)
         if not sanitized_fmt.fix_excessive_indentation():
@@ -669,13 +558,20 @@ class RecipeReader(IsModifiable):
 
         return str(sanitized_fmt), tof_comment_cntr
 
-    def _private_init(self, content: str, internal_call: bool) -> None:
+    def _private_init(self, content: str, internal_call: bool, force_remove_jinja: bool = False) -> None:
         """
         Private constructor for internal RecipeReader use. This constructor is called by `__init__()` and
         `_create_private_recipe_reader()`, with internal_call set to False and True, respectively.
 
         :param content: conda-build formatted recipe file, as a single text string.
         :param internal_call: Whether this is an internal call. If true, we cannot determine if the recipe is V0 or V1.
+        :param force_remove_jinja: Whether to force remove unsupported JINJA statements from the recipe file.
+            If this is set to True,
+                then unsupported JINJA statements will silently be removed from the recipe file.
+            If this is set to False,
+                then unsupported JINJA statements will trigger a ParsingJinjaException.
+        :raises ParsingJinjaException: If unsupported JINJA statements are present
+            and force_remove_jinja is set to False.
         """
         super().__init__()
         # The initial, raw, text is preserved for diffing and debugging purposes
@@ -683,7 +579,9 @@ class RecipeReader(IsModifiable):
         # See https://mypy.readthedocs.io/en/stable/final_attrs.html#syntax-variants
         self._init_content: str = content
 
-        sanitized_yaml, tof_comment_cntr = self._init_schema_version_and_sanitize_v0_yaml(internal_call)
+        sanitized_yaml, tof_comment_cntr = self._init_schema_version_and_sanitize_v0_yaml(
+            internal_call, force_remove_jinja
+        )
 
         # Root of the parse tree
         self._root = Node(value=ROOT_NODE_VALUE)
@@ -757,22 +655,34 @@ class RecipeReader(IsModifiable):
         # This table will have to be re-built or modified when the tree is modified with `patch()`.
         self._rebuild_selectors()
 
-    def __init__(self, content: str):  # pylint: disable=super-init-not-called
+    def __init__(self, content: str, force_remove_jinja: bool = False):  # pylint: disable=super-init-not-called
         """
         Constructs a RecipeReader instance.
 
         :param content: conda-build formatted recipe file, as a single text string.
-        :raises ParsingException: In the event that the recipe parser was unable to be parsed.
+        :param force_remove_jinja: Whether to force remove unsupported JINJA statements from the recipe file.
+            If this is set to True,
+                then unsupported JINJA statements will silently be removed from the recipe file.
+            If this is set to False,
+                then unsupported JINJA statements will trigger a ParsingJinjaException.
+        :raises ParsingJinjaException: If unsupported JINJA statements are present
+            and force_remove_jinja is set to False.
+        :raises ParsingException: If the recipe file cannot be parsed for an unknown reason.
         """
         try:
-            try:
-                self._private_init(content=content, internal_call=False)
-            except Exception as e0:  # pylint: disable=broad-exception-caught
-                raise ParsingException() from e0
-        except ParsingException as e1:
-            # Log the full chain of exceptions, then re-raise the expected exception.
-            log.exception(e1)
+            self._private_init(content=content, internal_call=False, force_remove_jinja=force_remove_jinja)
+        # If the expected exception is thrown, log then raise it.
+        except ParsingException as e:
+            log.exception(e)
             raise
+        # If an unexpected exception is thrown, raise the expected exception from it.
+        # Then log and raise.
+        except Exception as e0:  # pylint: disable=broad-exception-caught
+            try:
+                raise ParsingException() from e0
+            except ParsingException as e1:
+                log.exception(e1)
+                raise
 
     @staticmethod
     def _canonical_sort_keys_comparison(n: Node, priority_tbl: dict[str, int]) -> int:

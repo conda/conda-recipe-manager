@@ -301,6 +301,14 @@ def test_pre_process_recipe_text(input_file: str, expected_file: str) -> None:
         #        "A key item had a selector at: /outputs/0/build/ignore_run_exports",
         #    ],
         # ),
+        # Test JINJA2 lists conversion to context objects
+        (
+            "jinja2_statements/furl.yaml",
+            [],
+            [
+                "Field at `/about/license_family` is no longer supported.",
+            ],
+        ),
     ],
 )
 def test_render_to_v1_recipe_format(file: str, errors: list[str], warnings: list[str]) -> None:

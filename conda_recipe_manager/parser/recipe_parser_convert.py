@@ -19,7 +19,7 @@ from conda_recipe_manager.parser.enums import SchemaVersion, SelectorConflictMod
 from conda_recipe_manager.parser.recipe_parser import RecipeParser
 from conda_recipe_manager.parser.recipe_parser_deps import RecipeParserDeps
 from conda_recipe_manager.parser.types import CURRENT_RECIPE_SCHEMA_FORMAT
-from conda_recipe_manager.types import JsonPatchType, JsonType, Primitives, SentinelType
+from conda_recipe_manager.types import PRIMITIVES_NO_NONE_TUPLE, JsonPatchType, JsonType, PrimitivesNoNone, SentinelType
 
 
 class RecipeParserConvert(RecipeParserDeps):
@@ -32,18 +32,27 @@ class RecipeParserConvert(RecipeParserDeps):
     # instance allocated for all converter-parsers that are initialized.
     _SPDX_UTILS: Final = SpdxUtils()
 
-    def __init__(self, content: str):
+    def __init__(self, content: str, force_remove_jinja: bool = False):
         """
         Constructs a convertible recipe object. This extension of the parser class keeps a modified copy of the original
         recipe to work on and tracks some debugging state.
 
         :param content: conda-build formatted recipe file, as a single text string.
+        :param force_remove_jinja: Whether to force remove unsupported JINJA statements from the recipe file.
+            This flag exists to allow `crm convert` to attempt an upgrade with warnings instead of failing.
+            If this is set to True,
+                then unsupported JINJA statements will silently be removed from the recipe file.
+            If this is set to False,
+                then unsupported JINJA statements will trigger a ParsingJinjaException.
+        :raises ParsingJinjaException: If unsupported JINJA statements are present
+            and force_remove_jinja is set to False.
+        :raises ParsingException: If the recipe file cannot be parsed for an unknown reason.
         """
-        super().__init__(content)
+        super().__init__(content, force_remove_jinja)
         # `copy.deepcopy()` produced some bizarre artifacts, namely single-line comments were being incorrectly rendered
         # as list members. Although inefficient, we have tests that validate round-tripping the parser and there
         # is no development cost in utilizing tools we already must maintain.
-        self._v1_recipe: RecipeParserDeps = RecipeParserDeps(self.render())
+        self._v1_recipe: RecipeParserDeps = RecipeParserDeps(self.render(), force_remove_jinja)
 
         self._msg_tbl = MessageTable()
 
@@ -149,7 +158,7 @@ class RecipeParserConvert(RecipeParserDeps):
         """
         # Convert the JINJA variable table to a `context` section. Empty tables still add the `context` section for
         # future developers' convenience.
-        context_obj: dict[str, Primitives] = {}
+        context_obj: dict[str, PrimitivesNoNone | list[PrimitivesNoNone]] = {}
         var_comments: dict[str, str] = {}
         # TODO Add selectors support? (I don't remember if V1 allows for selectors in `/context`)
         for name, node_vars in self._v1_recipe._vars_tbl.items():  # pylint: disable=protected-access
@@ -161,11 +170,17 @@ class RecipeParserConvert(RecipeParserDeps):
                 continue
 
             node_var = node_vars[0]
-            value = node_var.get_value()
+            raw_value = node_var.get_value()
             # Filter-out any value not covered in the V1 format
-            if not isinstance(value, (str, int, float, bool)):
+            if not isinstance(raw_value, (*PRIMITIVES_NO_NONE_TUPLE, list)):
                 self._msg_tbl.add_message(MessageCategory.WARNING, f"The variable `{name}` is an unsupported type.")
                 continue
+            if isinstance(raw_value, list) and not all(
+                isinstance(item, PRIMITIVES_NO_NONE_TUPLE) for item in raw_value
+            ):
+                self._msg_tbl.add_message(MessageCategory.WARNING, f"The variable `{name}` is an unsupported type.")
+                continue
+            value = cast(PrimitivesNoNone | list[PrimitivesNoNone], raw_value)
 
             # Track comments
             rendered_comment = node_var.render_comment()
@@ -212,16 +227,16 @@ class RecipeParserConvert(RecipeParserDeps):
         # encapsulations.
         jinja_sub_locations: Final[set[str]] = set(self._v1_recipe.search(Regex.JINJA_V0_SUB))
         for path in jinja_sub_locations:
-            value = self._v1_recipe.get_value(path)
+            jinja_sub_value = self._v1_recipe.get_value(path)
             # Values that match the regex should only be strings. This prevents crashes that should not occur.
-            if not isinstance(value, str):
+            if not isinstance(jinja_sub_value, str):
                 self._msg_tbl.add_message(
-                    MessageCategory.WARNING, f"A non-string value was found as a JINJA substitution: {value}"
+                    MessageCategory.WARNING, f"A non-string value was found as a JINJA substitution: {jinja_sub_value}"
                 )
                 continue
             # Safely replace `{{` but not any existing `${{` instances
-            value = Regex.JINJA_REPLACE_V0_STARTING_MARKER.sub("${{", value)
-            self._patch_and_log({"op": "replace", "path": path, "value": value})
+            jinja_sub_value = Regex.JINJA_REPLACE_V0_STARTING_MARKER.sub("${{", jinja_sub_value)
+            self._patch_and_log({"op": "replace", "path": path, "value": jinja_sub_value})
 
     def _upgrade_ambiguous_deps(self) -> None:
         """

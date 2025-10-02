@@ -128,10 +128,8 @@ class Regex:
 
     # Pattern to detect Jinja variable names and functions
     _JINJA_VAR_FUNCTION_PATTERN: Final[str] = r"[a-zA-Z0-9_\|\'\"\(\)\[\]\,\\\/ =\.\-~\+:]+"
-    # Pattern to detect optional comments or trailing whitespace. NOTE: The comment is marked as an optional matching
-    # group. Failure to mark this may cause `findall()` to return empty strings if no other group is present in the
-    # regex.
-    _JINJA_OPTIONAL_EOL_COMMENT: Final[str] = r"[ \t]*(?:#[^\n]*)?$"
+    # Pattern to detect optional comments or trailing whitespace.
+    _JINJA_OPTIONAL_EOL_COMMENT: Final[str] = r"[ \t]*(?P<comment>#[^\n]*)?$"
     # Pattern that describes a single token in a JINJA concatenation expression. This could be a JINJA variable name or
     # a quoted string or a number that allows spaces and other special characters. NOTE: The outer capture group
     # captures the token, not the alternative inner forms.
@@ -208,12 +206,23 @@ class Regex:
 
     ## Jinja regular expressions ##
     JINJA_V0_SUB: Final[re.Pattern[str]] = re.compile(r"{{\s*" + _JINJA_VAR_FUNCTION_PATTERN + r"\s*}}")
-    JINJA_V0_LINE: Final[re.Pattern[str]] = re.compile(
-        r"^[ \t]*({%.+%}|{#.+#})" + _JINJA_OPTIONAL_EOL_COMMENT, flags=re.MULTILINE
+    # Detects multi-line JINJA statements.
+    # re.DOTALL is used to allow for multiline matches and '?' is used to make the quantifier '.+' non-greedy,
+    # allowing for the shortest possible match, in order to avoid matching all the way to the last JINJA statement
+    # in the file.
+    JINJA_V0_MULTI_LINE: Final[re.Pattern[str]] = re.compile(
+        r"^[ \t]*(?P<jinja>{%.+?%}|{#.+?#})" + _JINJA_OPTIONAL_EOL_COMMENT, flags=re.MULTILINE | re.DOTALL
     )
-    JINJA_V0_SET_LINE: Final[re.Pattern[str]] = re.compile(
-        r"^[ \t]*{%[ \t]*set[ \t]*" + _JINJA_VAR_FUNCTION_PATTERN + r"[ \t]*=.+%}" + _JINJA_OPTIONAL_EOL_COMMENT,
-        flags=re.MULTILINE,
+    # Detects multi-line JINJA set statements.
+    # re.DOTALL and '.+?' are used for the same reasons as above.
+    # The named capture group 'jinja' is used to capture the JINJA statement,
+    # and allows for easier NodeVar construction.
+    JINJA_V0_SET_MULTI_LINE: Final[re.Pattern[str]] = re.compile(
+        r"^[ \t]*(?P<jinja>{%[ \t]*set[ \t]*"
+        + _JINJA_VAR_FUNCTION_PATTERN
+        + r"[ \t]*=.+?%})"
+        + _JINJA_OPTIONAL_EOL_COMMENT,
+        flags=re.MULTILINE | re.DOTALL,
     )
     # Useful for replacing the older `{{` JINJA substitution with the newer `${{` WITHOUT accidentally doubling-up the
     # newer syntax when multiple replacements are possible.

@@ -10,6 +10,7 @@ import pytest
 
 from conda_recipe_manager.parser._node_var import NodeVar
 from conda_recipe_manager.parser.enums import SchemaVersion
+from conda_recipe_manager.parser.exceptions import ParsingJinjaException
 from conda_recipe_manager.parser.recipe_parser import RecipeReader
 from conda_recipe_manager.types import JsonType, Primitives
 from tests.constants import SIMPLE_DESCRIPTION
@@ -714,20 +715,20 @@ def test_contains_value(file: str, path: str, expected: bool) -> None:
         # Add/concat cases
         ("sub_vars.yaml", "/requirements/fake_run_constrained/0", True, 43),
         ("sub_vars.yaml", "/requirements/fake_run_constrained/1", True, 43.3),
-        ("sub_vars.yaml", "/requirements/fake_run_constrained/2", True, "421"),
-        ("sub_vars.yaml", "/requirements/fake_run_constrained/3", True, "421.3"),
+        ("sub_vars.yaml", "/requirements/fake_run_constrained/2", True, 421),
+        ("sub_vars.yaml", "/requirements/fake_run_constrained/3", True, 421.3),
         ("sub_vars.yaml", "/requirements/fake_run_constrained/4", True, 43),
         ("sub_vars.yaml", "/requirements/fake_run_constrained/5", True, 43.3),
-        ("sub_vars.yaml", "/requirements/fake_run_constrained/6", True, "142"),
-        ("sub_vars.yaml", "/requirements/fake_run_constrained/7", True, "1.342"),
+        ("sub_vars.yaml", "/requirements/fake_run_constrained/6", True, 142),
+        ("sub_vars.yaml", "/requirements/fake_run_constrained/7", True, 1.342),
         ("sub_vars.yaml", "/requirements/fake_run_constrained/8", True, "0.10.8.61.3"),
         ("sub_vars.yaml", "/requirements/fake_run_constrained/9", True, "0.10.8.61.3"),
         ("sub_vars.yaml", "/requirements/fake_run_constrained/10", True, "1.30.10.8.6"),
         ("sub_vars.yaml", "/requirements/fake_run_constrained/11", True, "1.30.10.8.6"),
         ("sub_vars.yaml", "/requirements/fake_run_constrained/12", True, 6),
-        ("sub_vars.yaml", "/requirements/fake_run_constrained/13", True, "42"),
-        ("sub_vars.yaml", "/requirements/fake_run_constrained/14", True, "dne42"),
-        ("sub_vars.yaml", "/requirements/fake_run_constrained/15", True, 'foo > "42"'),
+        ("sub_vars.yaml", "/requirements/fake_run_constrained/13", True, 42),
+        ("sub_vars.yaml", "/requirements/fake_run_constrained/14", True, "{{ dne + 42 }}"),
+        ("sub_vars.yaml", "/requirements/fake_run_constrained/15", True, "foo > 42"),
         ("sub_vars.yaml", "/requirements/fake_run_constrained/16", True, "foo > 6"),
         # Replace cases
         ("sub_vars.yaml", "/requirements/fake_run_constrained/17", True, "TYPES_toml"),
@@ -736,14 +737,16 @@ def test_contains_value(file: str, path: str, expected: bool) -> None:
         ("sub_vars.yaml", "/requirements/fake_run_constrained/20", True, "types_toml"),
         ("sub_vars.yaml", "/requirements/fake_run_constrained/21", True, "TYPES_TOML"),
         # Complex split and join cases. Note that we do not replace if split/join would result in a non-string value.
+        # We also do not replace if the expression can't be evaluated.
         ("sub_vars.yaml", "/requirements/fake_run_constrained/22", True, "{{ name.split('-') }}"),
-        ("sub_vars.yaml", "/requirements/fake_run_constrained/23", True, "{{ '.'.join(name) }}"),
+        ("sub_vars.yaml", "/requirements/fake_run_constrained/23", True, "T.Y.P.E.S.-.t.o.m.l"),
         ("sub_vars.yaml", "/requirements/fake_run_constrained/24", True, "TYPES.toml"),
         ("sub_vars.yaml", "/requirements/fake_run_constrained/25", True, "TYPES"),
-        ("sub_vars.yaml", "/requirements/fake_run_constrained/26", True, "TYPES.toml"),
+        ("sub_vars.yaml", "/requirements/fake_run_constrained/26", True, "{{ name | split('-') | join('.') }}"),
         ("sub_vars.yaml", "/requirements/fake_run_constrained/27", True, "l"),
         ("sub_vars.yaml", "/requirements/fake_run_constrained/28", True, "T"),
-        ("sub_vars.yaml", "/requirements/fake_run_constrained/29", True, "TYPES-toml"),
+        ("sub_vars.yaml", "/requirements/fake_run_constrained/29", True, "{{ name[-11] }}"),
+        ("sub_vars.yaml", "/requirements/fake_run_constrained/30", True, "test_hosts or test_netloc or test_odd_urls"),
         ## v1_simple-recipe.yaml ##
         ("v1_format/v1_simple-recipe.yaml", "/build/number", False, 0),
         ("v1_format/v1_simple-recipe.yaml", "/build/number/", False, 0),
@@ -884,20 +887,20 @@ def test_contains_value(file: str, path: str, expected: bool) -> None:
         # Add/concat cases
         ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/0", True, 43),
         ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/1", True, 43.3),
-        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/2", True, "421"),
-        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/3", True, "421.3"),
+        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/2", True, 421),
+        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/3", True, 421.3),
         ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/4", True, 43),
         ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/5", True, 43.3),
-        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/6", True, "142"),
-        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/7", True, "1.342"),
+        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/6", True, 142),
+        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/7", True, 1.342),
         ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/8", True, "0.10.8.61.3"),
         ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/9", True, "0.10.8.61.3"),
         ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/10", True, "1.30.10.8.6"),
         ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/11", True, "1.30.10.8.6"),
         ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/12", True, 6),
-        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/13", True, "42"),
-        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/14", True, "dne42"),
-        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/15", True, 'foo > "42"'),
+        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/13", True, 42),
+        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/14", True, "${{ dne + 42 }}"),
+        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/15", True, "foo > 42"),
         ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/16", True, "foo > 6"),
         # Replace cases
         ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/17", True, "TYPES_toml"),
@@ -905,15 +908,21 @@ def test_contains_value(file: str, path: str, expected: bool) -> None:
         ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/19", True, "TYPES_toml"),
         ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/20", True, "types_toml"),
         ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/21", True, "TYPES_TOML"),
-        # Complex split and join cases. Note that we do not replace if split/join would result in a non-string value.
+        # Complex split and join cases. Note that we do not replace if the expression can't be evaluated
+        # or split/join would result in a non-string value.
         ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/22", True, "${{ name.split('-') }}"),
-        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/23", True, "${{ '.'.join(name) }}"),
+        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/23", True, "T.Y.P.E.S.-.t.o.m.l"),
         ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/24", True, "TYPES.toml"),
         ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/25", True, "TYPES"),
-        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/26", True, "TYPES.toml"),
+        (
+            "v1_format/v1_sub_vars.yaml",
+            "/requirements/fake_run_constrained/26",
+            True,
+            "${{ name | split('-') | join('.') }}",
+        ),
         ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/27", True, "l"),
         ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/28", True, "T"),
-        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/29", True, "TYPES-toml"),
+        ("v1_format/v1_sub_vars.yaml", "/requirements/fake_run_constrained/29", True, "${{ name[-11] }}"),
         ## multi-output.yaml ##
         ("multi-output.yaml", "/outputs/0/build/run_exports/0", False, "bar"),
         ("multi-output.yaml", "/outputs/0/build/run_exports", False, ["bar"]),
@@ -1358,6 +1367,7 @@ def test_contains_variable(file: str, var: str, expected: bool) -> None:
         ("simple-recipe.yaml", "zz_non_alpha_first", 42),
         ("simple-recipe.yaml", "name", "types-toml"),
         ("simple-recipe.yaml", "version", "0.10.8.6"),
+        ("jinja2_statements/furl.yaml", "skip_broken_tests", ["test_hosts", "test_netloc", "test_odd_urls"]),
         ("v1_format/v1_simple-recipe.yaml", "zz_non_alpha_first", 42),
         ("v1_format/v1_simple-recipe.yaml", "name", "types-toml"),
         ("v1_format/v1_simple-recipe.yaml", "version", "0.10.8.6"),
@@ -1588,3 +1598,39 @@ def test_calc_sha256(file: str, expected: str) -> None:
     """
     parser = load_recipe(file, RecipeReader)
     assert parser.calc_sha256() == expected
+
+
+@pytest.mark.parametrize("force_remove_jinja", [True, False])
+@pytest.mark.parametrize(
+    "package_name,exception,jinja_statement",
+    [
+        ("pdfium-binaries", True, "{% for each_header in headers %}"),  # for statement
+        ("furl", False, ""),  # multi-line and single-line set statements exclusively
+    ],
+)
+def test_unsupported_jinja2_statements_parsing(
+    package_name: str, exception: bool, jinja_statement: str, force_remove_jinja: bool
+) -> None:
+    """
+    Tests that the recipe parser correctly handles JINJA2 statements
+
+    :param package_name: Name of the package to test
+    :param exception: Whether an exception should be raised
+    :param jinja_statement: The JINJA statement that caused the exception
+    :param force_remove_jinja: Whether to force remove unsupported JINJA statements from the recipe file.
+            If this is set to True,
+                then unsupported JINJA statements will silently be removed from the recipe file.
+            If this is set to False,
+                then unsupported JINJA statements will trigger a ParsingJinjaException.
+    """
+    file: Final[str] = f"jinja2_statements/{package_name}.yaml"
+
+    if exception and not force_remove_jinja:
+        with pytest.raises(ParsingJinjaException) as e:
+            load_recipe(file, RecipeReader, force_remove_jinja)
+        assert jinja_statement in str(e.value)
+        return
+
+    rendered_file: Final[str] = f"jinja2_statements/{package_name}_rendered.yaml"
+    parser = load_recipe(file, RecipeReader, force_remove_jinja)
+    assert parser.render() == load_file(rendered_file)
