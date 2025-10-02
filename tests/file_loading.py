@@ -62,7 +62,7 @@ def load_recipe(file_name: Path | str, recipe_parser: Type[R], force_remove_jinj
                 then unsupported JINJA statements will trigger a ParsingJinjaException.
     :raises ParsingJinjaException: If unsupported JINJA statements are present
         and force_remove_jinja is set to False.
-    :raises ParsingException: If the recipe file cannot be parsed.
+    :raises ParsingException: If the recipe file cannot be parsed for an unknown reason.
     :returns: RecipeParser instance, based on the file
     """
     recipe: Final[str] = load_file(file_name)

@@ -665,7 +665,7 @@ class RecipeReader(IsModifiable):
                 then unsupported JINJA statements will trigger a ParsingJinjaException.
         :raises ParsingJinjaException: If unsupported JINJA statements are present
             and force_remove_jinja is set to False.
-        :raises ParsingException: If the recipe file cannot be parsed.
+        :raises ParsingException: If the recipe file cannot be parsed for an unknown reason.
         """
         try:
             self._private_init(content=content, internal_call=False, force_remove_jinja=force_remove_jinja)

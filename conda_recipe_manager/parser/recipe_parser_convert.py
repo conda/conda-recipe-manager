@@ -46,7 +46,7 @@ class RecipeParserConvert(RecipeParserDeps):
                 then unsupported JINJA statements will trigger a ParsingJinjaException.
         :raises ParsingJinjaException: If unsupported JINJA statements are present
             and force_remove_jinja is set to False.
-        :raises ParsingException: If the recipe file cannot be parsed.
+        :raises ParsingException: If the recipe file cannot be parsed for an unknown reason.
         """
         super().__init__(content, force_remove_jinja)
         # `copy.deepcopy()` produced some bizarre artifacts, namely single-line comments were being incorrectly rendered
