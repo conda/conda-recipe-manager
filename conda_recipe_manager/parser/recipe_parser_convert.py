@@ -38,13 +38,13 @@ class RecipeParserConvert(RecipeParserDeps):
         recipe to work on and tracks some debugging state.
 
         :param content: conda-build formatted recipe file, as a single text string.
-        :param force_remove_jinja: Whether to force remove JINJA statements from the recipe file.
+        :param force_remove_jinja: Whether to force remove unsupported JINJA statements from the recipe file.
             If this is set to True,
-                then JINJA statements will be removed from the recipe file without checking if they are valid.
+                then unsupported JINJA statements will silently be removed from the recipe file.
             If this is set to False,
-                then JINJA statements will be checked for validity
-                and a ParsingJinjaException will be raised if they are invalid.
-        :raises ParsingJinjaException: If some JINJA statements are invalid and force_remove_jinja is set to False.
+                then unsupported JINJA statements will trigger a ParsingJinjaException.
+        :raises ParsingJinjaException: If unsupported JINJA statements are present
+            and force_remove_jinja is set to False.
         :raises ParsingException: If the recipe file cannot be parsed.
         """
         super().__init__(content, force_remove_jinja)

@@ -55,13 +55,13 @@ def load_recipe(file_name: Path | str, recipe_parser: Type[R], force_remove_jinj
 
     :param file_name: File name of the test recipe to load
     :param recipe_parser: Recipe parser class to use
-    :param force_remove_jinja: Whether to force remove JINJA statements from the recipe file.
-        If this is set to True,
-            then JINJA statements will be removed from the recipe file without checking if they are valid.
-        If this is set to False,
-            then JINJA statements will be checked for validity
-            and a ParsingJinjaException will be raised if they are invalid.
-    :raises ParsingJinjaException: If some JINJA statements are invalid and force_remove_jinja is set to False.
+    :param force_remove_jinja: Whether to force remove unsupported JINJA statements from the recipe file.
+            If this is set to True,
+                then unsupported JINJA statements will silently be removed from the recipe file.
+            If this is set to False,
+                then unsupported JINJA statements will trigger a ParsingJinjaException.
+    :raises ParsingJinjaException: If unsupported JINJA statements are present
+        and force_remove_jinja is set to False.
     :raises ParsingException: If the recipe file cannot be parsed.
     :returns: RecipeParser instance, based on the file
     """

@@ -1617,12 +1617,11 @@ def test_unsupported_jinja2_statements_parsing(
     :param package_name: Name of the package to test
     :param exception: Whether an exception should be raised
     :param jinja_statement: The JINJA statement that caused the exception
-    :param force_remove_jinja: Whether to force remove JINJA statements from the recipe file.
-        If this is set to True,
-            then JINJA statements will be removed from the recipe file without checking if they are valid.
-        If this is set to False,
-            then JINJA statements will be checked for validity
-            and a ParsingJinjaException will be raised if they are invalid.
+    :param force_remove_jinja: Whether to force remove unsupported JINJA statements from the recipe file.
+            If this is set to True,
+                then unsupported JINJA statements will silently be removed from the recipe file.
+            If this is set to False,
+                then unsupported JINJA statements will trigger a ParsingJinjaException.
     """
     file: Final[str] = f"jinja2_statements/{package_name}.yaml"
 

@@ -506,13 +506,13 @@ class RecipeReader(IsModifiable):
         function.
 
         :param internal_call: Whether this is an internal call. If true, we cannot determine if the recipe is V0 or V1.
-        :param force_remove_jinja: Whether to force remove JINJA statements from the recipe file.
+        :param force_remove_jinja: Whether to force remove unsupported JINJA statements from the recipe file.
             If this is set to True,
-                then JINJA statements will be removed from the recipe file without checking if they are valid.
+                then unsupported JINJA statements will silently be removed from the recipe file.
             If this is set to False,
-                then JINJA statements will be checked for validity
-                and a ParsingJinjaException will be raised if they are invalid.
-        :raises ParsingJinjaException: If some JINJA statements are invalid and force_remove_jinja is set to False.
+                then unsupported JINJA statements will trigger a ParsingJinjaException.
+        :raises ParsingJinjaException: If unsupported JINJA statements are present
+            and force_remove_jinja is set to False.
         :returns: A sanitized version of the original recipe file text and a counter indicating how many comments exist
             at the top of the recipe file, before the "canonical" variables section.
         """
@@ -563,13 +563,13 @@ class RecipeReader(IsModifiable):
 
         :param content: conda-build formatted recipe file, as a single text string.
         :param internal_call: Whether this is an internal call. If true, we cannot determine if the recipe is V0 or V1.
-        :param force_remove_jinja: Whether to force remove JINJA statements from the recipe file.
+        :param force_remove_jinja: Whether to force remove unsupported JINJA statements from the recipe file.
             If this is set to True,
-                then JINJA statements will be removed from the recipe file without checking if they are valid.
+                then unsupported JINJA statements will silently be removed from the recipe file.
             If this is set to False,
-                then JINJA statements will be checked for validity
-                and a ParsingJinjaException will be raised if they are invalid.
-        :raises ParsingJinjaException: If some JINJA statements are invalid and force_remove_jinja is set to False.
+                then unsupported JINJA statements will trigger a ParsingJinjaException.
+        :raises ParsingJinjaException: If unsupported JINJA statements are present
+            and force_remove_jinja is set to False.
         """
         super().__init__()
         # The initial, raw, text is preserved for diffing and debugging purposes
@@ -658,13 +658,14 @@ class RecipeReader(IsModifiable):
         Constructs a RecipeReader instance.
 
         :param content: conda-build formatted recipe file, as a single text string.
-        :param force_remove_jinja: Whether to force remove JINJA statements from the recipe file.
+        :param force_remove_jinja: Whether to force remove unsupported JINJA statements from the recipe file.
             If this is set to True,
-                then JINJA statements will be removed from the recipe file without checking if they are valid.
+                then unsupported JINJA statements will silently be removed from the recipe file.
             If this is set to False,
-                then JINJA statements will be checked for validity
-                and a ParsingJinjaException will be raised if they are invalid.
-        :raises ParsingException: In the event that the recipe parser was unable to be parsed.
+                then unsupported JINJA statements will trigger a ParsingJinjaException.
+        :raises ParsingJinjaException: If unsupported JINJA statements are present
+            and force_remove_jinja is set to False.
+        :raises ParsingException: If the recipe file cannot be parsed.
         """
         try:
             self._private_init(content=content, internal_call=False, force_remove_jinja=force_remove_jinja)
