@@ -133,14 +133,9 @@ def convert_file(file_path: Path, output: Optional[Path], print_output: bool, de
         parser = RecipeParserConvert(recipe_content)
     except ParsingJinjaException:
         # If parsing fails because of unsupported JINJA statements, warn the user and continue.
-        print_err(
-            "WARNING: The recipe file contains unsupported JINJA statements. "
-            "They will be removed and parsing will be attempted again.",
-            print_enabled=print_output,
-        )
         conversion_result.msg_tbl.add_message(
             MessageCategory.WARNING,
-            "WARNING: The recipe file contains unsupported JINJA statements. "
+            "The recipe file contains unsupported JINJA statements. "
             "They will be removed and parsing will be attempted again.",
         )
         try:
