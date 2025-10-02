@@ -39,6 +39,7 @@ class RecipeParserConvert(RecipeParserDeps):
 
         :param content: conda-build formatted recipe file, as a single text string.
         :param force_remove_jinja: Whether to force remove unsupported JINJA statements from the recipe file.
+            This flag exists to allow `crm convert` to attempt an upgrade with warnings instead of failing.
             If this is set to True,
                 then unsupported JINJA statements will silently be removed from the recipe file.
             If this is set to False,
