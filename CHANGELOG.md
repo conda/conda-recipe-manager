@@ -15,6 +15,22 @@ Note: version releases in the 0.x.y range may introduce breaking changes.
 ### Fixed
 ### Security
 
+## [0.7.0]
+### Added
+- Support for multi-line JINJA set statements.
+- Support for JINJA list variables.
+- `ParsingJinjaException`, which is thrown at construction if unsupported JINJA is encountered.
+- `force_remove_jinja` flag to the parser constructors to silently remove unsupported JINJA and attempt parsing.
+### Changed
+- JINJA expression evaluation now uses `jinja2` directly, instead of custom logic.
+- `crm convert`, if it fails to parse a recipe because of unsupported JINJA, will output a warning, remove the unsupported statements,
+and re-attempt V1 conversion.
+- Book theme for sphinx is used for the project documentation
+### Deprecated
+### Removed
+### Fixed
+### Security
+
 ## [0.6.4]
 ### Added
 ### Changed
@@ -174,7 +190,8 @@ and continually changing.
 Migrates parser from [percy](https://github.com/anaconda-distribution/percy/tree/main)
 , ,
 
-[Unreleased]: https://github.com/conda/conda-recipe-manager/compare/v0.6.4...HEAD
+[Unreleased]: https://github.com/conda/conda-recipe-manager/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/conda/conda-recipe-manager/compare/v0.6.4...v0.7.0
 [0.6.4]: https://github.com/conda/conda-recipe-manager/compare/v0.6.3...v0.6.4
 [0.6.3]: https://github.com/conda/conda-recipe-manager/compare/v0.6.2...v0.6.3
 [0.6.2]: https://github.com/conda/conda-recipe-manager/compare/v0.6.1...v0.6.2
