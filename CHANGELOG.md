@@ -25,7 +25,7 @@ Note: version releases in the 0.x.y range may introduce breaking changes.
 - JINJA expression evaluation now uses `jinja2` directly, instead of custom logic.
 - `crm convert`, if it fails to parse a recipe because of unsupported JINJA, will output a warning, remove the unsupported statements,
 and re-attempt V1 conversion.
-- Book theme for sphinx is used for the project documentation
+- Book theme for sphinx is used for the project documentation.
 ### Deprecated
 ### Removed
 ### Fixed
