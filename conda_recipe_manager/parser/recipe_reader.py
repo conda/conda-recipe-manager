@@ -411,9 +411,11 @@ class RecipeReader(IsModifiable):
                 compiled_expression = env.compile_expression(expression)
                 result = compiled_expression(**context)  # type: ignore[misc]
             except Exception:  # pylint: disable=broad-exception-caught
+                log.warning("The recipe parser was unable to evaluate the JINJA expression: %s", expression)
                 continue
             # Do not replace the match if the result is not a primitive type. None signals an undefined expression.
             if not isinstance(result, PRIMITIVES_NO_NONE_TUPLE):  # type: ignore[misc]
+                log.warning("The recipe parser was unable to evaluate the JINJA expression: %s", expression)
                 continue
             result = str(result)
             if Regex.JINJA_VAR_VALUE_TERNARY.match(result):
