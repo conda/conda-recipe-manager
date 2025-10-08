@@ -84,7 +84,7 @@ pre-commit:     ## Runs pre-commit against files.
 	pre-commit run --all-files
 
 test:			## Runs test cases
-	$(PYTHON3) -m pytest -n auto --capture=no $(TEST_DIR)
+	$(PYTHON3) -m pytest -vv -n auto --capture=no $(TEST_DIR)
 
 test-cov:		## Checks test coverage requirements
 	$(PYTHON3) -m pytest -n auto --cov-config=.coveragerc --cov=$(SRC_DIR) \
