@@ -15,6 +15,18 @@ Note: version releases in the 0.x.y range may introduce breaking changes.
 ### Fixed
 ### Security
 
+## [0.7.1]
+### Added
+- `--fail-on-unsupported-jinja` flag to `crm convert` at the request of the conda-forge community. When unsupported
+  JINJA statements are seen in a V0 recipe attempting to be upgraded to V1, this flag kills the convert process with a
+  unique exit code.
+### Changed
+- `make test` now shows verbose `pytest` logs.
+### Deprecated
+### Removed
+### Fixed
+### Security
+
 ## [0.7.0]
 ### Added
 - Support for multi-line JINJA set statements.
@@ -190,7 +202,8 @@ and continually changing.
 Migrates parser from [percy](https://github.com/anaconda-distribution/percy/tree/main)
 , ,
 
-[Unreleased]: https://github.com/conda/conda-recipe-manager/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/conda/conda-recipe-manager/compare/v0.7.1...HEAD
+[0.7.1]: https://github.com/conda/conda-recipe-manager/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/conda/conda-recipe-manager/compare/v0.6.4...v0.7.0
 [0.6.4]: https://github.com/conda/conda-recipe-manager/compare/v0.6.3...v0.6.4
 [0.6.3]: https://github.com/conda/conda-recipe-manager/compare/v0.6.2...v0.6.3
