@@ -78,6 +78,48 @@ def mock_requests_get(*args: tuple[str], **_: dict[str, str | int]) -> MockHttpS
             return MockHttpStreamResponse(404, "/dev/null")
 
 
+def test_context_management(request: pytest.FixtureRequest) -> None:
+    """
+    Smoke test to ensure that this class can be context-managed properly.
+
+    :param request: Pytest fixture request object.
+    """
+    # Make the test directory accessible to the HTTP mocker
+    request.getfixturevalue("fs").add_real_directory(get_test_path() / "archive_files")  # type: ignore[misc]
+
+    with HttpArtifactFetcher("context_management_test", MockUrl.DUMMY_PROJECT_01_TAR_URL) as haf:
+        assert not haf.fetched()
+        with patch("requests.get", new=mock_requests_get):
+            haf.fetch()
+        assert haf.fetched()
+
+    # Verify the disk space has been cleared
+    assert not haf.fetched()
+    assert not haf._temp_dir_path.exists()  # pylint: disable=protected-access
+
+
+def test_cleanup(request: pytest.FixtureRequest) -> None:
+    """
+    Smoke test to ensure that this class can be cleaned-up manually.
+
+    :param request: Pytest fixture request object.
+    """
+    # Make the test directory accessible to the HTTP mocker
+    request.getfixturevalue("fs").add_real_directory(get_test_path() / "archive_files")  # type: ignore[misc]
+
+    haf: Final = HttpArtifactFetcher("context_management_test", MockUrl.DUMMY_PROJECT_01_TAR_URL)
+    assert not haf.fetched()
+    with patch("requests.get", new=mock_requests_get):
+        haf.fetch()
+    assert haf.fetched()
+
+    haf.cleanup()
+
+    # Verify the disk space has been cleared
+    assert not haf.fetched()
+    assert not haf._temp_dir_path.exists()  # pylint: disable=protected-access
+
+
 @pytest.mark.parametrize(
     "http_fixture,expected_archive,expected_files",
     [
