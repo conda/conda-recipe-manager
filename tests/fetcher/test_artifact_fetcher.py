@@ -4,9 +4,11 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Final, Type
 
 import pytest
+from pyfakefs.fake_filesystem import FakeFilesystem
 
 from conda_recipe_manager.fetcher.artifact_fetcher import from_recipe
 from conda_recipe_manager.fetcher.base_artifact_fetcher import BaseArtifactFetcher
@@ -15,6 +17,32 @@ from conda_recipe_manager.fetcher.git_artifact_fetcher import GitArtifactFetcher
 from conda_recipe_manager.fetcher.http_artifact_fetcher import HttpArtifactFetcher
 from conda_recipe_manager.parser.recipe_reader import RecipeReader
 from tests.file_loading import get_test_path, load_recipe
+
+
+def test_from_recipe_teardown(fs: FakeFilesystem) -> None:
+    """
+    Verifies that `from_recipe()` cleans up after itself in an expected manner.
+
+    :param fs: `pyfakefs` Fixture used to replace the file system
+    """
+    # This file is used as it has multiple `/source` entries.
+    file: Final = "cctools-ld64.yaml"
+    fs.add_real_file(get_test_path() / file)
+    recipe = load_recipe(file, RecipeReader)
+
+    temp_files: list[Path] = []
+
+    with from_recipe(recipe, True) as fetcher_tbl:
+        for _, fetcher in fetcher_tbl.items():
+            assert not fetcher.fetched()
+            assert fetcher._temp_dir_path.exists()  # pylint: disable=protected-access
+            temp_files.append(fetcher._temp_dir_path)  # pylint: disable=protected-access
+
+    # This either verifies the context was managed correctly OR we got really really lucky with the garbage collector.
+    # Though some print-line debugging appears to confirm that all `__exit__()` calls will occur as soon as the `with`
+    # block has been exited.
+    for temp_file in temp_files:
+        assert not temp_file.exists()
 
 
 @pytest.mark.parametrize(
@@ -60,18 +88,18 @@ def test_from_recipe_ignore_unsupported(
           this test to validate that the recipe was parsed correctly and returning the expected values from the
           `/source` path. That should be covered by recipe parsing unit tests.
 
-    :param file: File to work against
+    :param file: File to work against.
     :param expected: Expected mapping of source paths to classes in the returned list.
+    :param request: Pytest fixture request object.
     """
     request.getfixturevalue("fs").add_real_file(get_test_path() / file)  # type: ignore[misc]
     recipe = load_recipe(file, RecipeReader)
 
-    fetcher_map: Final[dict[str, BaseArtifactFetcher]] = from_recipe(recipe, True)
-
-    assert len(fetcher_map) == len(expected)
-    for key, expected_fetcher_t in expected.items():
-        assert key in fetcher_map
-        assert isinstance(fetcher_map[key], expected_fetcher_t)
+    with from_recipe(recipe, True) as fetcher_tbl:
+        assert len(fetcher_tbl) == len(expected)
+        for key, expected_fetcher_t in expected.items():
+            assert key in fetcher_tbl
+            assert isinstance(fetcher_tbl[key], expected_fetcher_t)
 
 
 @pytest.mark.parametrize(
@@ -87,13 +115,15 @@ def test_from_recipe_throws_on_unsupported(file: str, request: pytest.FixtureReq
     """
     Ensures that `from_recipe()` emits the expected exception in the event that a source section cannot be parsed.
 
-    :param file: File to work against
+    :param file: File to work against.
+    :param request: Pytest fixture request object.
     """
     request.getfixturevalue("fs").add_real_file(get_test_path() / file)  # type: ignore[misc]
     recipe = load_recipe(file, RecipeReader)
 
     with pytest.raises(FetchUnsupportedError):
-        from_recipe(recipe)
+        with from_recipe(recipe):
+            pass
 
 
 @pytest.mark.parametrize(
@@ -110,9 +140,11 @@ def test_from_recipe_does_not_throw_on_ignore_unsupported(file: str, request: py
     Ensures that `from_recipe()` DOES NOT emit an exception in the event that a source section cannot be parsed AND the
     `ignore_unsupported` flag is set.
 
-    :param file: File to work against
+    :param file: File to work against.
+    :param request: Pytest fixture request object.
     """
     request.getfixturevalue("fs").add_real_file(get_test_path() / file)  # type: ignore[misc]
     recipe = load_recipe(file, RecipeReader)
 
-    assert not from_recipe(recipe, True)
+    with from_recipe(recipe, True) as fetcher_tbl:
+        assert not fetcher_tbl
