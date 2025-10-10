@@ -518,87 +518,87 @@ def _update_sha256(recipe_parser: RecipeParser, cli_args: _CliArgs) -> None:
     :param recipe_parser: Recipe file to update.
     :param cli_args: Immutable CLI arguments from the user.
     """
-    fetcher_tbl = af_from_recipe(recipe_parser, True)
-    if not fetcher_tbl:
-        log.warning("`/source` is missing or does not contain a supported source type.")
-        return
+    with af_from_recipe(recipe_parser, True) as fetcher_tbl:
+        if not fetcher_tbl:
+            log.warning("`/source` is missing or does not contain a supported source type.")
+            return
 
-    if _update_sha256_check_hash_var(recipe_parser, fetcher_tbl, cli_args):
-        return
+        if _update_sha256_check_hash_var(recipe_parser, fetcher_tbl, cli_args):
+            return
 
-    # Filter-out artifacts that don't need a SHA-256 hash.
-    http_fetcher_tbl: Final[dict[str, HttpArtifactFetcher]] = {
-        k: v for k, v in fetcher_tbl.items() if isinstance(v, HttpArtifactFetcher)
-    }
-
-    # NOTE: Each source _might_ have a different SHA-256 hash. This is the case for the `cctools-ld64` feedstock. That
-    # project has a different implementation per architecture. However, in other circumstances, mirrored sources with
-    # different hashes might imply there is a security threat. We will log some statistics so the user can best decide
-    # what to do.
-    unique_hashes: set[str] = set()
-    # Parallelize on acquiring multiple source artifacts on the network. In testing, using a process pool took
-    # significantly more time and resources. That aligns with how I/O bound this process is. We use the
-    # `ThreadPoolExecutor` class over a `ThreadPool` so the script may exit gracefully if we failed to acquire an
-    # artifact.
-    sha_cntr = 0
-    # Delay writing to the recipe until all threads have joined. This prevents us from performing write operations while
-    # other threads may be reading recipe data.
-    patches_to_apply: list[JsonPatchType] = []
-
-    with cf.ThreadPoolExecutor() as executor:
-        artifact_futures_tbl = {
-            executor.submit(
-                # Use the static analyzer checks to enforce that only read-only operations are allowed in a threaded
-                # context.
-                _update_sha256_fetch_one,
-                cast(RecipeReader, recipe_parser),
-                src_path,
-                fetcher,
-                cli_args,
-            ): fetcher
-            for src_path, fetcher in http_fetcher_tbl.items()
+        # Filter-out artifacts that don't need a SHA-256 hash.
+        http_fetcher_tbl: Final[dict[str, HttpArtifactFetcher]] = {
+            k: v for k, v in fetcher_tbl.items() if isinstance(v, HttpArtifactFetcher)
         }
-        for future in cf.as_completed(artifact_futures_tbl):
-            fetcher = artifact_futures_tbl[future]
-            try:
-                sha_path, sha, url_tup = future.result()
-                sha_cntr += 1
-                unique_hashes.add(sha)
-                patches_to_apply.append(
-                    {
-                        # Guard against the unlikely scenario that the `sha256` field is missing.
-                        "op": "replace" if recipe_parser.contains_value(sha_path) else "add",
-                        "path": sha_path,
-                        "value": sha,
-                    }
-                )
 
-                # Patch the URL if a new one has been provided.
-                if url_tup is None:
-                    continue
-                url_path, url = url_tup
-                patches_to_apply.append(
-                    {
-                        # Guard against the "should be impossible" scenario that the `url` field is missing.
-                        "op": "replace" if recipe_parser.contains_value(url_path) else "add",
-                        "path": url_path,
-                        "value": url,
-                    }
-                )
+        # NOTE: Each source _might_ have a different SHA-256 hash. This is the case for the `cctools-ld64` feedstock.
+        # That project has a different implementation per architecture. However, in other circumstances, mirrored
+        # sources with different hashes might imply there is a security threat. We will log some statistics so the user
+        # can best decide what to do.
+        unique_hashes: set[str] = set()
+        # Parallelize on acquiring multiple source artifacts on the network. In testing, using a process pool took
+        # significantly more time and resources. That aligns with how I/O bound this process is. We use the
+        # `ThreadPoolExecutor` class over a `ThreadPool` so the script may exit gracefully if we failed to acquire an
+        # artifact.
+        sha_cntr = 0
+        # Delay writing to the recipe until all threads have joined. This prevents us from performing write operations
+        # while other threads may be reading recipe data.
+        patches_to_apply: list[JsonPatchType] = []
 
-            except FetchError:
-                log.exception("Failed to update SHA-256 from an artifact at %s", fetcher.get_archive_url())
-                _exit_on_failed_fetch(recipe_parser, fetcher, cli_args)
+        with cf.ThreadPoolExecutor() as executor:
+            artifact_futures_tbl = {
+                executor.submit(
+                    # Use the static analyzer checks to enforce that only read-only operations are allowed in a threaded
+                    # context.
+                    _update_sha256_fetch_one,
+                    cast(RecipeReader, recipe_parser),
+                    src_path,
+                    fetcher,
+                    cli_args,
+                ): fetcher
+                for src_path, fetcher in http_fetcher_tbl.items()
+            }
+            for future in cf.as_completed(artifact_futures_tbl):
+                fetcher = artifact_futures_tbl[future]
+                try:
+                    sha_path, sha, url_tup = future.result()
+                    sha_cntr += 1
+                    unique_hashes.add(sha)
+                    patches_to_apply.append(
+                        {
+                            # Guard against the unlikely scenario that the `sha256` field is missing.
+                            "op": "replace" if recipe_parser.contains_value(sha_path) else "add",
+                            "path": sha_path,
+                            "value": sha,
+                        }
+                    )
 
-    for patch in patches_to_apply:
-        _exit_on_failed_patch(recipe_parser, patch, cli_args)
+                    # Patch the URL if a new one has been provided.
+                    if url_tup is None:
+                        continue
+                    url_path, url = url_tup
+                    patches_to_apply.append(
+                        {
+                            # Guard against the "should be impossible" scenario that the `url` field is missing.
+                            "op": "replace" if recipe_parser.contains_value(url_path) else "add",
+                            "path": url_path,
+                            "value": url,
+                        }
+                    )
 
-    log.info(
-        "Found %d unique SHA-256 hash(es) out of a total of %d hash(es) in %d sources.",
-        len(unique_hashes),
-        sha_cntr,
-        len(fetcher_tbl),
-    )
+                except FetchError:
+                    log.exception("Failed to update SHA-256 from an artifact at %s", fetcher.get_archive_url())
+                    _exit_on_failed_fetch(recipe_parser, fetcher, cli_args)
+
+        for patch in patches_to_apply:
+            _exit_on_failed_patch(recipe_parser, patch, cli_args)
+
+        log.info(
+            "Found %d unique SHA-256 hash(es) out of a total of %d hash(es) in %d sources.",
+            len(unique_hashes),
+            sha_cntr,
+            len(fetcher_tbl),
+        )
 
 
 def _validate_interop_flags(build_num: bool, override_build_num: Optional[int], target_version: Optional[str]) -> None:

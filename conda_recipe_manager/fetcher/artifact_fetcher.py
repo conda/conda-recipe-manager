@@ -4,7 +4,8 @@
 
 from __future__ import annotations
 
-from typing import cast
+from contextlib import ExitStack, contextmanager
+from typing import Generator, cast
 
 from conda_recipe_manager.fetcher.base_artifact_fetcher import BaseArtifactFetcher
 from conda_recipe_manager.fetcher.exceptions import FetchUnsupportedError
@@ -45,7 +46,8 @@ def _render_git_key(recipe: RecipeReader, key: str) -> str:
                     raise FetchUnsupportedError(f"The following key is not supported for git sources: {key}")
 
 
-def from_recipe(recipe: RecipeReader, ignore_unsupported: bool = False) -> dict[str, BaseArtifactFetcher]:
+@contextmanager
+def from_recipe(recipe: RecipeReader, ignore_unsupported: bool = False) -> Generator[dict[str, BaseArtifactFetcher]]:
     """
     Parses and constructs a list of artifact-fetching objects based on the contents of a recipe.
 
@@ -60,7 +62,8 @@ def from_recipe(recipe: RecipeReader, ignore_unsupported: bool = False) -> dict[
     :param ignore_unsupported: (Optional) If set to `True`, ignore currently unsupported artifacts found in the source
         section and return the list of supported sources. Otherwise, throw an exception.
     :raises FetchUnsupportedError: If an unsupported source format is found.
-    :returns: A map containing one path and Artifact Fetcher instance pair per source found in the recipe file.
+    :returns: A context-managed-generator that yields a map containing one path and Artifact Fetcher instance pair per
+        source found in the recipe file.
     """
     sources: dict[str, BaseArtifactFetcher] = {}
     parsed_sources = cast(
@@ -78,28 +81,31 @@ def from_recipe(recipe: RecipeReader, ignore_unsupported: bool = False) -> dict[
     if recipe_name is None:
         recipe_name = "Unknown Recipe"
 
-    for i, parsed_source in enumerate(parsed_sources):
-        # NOTE: `optional_str()` is used to force evaluation of potentially unknown types to strings for input
-        #       sanitation purposes.
-        # NOTE: `url` is the same for both V0 and V1 formats.
-        url = optional_str(parsed_source.get("url"))
-        git_url = optional_str(parsed_source.get(_render_git_key(recipe, "git_url")))
+    with ExitStack() as stack:
+        for i, parsed_source in enumerate(parsed_sources):
+            # NOTE: `optional_str()` is used to force evaluation of potentially unknown types to strings for input
+            #       sanitation purposes.
+            # NOTE: `url` is the same for both V0 and V1 formats.
+            url = optional_str(parsed_source.get("url"))
+            git_url = optional_str(parsed_source.get(_render_git_key(recipe, "git_url")))
 
-        src_name = recipe_name if len(parsed_sources) == 1 else f"{recipe_name}_{i}"
+            src_name = recipe_name if len(parsed_sources) == 1 else f"{recipe_name}_{i}"
 
-        # If the source section is not a list, it contains one "flag" source object.
-        src_path = f"/source/{i}" if is_src_lst else "/source"
-        if url is not None:
-            sources[src_path] = HttpArtifactFetcher(src_name, url)
-        elif git_url is not None:
-            sources[src_path] = GitArtifactFetcher(
-                src_name,
-                git_url,
-                branch=optional_str(parsed_source.get(_render_git_key(recipe, "git_branch"))),
-                tag=optional_str(parsed_source.get(_render_git_key(recipe, "git_tag"))),
-                rev=optional_str(parsed_source.get(_render_git_key(recipe, "git_rev"))),
-            )
-        elif not ignore_unsupported:
-            raise FetchUnsupportedError(f"{recipe_name} contains an unsupported source object at `{src_path}`.")
+            # If the source section is not a list, it contains one "flag" source object.
+            src_path = f"/source/{i}" if is_src_lst else "/source"
+            if url is not None:
+                sources[src_path] = stack.enter_context(HttpArtifactFetcher(src_name, url))
+            elif git_url is not None:
+                sources[src_path] = stack.enter_context(
+                    GitArtifactFetcher(
+                        src_name,
+                        git_url,
+                        branch=optional_str(parsed_source.get(_render_git_key(recipe, "git_branch"))),
+                        tag=optional_str(parsed_source.get(_render_git_key(recipe, "git_tag"))),
+                        rev=optional_str(parsed_source.get(_render_git_key(recipe, "git_rev"))),
+                    )
+                )
+            elif not ignore_unsupported:
+                raise FetchUnsupportedError(f"{recipe_name} contains an unsupported source object at `{src_path}`.")
 
-    return sources
+        yield sources

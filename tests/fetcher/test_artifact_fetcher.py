@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from typing import Final, Type
+from typing import Type
 
 import pytest
 
@@ -66,12 +66,11 @@ def test_from_recipe_ignore_unsupported(
     request.getfixturevalue("fs").add_real_file(get_test_path() / file)  # type: ignore[misc]
     recipe = load_recipe(file, RecipeReader)
 
-    fetcher_map: Final[dict[str, BaseArtifactFetcher]] = from_recipe(recipe, True)
-
-    assert len(fetcher_map) == len(expected)
-    for key, expected_fetcher_t in expected.items():
-        assert key in fetcher_map
-        assert isinstance(fetcher_map[key], expected_fetcher_t)
+    with from_recipe(recipe, True) as fetcher_tbl:
+        assert len(fetcher_tbl) == len(expected)
+        for key, expected_fetcher_t in expected.items():
+            assert key in fetcher_tbl
+            assert isinstance(fetcher_tbl[key], expected_fetcher_t)
 
 
 @pytest.mark.parametrize(
@@ -93,7 +92,8 @@ def test_from_recipe_throws_on_unsupported(file: str, request: pytest.FixtureReq
     recipe = load_recipe(file, RecipeReader)
 
     with pytest.raises(FetchUnsupportedError):
-        from_recipe(recipe)
+        with from_recipe(recipe):
+            pass
 
 
 @pytest.mark.parametrize(
@@ -115,4 +115,5 @@ def test_from_recipe_does_not_throw_on_ignore_unsupported(file: str, request: py
     request.getfixturevalue("fs").add_real_file(get_test_path() / file)  # type: ignore[misc]
     recipe = load_recipe(file, RecipeReader)
 
-    assert not from_recipe(recipe, True)
+    with from_recipe(recipe, True) as fetcher_tbl:
+        assert not fetcher_tbl
