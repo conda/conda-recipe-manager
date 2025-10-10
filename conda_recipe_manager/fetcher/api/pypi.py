@@ -16,7 +16,7 @@ from conda_recipe_manager.utils.meta import get_crm_version
 from conda_recipe_manager.utils.typing import optional_str_empty
 
 # Logging object for this module
-log = logging.getLogger(__name__)
+log: Final = logging.getLogger(__name__)
 
 # Base URL that all endpoints use
 _BASE_URL: Final[str] = "https://pypi.org/pypi"

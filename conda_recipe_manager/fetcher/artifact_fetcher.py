@@ -46,8 +46,11 @@ def _render_git_key(recipe: RecipeReader, key: str) -> str:
                     raise FetchUnsupportedError(f"The following key is not supported for git sources: {key}")
 
 
+FetcherTable = dict[str, BaseArtifactFetcher]
+
+
 @contextmanager
-def from_recipe(recipe: RecipeReader, ignore_unsupported: bool = False) -> Generator[dict[str, BaseArtifactFetcher]]:
+def from_recipe(recipe: RecipeReader, ignore_unsupported: bool = False) -> Generator[FetcherTable]:
     """
     Parses and constructs a list of artifact-fetching objects based on the contents of a recipe.
 
