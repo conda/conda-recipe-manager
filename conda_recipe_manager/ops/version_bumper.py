@@ -9,13 +9,21 @@ from enum import Flag, auto
 from pathlib import Path
 from typing import Final, NamedTuple, NoReturn, Optional, cast
 
-from conda_recipe_manager.fetcher.artifact_fetcher import fetch_all_artifacts_with_retry
+from conda_recipe_manager.fetcher.artifact_fetcher import DEFAULT_RETRY_INTERVAL, fetch_all_artifacts_with_retry
 from conda_recipe_manager.ops.exceptions import VersionBumperInvalidState, VersionBumperPatchError
 from conda_recipe_manager.parser.recipe_parser import ReplacePatchFunc
 from conda_recipe_manager.parser.recipe_parser_deps import RecipeParserDeps
 from conda_recipe_manager.types import JsonPatchType, JsonType
 
 log: Final = logging.getLogger(__name__)
+
+## Cosntants ##
+
+# Default starting point for the `/build/number` field for the vast majority of recipe files.
+DEFAULT_BUILD_NUM_START_POINT: Final = 0
+
+
+## Types ##
 
 
 class _RecipePaths:
@@ -72,7 +80,8 @@ class VersionBumperArguments(NamedTuple):
     """
 
     target_version: str
-    target_build_number: int = 0
+    target_build_number: int = DEFAULT_BUILD_NUM_START_POINT
+    fetch_retry_interval: int = DEFAULT_RETRY_INTERVAL
 
 
 class VersionBumperOption(Flag):
@@ -129,8 +138,8 @@ class VersionBumper:
         patch_with: JsonType | ReplacePatchFunc,
     ) -> None:
         """
-        Convenience function that exits the program when a search and patch-replace operation fails. This standardizes how
-        we handle search and patch-replace failures across all patch operations performed in this program.
+        Convenience function that exits the program when a search and patch-replace operation fails. This standardizes
+        how we handle search and patch-replace failures across all patch operations performed in this program.
 
         :param regex: Regular expression to match with. This only matches values on patch-able paths.
         :param patch_with: `JsonType` value to replace the matching value with directly or a callback that provides the
@@ -152,8 +161,8 @@ class VersionBumper:
     @staticmethod
     def _pre_process_cleanup(recipe_content: str) -> str:
         """
-        Performs some recipe clean-up tasks before parsing the recipe file. This should correct common issues and improve
-        parsing compatibility.
+        Performs some recipe clean-up tasks before parsing the recipe file. This should correct common issues and
+        improve parsing compatibility.
 
         :param recipe_content: Recipe file content to fix.
         :param commit
@@ -165,8 +174,8 @@ class VersionBumper:
     def _post_process_cleanup(self) -> None:
         """
         Performs global, less critical, recipe file clean-up tasks right after the initial parsing stage. We should take
-        great care as to what goes in this step. The work done here should have some impact to the other stages of recipe
-        editing but not enough to warrant being a separate stage.
+        great care as to what goes in this step. The work done here should have some impact to the other stages of
+        recipe editing but not enough to warrant being a separate stage.
 
         :param recipe_parser: Recipe file to update.
         """
@@ -201,7 +210,9 @@ class VersionBumper:
         self._post_process_cleanup()
 
         # TODO have a function to delay the resolution?
-        self._fetcher_ctx = fetch_all_artifacts_with_retry(self._recipe_parser)
+        self._fetcher_ctx = fetch_all_artifacts_with_retry(
+            self._recipe_parser, retry_interval=self._bumper_args.fetch_retry_interval
+        )
 
     def update_build_num(self) -> None:
         """
@@ -251,8 +262,8 @@ class VersionBumper:
         """
         Attempts to update the `/package/version` field and/or the commonly used `version` JINJA variable.
         """
-        # TODO Add V0 multi-output version support for some recipes (version field is duplicated in cctools-ld64 but not in
-        # most multi-output recipes)
+        # TODO Add V0 multi-output version support for some recipes (version field is duplicated in cctools-ld64 but not
+        # in most multi-output recipes)
 
         # If the `version` variable is found, patch that. This is an artifact/pattern from Grayskull.
         old_variable: Final = self._recipe_parser.get_variable(_RecipeVars.VERSION, None)

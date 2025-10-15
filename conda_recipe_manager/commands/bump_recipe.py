@@ -16,6 +16,7 @@ import click
 
 from conda_recipe_manager.commands.utils.types import CONTEXT_SETTINGS, ExitCode
 from conda_recipe_manager.fetcher.api import pypi
+from conda_recipe_manager.fetcher.artifact_fetcher import DEFAULT_RETRY_INTERVAL
 from conda_recipe_manager.fetcher.artifact_fetcher import from_recipe as af_from_recipe
 from conda_recipe_manager.fetcher.base_artifact_fetcher import BaseArtifactFetcher
 from conda_recipe_manager.fetcher.exceptions import FetchError
@@ -428,12 +429,12 @@ def _validate_interop_flags(build_num: bool, override_build_num: Optional[int], 
 @click.option(
     "-i",
     "--retry-interval",
-    default=_DEFAULT_RETRY_INTERVAL,
+    default=DEFAULT_RETRY_INTERVAL,
     type=float,
     callback=_validate_retry_interval,
     help=(
         "Retry interval (in seconds) for network requests. Scales with number of failed attempts."
-        f" Defaults to {_DEFAULT_RETRY_INTERVAL} seconds"
+        f" Defaults to {DEFAULT_RETRY_INTERVAL} seconds"
     ),
 )
 @click.option(
