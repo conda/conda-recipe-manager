@@ -21,47 +21,15 @@ from conda_recipe_manager.fetcher.base_artifact_fetcher import BaseArtifactFetch
 from conda_recipe_manager.fetcher.exceptions import FetchError
 from conda_recipe_manager.fetcher.http_artifact_fetcher import HttpArtifactFetcher
 from conda_recipe_manager.parser.exceptions import ParsingException
-from conda_recipe_manager.parser.recipe_parser import RecipeParser, ReplacePatchFunc
+from conda_recipe_manager.parser.recipe_parser import RecipeParser
 from conda_recipe_manager.parser.recipe_reader import RecipeReader
-from conda_recipe_manager.types import JsonPatchType, JsonType
+from conda_recipe_manager.types import JsonPatchType
 from conda_recipe_manager.utils.typing import optional_str
 
 # Truncates the `__name__` to the crm command name.
 log: Final = logging.getLogger(__name__)
 
-## Constants ##
-
-
-class _RecipePaths:
-    """
-    Namespace to store common recipe path constants.
-    """
-
-    BUILD_NUM: Final[str] = "/build/number"
-    SOURCE: Final[str] = "/source"
-    SINGLE_URL: Final[str] = f"{SOURCE}/url"
-    SINGLE_SHA_256: Final[str] = f"{SOURCE}/sha256"
-    VERSION: Final[str] = "/package/version"
-
-
-class _RecipeVars:
-    """
-    Namespace to store all the commonly used JINJA variable names the bumper should be aware of.
-    """
-
-    # Common variable name used to track the software version of a package.
-    VERSION: Final[str] = "version"
-    # Common variable names used for source artifact hashes.
-    HASH_NAMES: Final[set[str]] = {
-        "sha256",
-        "hash",
-        "hash_val",
-        "hash_value",
-        "checksum",
-        "check_sum",
-        "hashval",
-        "hashvalue",
-    }
+## Types ##
 
 
 class _CliArgs(NamedTuple):
@@ -81,28 +49,6 @@ class _CliArgs(NamedTuple):
     retry_interval: float
     save_on_failure: bool
     omit_trailing_newline: bool
-
-
-class _Regex:
-    """
-    Namespace that contains all pre-compiled regular expressions used in this tool.
-    """
-
-    # Matches strings that reference `pypi.io` so that we can transition them to use the preferred `pypi.org` TLD.
-    # Group 1 contains the protocol, group 2 is the deprecated domain, group 3 contains the rest of the URL to preserve.
-    PYPI_DEPRECATED_DOMAINS: Final[re.Pattern[str]] = re.compile(
-        r"(https?://)(pypi\.io|cheeseshop\.python\.org|pypi\.python\.org)(.*)"
-    )
-    # Attempts to match PyPi source archive URLs by the start of the URL.
-    PYPI_URL: Final[re.Pattern[str]] = re.compile(
-        r"https?://pypi\.(?:io|org)/packages/source/[a-zA-Z0-9]/|https?://files\.pythonhosted\.org/"
-    )
-
-
-# Maximum number of retries to attempt when trying to fetch an external artifact.
-_RETRY_LIMIT: Final[int] = 5
-# How much longer (in seconds) we should wait per retry.
-_DEFAULT_RETRY_INTERVAL: Final[int] = 10
 
 
 ## Functions ##
@@ -139,70 +85,6 @@ def _validate_retry_interval(ctx: click.Context, param: str, value: float) -> fl
     return value
 
 
-def _save_or_print(recipe_parser: RecipeParser, cli_args: _CliArgs) -> None:
-    """
-    Helper function that saves the current recipe state to a file or prints it to STDOUT.
-
-    :param recipe_parser: Recipe file to print/write-out.
-    :param cli_args: Immutable CLI arguments from the user.
-    """
-
-    if cli_args.dry_run:
-        print(recipe_parser.render(omit_trailing_newline=cli_args.omit_trailing_newline))
-        return
-    Path(cli_args.recipe_file_path).write_text(
-        recipe_parser.render(omit_trailing_newline=cli_args.omit_trailing_newline), encoding="utf-8"
-    )
-
-
-def _exit_on_failed_patch(recipe_parser: RecipeParser, patch_blob: JsonPatchType, cli_args: _CliArgs) -> None:
-    """
-    Convenience function that exits the program when a patch operation fails. This standardizes how we handle patch
-    failures across all patch operations performed in this program.
-
-    :param recipe_parser: Recipe file to update.
-    :param patch_blob: Recipe patch to execute.
-    :param cli_args: Immutable CLI arguments from the user.
-    """
-    if recipe_parser.patch(patch_blob):
-        log.debug("Executed patch: %s", patch_blob)
-        return
-
-    if cli_args.save_on_failure:
-        _save_or_print(recipe_parser, cli_args)
-
-    log.error("Couldn't perform the patch: %s", patch_blob)
-    sys.exit(ExitCode.PATCH_ERROR)
-
-
-def _exit_on_failed_search_and_patch_replace(
-    recipe_parser: RecipeParser,
-    regex: str | re.Pattern[str],
-    patch_with: JsonType | ReplacePatchFunc,
-    cli_args: _CliArgs,
-) -> None:
-    """
-    Convenience function that exits the program when a search and patch-replace operation fails. This standardizes how
-    we handle search and patch-replace failures across all patch operations performed in this program.
-
-    :param recipe_parser: Recipe file to update.
-    :param regex: Regular expression to match with. This only matches values on patch-able paths.
-    :param patch_with: `JsonType` value to replace the matching value with directly or a callback that provides the
-        original value as a `JsonType` so the caller can manipulate what is being patched-in.
-    :param cli_args: Immutable CLI arguments from the user.
-    """
-    patch_type_str: Final[str] = "dynamic" if callable(patch_with) else "static"
-    if recipe_parser.search_and_patch_replace(regex, patch_with, preserve_comments_and_selectors=True):
-        log.debug("Executed a %s patch using this regular expression: %s", patch_type_str, regex)
-        return
-
-    if cli_args.save_on_failure:
-        _save_or_print(recipe_parser, cli_args)
-
-    log.error("Couldn't perform a %s patch using this regular expressions: %s", patch_type_str, regex)
-    sys.exit(ExitCode.PATCH_ERROR)
-
-
 def _exit_on_failed_fetch(recipe_parser: RecipeParser, fetcher: BaseArtifactFetcher, cli_args: _CliArgs) -> NoReturn:
     """
     Exits the script upon a failed fetch.
@@ -215,130 +97,6 @@ def _exit_on_failed_fetch(recipe_parser: RecipeParser, fetcher: BaseArtifactFetc
         _save_or_print(recipe_parser, cli_args)
     log.error("Failed to fetch `%s` after attempted retries.", fetcher)
     sys.exit(ExitCode.HTTP_ERROR)
-
-
-def _pre_process_cleanup(recipe_content: str) -> str:
-    """
-    Performs some recipe clean-up tasks before parsing the recipe file. This should correct common issues and improve
-    parsing compatibility.
-
-    :param recipe_content: Recipe file content to fix.
-    :returns: Post-processed recipe file text.
-    """
-    # TODO delete unused variables? Unsure if that may be too prescriptive.
-    return RecipeParser.pre_process_remove_hash_type(recipe_content)
-
-
-def _post_process_cleanup(recipe_parser: RecipeParser, cli_args: _CliArgs) -> None:
-    """
-    Performs global, less critical, recipe file clean-up tasks right after the initial parsing stage. We should take
-    great care as to what goes in this step. The work done here should have some impact to the other stages of recipe
-    editing but not enough to warrant being a separate stage.
-
-    :param recipe_parser: Recipe file to update.
-    """
-    _exit_on_failed_search_and_patch_replace(
-        recipe_parser,
-        _Regex.PYPI_DEPRECATED_DOMAINS,
-        lambda s: _Regex.PYPI_DEPRECATED_DOMAINS.sub(r"https://pypi.org\3", str(s)),
-        cli_args,
-    )
-
-
-def _update_build_num(recipe_parser: RecipeParser, cli_args: _CliArgs) -> None:
-    """
-    Attempts to update the build number in a recipe file.
-
-    :param recipe_parser: Recipe file to update.
-    :param cli_args: Immutable CLI arguments from the user.
-    """
-
-    def _exit_on_build_num_failure(msg: str) -> NoReturn:
-        if cli_args.save_on_failure:
-            _save_or_print(recipe_parser, cli_args)
-        log.error(msg)
-        sys.exit(ExitCode.ILLEGAL_OPERATION)
-
-    # Try to get "build" key from the recipe, exit if not found
-    try:
-        recipe_parser.get_value("/build")
-    except KeyError:
-        _exit_on_build_num_failure("`/build` key could not be found in the recipe.")
-
-    # From the previous check, we know that `/build` exists. If `/build/number` is missing, it'll be added by
-    # a patch-add operation and set to a default value of 0. Otherwise, we attempt to increment the build number, if
-    # requested.
-    if cli_args.increment_build_num and recipe_parser.contains_value(_RecipePaths.BUILD_NUM):
-        build_number = recipe_parser.get_value(_RecipePaths.BUILD_NUM)
-
-        if not isinstance(build_number, int):
-            _exit_on_build_num_failure("Build number is not an integer.")
-
-        _exit_on_failed_patch(
-            recipe_parser,
-            cast(JsonPatchType, {"op": "replace", "path": _RecipePaths.BUILD_NUM, "value": build_number + 1}),
-            cli_args,
-        )
-        return
-    # `override_build_num`` defaults to 0
-    _exit_on_failed_patch(
-        recipe_parser,
-        cast(JsonPatchType, {"op": "add", "path": _RecipePaths.BUILD_NUM, "value": cli_args.override_build_num}),
-        cli_args,
-    )
-
-
-def _update_version(recipe_parser: RecipeParser, cli_args: _CliArgs) -> None:
-    """
-    Attempts to update the `/package/version` field and/or the commonly used `version` JINJA variable.
-
-    :param recipe_parser: Recipe file to update.
-    :param cli_args: Immutable CLI arguments from the user.
-    """
-    # TODO Add V0 multi-output version support for some recipes (version field is duplicated in cctools-ld64 but not in
-    # most multi-output recipes)
-
-    # If the `version` variable is found, patch that. This is an artifact/pattern from Grayskull.
-    old_variable = recipe_parser.get_variable(_RecipeVars.VERSION, None)
-    if old_variable is not None:
-        recipe_parser.set_variable(_RecipeVars.VERSION, cli_args.target_version)
-        # Generate a warning if `version` is not being used in the `/package/version` field. NOTE: This is a linear
-        # search on a small list.
-        if _RecipePaths.VERSION not in recipe_parser.get_variable_references(_RecipeVars.VERSION):
-            log.warning("`/package/version` does not use the defined JINJA variable `version`.")
-        return
-
-    op: Final[str] = "replace" if recipe_parser.contains_value(_RecipePaths.VERSION) else "add"
-    _exit_on_failed_patch(
-        recipe_parser, {"op": op, "path": _RecipePaths.VERSION, "value": cli_args.target_version}, cli_args
-    )
-
-
-def _fetch_archive(fetcher: HttpArtifactFetcher, cli_args: _CliArgs, retries: int = _RETRY_LIMIT) -> None:
-    """
-    Fetches the target source archive (with retries) for future use.
-
-    :param fetcher: Artifact fetching instance to use.
-    :param cli_args: Immutable CLI arguments from the user.
-    :param retries: (Optional) Number of retries to attempt. Defaults to `_RETRY_LIMIT` constant.
-    :raises FetchError: If an issue occurred while downloading or extracting the archive.
-    """
-    # NOTE: This is the most I/O-bound operation in `bump-recipe` by a country mile. At the time of writing,
-    # running this operation in the background will not make any significant improvements to performance. Every other
-    # operation is so fast in comparison, any gains would likely be lost with the additional overhead. This op is
-    # also inherently reliant on having the version change performed ahead of time. In addition, parallelizing the
-    # retries defeats the point of having a back-off timer.
-
-    for retry_id in range(1, retries + 1):
-        try:
-            log.info("Fetching artifact `%s`, attempt #%d", fetcher, retry_id)
-            fetcher.fetch()
-            return
-        except FetchError:
-            if retry_id < retries:
-                time.sleep(retry_id * cli_args.retry_interval)
-
-    raise FetchError(f"Failed to fetch `{fetcher}` after {retries} retries.")
 
 
 def _correct_pypi_url(recipe_reader: RecipeReader) -> str:
