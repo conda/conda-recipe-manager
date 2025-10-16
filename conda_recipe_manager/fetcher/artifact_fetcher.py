@@ -29,7 +29,7 @@ FetcherFuturesTable = dict[cf.Future[None], tuple[str, BaseArtifactFetcher]]
 # Maximum number of retries to attempt when trying to fetch an external artifact.
 DEFAULT_RETRY_LIMIT: Final[int] = 5
 # How much longer (in seconds) we should wait per retry.
-DEFAULT_RETRY_INTERVAL: Final[int] = 10
+DEFAULT_RETRY_INTERVAL: Final[float] = 10
 
 
 def _render_git_key(recipe: RecipeReader, key: str) -> str:
@@ -126,7 +126,7 @@ def from_recipe(recipe: RecipeReader, ignore_unsupported: bool = False) -> Gener
         yield sources
 
 
-def _fetch_archive(fetcher: BaseArtifactFetcher, retry_interval: int, retries: int) -> None:
+def _fetch_archive(fetcher: BaseArtifactFetcher, retry_interval: float, retries: int) -> None:
     """
     Fetches the target source archive (with retries) for future use.
 
@@ -155,7 +155,7 @@ def _fetch_archive(fetcher: BaseArtifactFetcher, retry_interval: int, retries: i
 
 @contextmanager
 def fetch_all_artifacts_with_retry(
-    recipe_reader: RecipeReader, retry_interval: int = DEFAULT_RETRY_INTERVAL, retries: int = DEFAULT_RETRY_LIMIT
+    recipe_reader: RecipeReader, retry_interval: float = DEFAULT_RETRY_INTERVAL, retries: int = DEFAULT_RETRY_LIMIT
 ) -> Generator[FetcherFuturesTable]:
     """
     Starts a threadpool that pulls-down all source artifacts for a recipe file, with a built-in retry mechanism.

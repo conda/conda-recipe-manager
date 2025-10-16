@@ -6,10 +6,7 @@ from __future__ import annotations
 
 import concurrent.futures as cf
 import logging
-import re
 import sys
-import time
-from pathlib import Path
 from typing import Final, NamedTuple, NoReturn, Optional, cast
 
 import click
@@ -21,6 +18,8 @@ from conda_recipe_manager.fetcher.artifact_fetcher import from_recipe as af_from
 from conda_recipe_manager.fetcher.base_artifact_fetcher import BaseArtifactFetcher
 from conda_recipe_manager.fetcher.exceptions import FetchError
 from conda_recipe_manager.fetcher.http_artifact_fetcher import HttpArtifactFetcher
+from conda_recipe_manager.ops.exceptions import VersionBumperInvalidState, VersionBumperPatchError
+from conda_recipe_manager.ops.version_bumper import VersionBumper, VersionBumperArguments, VersionBumperOption
 from conda_recipe_manager.parser.exceptions import ParsingException
 from conda_recipe_manager.parser.recipe_parser import RecipeParser
 from conda_recipe_manager.parser.recipe_reader import RecipeReader
@@ -471,6 +470,7 @@ def bump_recipe(
 
     # Typed, immutable, convenience data structure that contains all CLI arguments for ease of passing new options
     # to existing functions.
+    # TODO deprecate this now that we have the library?
     cli_args = _CliArgs(
         recipe_file_path=recipe_file_path,
         increment_build_num=build_num,
@@ -484,39 +484,55 @@ def bump_recipe(
         omit_trailing_newline=omit_trailing_newline,
     )
 
+    # Accumulate flags into a bitwise set of options.
+    options = VersionBumperOption.NONE
+    options |= VersionBumperOption.DRY_RUN_MODE if cli_args.dry_run else VersionBumperOption.NONE
+    options |= VersionBumperOption.COMMIT_ON_FAILURE if cli_args.save_on_failure else VersionBumperOption.NONE
+    options |= (
+        VersionBumperOption.OMIT_TRAILING_NEW_LINE if cli_args.omit_trailing_newline else VersionBumperOption.NONE
+    )
+
     try:
-        recipe_content = Path(cli_args.recipe_file_path).read_text(encoding="utf-8")
+        version_bumper: Final = VersionBumper(
+            cli_args.recipe_file_path,
+            bumper_args=VersionBumperArguments(fetch_retry_interval=cli_args.retry_interval),
+            options=options,
+        )
     except IOError:
-        log.error("Couldn't read the given recipe file: %s", cli_args.recipe_file_path)
+        log.exception("Couldn't read the given recipe file: %s", cli_args.recipe_file_path)
         sys.exit(ExitCode.IO_ERROR)
-
-    # Attempt to remove problematic recipe patterns that cause issues for the parser.
-    recipe_content = _pre_process_cleanup(recipe_content)
-
-    try:
-        recipe_parser = RecipeParser(recipe_content)
     except ParsingException:
-        log.error("An error occurred while parsing the recipe file contents.")
+        log.exception("An error occurred while parsing the recipe file contents.")
         sys.exit(ExitCode.PARSE_EXCEPTION)
 
-    if cli_args.target_version is not None and cli_args.target_version == recipe_parser.get_value(
-        _RecipePaths.VERSION, default=None, sub_vars=True
-    ):
-        log.error("The provided target version is the same value found in the recipe file: %s", cli_args.target_version)
-        sys.exit(ExitCode.CLICK_USAGE)
-
-    _post_process_cleanup(recipe_parser, cli_args)
-
     # Attempt to update fields
-    _update_build_num(recipe_parser, cli_args)
+    try:
+        version_bumper.update_build_num(None if cli_args.increment_build_num else override_build_num)
+    except VersionBumperInvalidState:
+        log.exception("Failed to bump `/build/number` because the recipe was in or going to be in an invalid state.")
+        sys.exit(ExitCode.ILLEGAL_OPERATION)
+    except VersionBumperPatchError:
+        log.exception("Failed to edit `/build/number`.")
+        sys.exit(ExitCode.PATCH_ERROR)
 
     # NOTE: We check if `target_version` is specified to perform a "full bump" for type checking reasons. Also note that
     # the `build_num` flag is invalidated if we are bumping to a new version. The build number must be reset to 0 in
     # this case.
     if cli_args.target_version is not None:
         # Version must be updated before hash to ensure the correct artifact is hashed.
-        _update_version(recipe_parser, cli_args)
+        try:
+            version_bumper.update_version(cli_args.target_version)
+        except VersionBumperInvalidState:
+            log.exception(
+                "The provided target version is the same value found in the recipe file or empty: %s",
+                cli_args.target_version,
+            )
+            sys.exit(ExitCode.CLICK_USAGE)
+        except VersionBumperPatchError:
+            log.exception("Failed to edit the target version.")
+            sys.exit(ExitCode.PATCH_ERROR)
+
         _update_sha256(recipe_parser, cli_args)
 
-    _save_or_print(recipe_parser, cli_args)
+    version_bumper.commit_changes()
     sys.exit(ExitCode.SUCCESS)
