@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import logging
 import sys
-from typing import Final, NamedTuple, Optional
+from typing import Final, Optional
 
 import click
 
