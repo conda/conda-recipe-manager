@@ -23,27 +23,6 @@ from conda_recipe_manager.parser.exceptions import ParsingException
 # Truncates the `__name__` to the crm command name.
 log: Final = logging.getLogger(__name__)
 
-## Types ##
-
-
-class _CliArgs(NamedTuple):
-    """
-    Typed convenience structure that contains all flags and values set by the CLI. This structure is passed once to
-    functions that need access to flags and prevents an annoying refactor every time we add a new option.
-
-    NOTE: These members are all immutable by design. They are set once by the CLI and cannot be altered.
-    """
-
-    recipe_file_path: str
-    # Slightly less confusing name for internal use. If we change the flag, we break users.
-    increment_build_num: bool
-    override_build_num: int
-    dry_run: bool
-    target_version: Optional[str]
-    retry_interval: float
-    save_on_failure: bool
-    omit_trailing_newline: bool
-
 
 ## Functions ##
 
@@ -224,38 +203,24 @@ def bump_recipe(
     # Ensure the user does not use flags in an invalid manner.
     _validate_interop_flags(build_num, override_build_num, target_version)
 
-    # Typed, immutable, convenience data structure that contains all CLI arguments for ease of passing new options
-    # to existing functions.
-    # TODO deprecate this now that we have the library?
-    cli_args = _CliArgs(
-        recipe_file_path=recipe_file_path,
-        increment_build_num=build_num,
-        # By this point, we have validated the input. We do not need to discern between if the `--override-build-num`
-        # flag was provided or not. To render the optional, we default `None` to `0`.
-        override_build_num=0 if override_build_num is None else override_build_num,
-        dry_run=dry_run,
-        target_version=target_version,
-        retry_interval=retry_interval,
-        save_on_failure=save_on_failure,
-        omit_trailing_newline=omit_trailing_newline,
-    )
+    # By this point, we have validated the input. We do not need to discern between if the `--override-build-num` flag
+    # was provided or not. To render the optional, we default `None` to `0`.
+    build_num_int: Final = 0 if override_build_num is None else override_build_num
 
     # Accumulate flags into a bitwise set of options.
     options = VersionBumperOption.NONE
-    options |= VersionBumperOption.DRY_RUN_MODE if cli_args.dry_run else VersionBumperOption.NONE
-    options |= VersionBumperOption.COMMIT_ON_FAILURE if cli_args.save_on_failure else VersionBumperOption.NONE
-    options |= (
-        VersionBumperOption.OMIT_TRAILING_NEW_LINE if cli_args.omit_trailing_newline else VersionBumperOption.NONE
-    )
+    options |= VersionBumperOption.DRY_RUN_MODE if dry_run else VersionBumperOption.NONE
+    options |= VersionBumperOption.COMMIT_ON_FAILURE if save_on_failure else VersionBumperOption.NONE
+    options |= VersionBumperOption.OMIT_TRAILING_NEW_LINE if omit_trailing_newline else VersionBumperOption.NONE
 
     try:
         version_bumper: Final = VersionBumper(
-            cli_args.recipe_file_path,
-            bumper_args=VersionBumperArguments(fetch_retry_interval=cli_args.retry_interval),
+            recipe_file_path,
+            bumper_args=VersionBumperArguments(fetch_retry_interval=retry_interval),
             options=options,
         )
     except IOError:
-        log.exception("Couldn't read the given recipe file: %s", cli_args.recipe_file_path)
+        log.exception("Couldn't read the given recipe file: %s", recipe_file_path)
         sys.exit(ExitCode.IO_ERROR)
     except ParsingException:
         log.exception("An error occurred while parsing the recipe file contents.")
@@ -263,7 +228,7 @@ def bump_recipe(
 
     # Attempt to update fields
     try:
-        version_bumper.update_build_num(None if cli_args.increment_build_num else override_build_num)
+        version_bumper.update_build_num(None if build_num else build_num_int)
     except VersionBumperInvalidState:
         log.exception("Failed to bump `/build/number` because the recipe was in or going to be in an invalid state.")
         sys.exit(ExitCode.ILLEGAL_OPERATION)
@@ -274,8 +239,8 @@ def bump_recipe(
     # NOTE: We check if `target_version` is specified to perform a "full bump" for type checking reasons. Also note that
     # the `build_num` flag is invalidated if we are bumping to a new version. The build number must be reset to 0 in
     # this case.
-    if cli_args.target_version is not None:
-        _full_version_bump(version_bumper, cli_args.target_version, cli_args.retry_interval)
+    if target_version is not None:
+        _full_version_bump(version_bumper, target_version, retry_interval)
 
     version_bumper.commit_changes()
     sys.exit(ExitCode.SUCCESS)
