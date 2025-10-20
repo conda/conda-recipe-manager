@@ -2,8 +2,6 @@
 :Description: Exceptions thrown by `ops` modules.
 """
 
-from typing import Final
-
 
 class VersionBumperException(Exception):
     """

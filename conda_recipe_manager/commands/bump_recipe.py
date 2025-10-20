@@ -109,12 +109,48 @@ def _validate_interop_flags(build_num: bool, override_build_num: Optional[int], 
         sys.exit(ExitCode.CLICK_USAGE)
 
 
+def _full_version_bump(version_bumper: VersionBumper, target_version: str, retry_interval: float) -> None:
+    """
+    Perform the steps necessary to complete a full version bump (as opposed to a build-number-only bump).
+
+    :param version_bumper: Version bumper instance to perform the desired bump.
+    :param target_version: The version being bumped to.
+    :param retry_interval: Base quantity of time (in seconds) to wait between fetch attempts.
+    """
+    # Kick-off the asynchronous fetching mechanism early to overlap some execution.
+    with fetch_all_corrected_artifacts_with_retry(
+        version_bumper.get_recipe_reader(), retry_interval=retry_interval
+    ) as fetcher_tbl:
+
+        # Version must be updated before hash to ensure the correct artifact is hashed.
+        try:
+            version_bumper.update_version(target_version)
+        except VersionBumperInvalidState:
+            log.exception(
+                "The provided target version is the same value found in the recipe file or empty: %s",
+                target_version,
+            )
+            sys.exit(ExitCode.CLICK_USAGE)
+        except VersionBumperPatchError:
+            log.exception("Failed to edit the target version.")
+            sys.exit(ExitCode.PATCH_ERROR)
+
+        # Update recipe file components that require source artifacts. NOTE: These calls block on I/O.
+        try:
+            version_bumper.update_http_urls(fetcher_tbl)
+            version_bumper.update_sha256(fetcher_tbl)
+        except FetchError:
+            log.exception("Failed to fetch the source artifacts found in the recipe file.")
+            sys.exit(ExitCode.HTTP_ERROR)
+        except VersionBumperPatchError:
+            log.exception("Failed to update the recipe file components that require source artifacts.")
+            sys.exit(ExitCode.PATCH_ERROR)
+
+
 # TODO Improve. In order for `click` to play nice with `pyfakefs`, we set `path_type=str` and delay converting to a
 # `Path` instance. This is caused by how `click` uses decorators. See these links for more detail:
 # - https://pytest-pyfakefs.readthedocs.io/en/latest/troubleshooting.html#pathlib-path-objects-created-outside-of-tests
 # - https://github.com/pytest-dev/pyfakefs/discussions/605
-
-
 @click.command(short_help="Bumps a recipe file to a new version.", context_settings=CONTEXT_SETTINGS)
 @click.argument("recipe_file_path", type=click.Path(exists=True, path_type=str))
 @click.option(
@@ -239,34 +275,7 @@ def bump_recipe(
     # the `build_num` flag is invalidated if we are bumping to a new version. The build number must be reset to 0 in
     # this case.
     if cli_args.target_version is not None:
-        # Kick-off the asynchronous fetching mechanism early to overlap some execution.
-        with fetch_all_corrected_artifacts_with_retry(
-            version_bumper.get_recipe_reader(), retry_interval=cli_args.retry_interval
-        ) as fetcher_tbl:
-
-            # Version must be updated before hash to ensure the correct artifact is hashed.
-            try:
-                version_bumper.update_version(cli_args.target_version)
-            except VersionBumperInvalidState:
-                log.exception(
-                    "The provided target version is the same value found in the recipe file or empty: %s",
-                    cli_args.target_version,
-                )
-                sys.exit(ExitCode.CLICK_USAGE)
-            except VersionBumperPatchError:
-                log.exception("Failed to edit the target version.")
-                sys.exit(ExitCode.PATCH_ERROR)
-
-            # Update recipe file components that require source artifacts. NOTE: These calls block on I/O.
-            try:
-                version_bumper.update_http_urls(fetcher_tbl)
-                version_bumper.update_sha256(fetcher_tbl)
-            except FetchError:
-                log.exception("Failed to fetch the source artifacts found in the recipe file.")
-                sys.exit(ExitCode.HTTP_ERROR)
-            except VersionBumperPatchError:
-                log.exception("Failed to update the recipe file components that require source artifacts.")
-                sys.exit(ExitCode.PATCH_ERROR)
+        _full_version_bump(version_bumper, cli_args.target_version, cli_args.retry_interval)
 
     version_bumper.commit_changes()
     sys.exit(ExitCode.SUCCESS)

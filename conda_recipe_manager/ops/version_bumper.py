@@ -15,7 +15,6 @@ from conda_recipe_manager.fetcher.artifact_fetcher import (
     DEFAULT_RETRY_LIMIT,
     FetcherFuturesTable,
 )
-from conda_recipe_manager.fetcher.base_artifact_fetcher import BaseArtifactFetcher
 from conda_recipe_manager.fetcher.exceptions import FetchError
 from conda_recipe_manager.fetcher.http_artifact_fetcher import HttpArtifactFetcher
 from conda_recipe_manager.ops.exceptions import VersionBumperInvalidState, VersionBumperPatchError
@@ -346,7 +345,8 @@ class VersionBumper:
         :returns: TODO
         """
         log.warning(
-            "The futures table is empty. The recipe file's `/source` section is likely missing or does not contain a supported source type."
+            "The futures table is empty. The recipe file's `/source` section is likely missing or does not contain a"
+            " supported source type."
         )
         return bool(fetcher_tbl)
 
@@ -434,7 +434,8 @@ class VersionBumper:
 
         elif len(hash_vars_set) > 1:
             log.warning(
-                "Multiple commonly used hash variables detected. Hash values will be changed directly in `/source` section."
+                "Multiple commonly used hash variables detected. Hash values will be changed directly in `/source`"
+                " section."
             )
 
         return False
