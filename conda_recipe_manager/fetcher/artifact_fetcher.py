@@ -6,10 +6,12 @@ from __future__ import annotations
 
 import concurrent.futures as cf
 import logging
+import re
 import time
 from contextlib import ExitStack, contextmanager
-from typing import Final, Generator, cast
+from typing import Final, Generator, Optional, cast
 
+from conda_recipe_manager.fetcher.api import pypi
 from conda_recipe_manager.fetcher.base_artifact_fetcher import BaseArtifactFetcher
 from conda_recipe_manager.fetcher.exceptions import FetchError, FetchUnsupportedError
 from conda_recipe_manager.fetcher.git_artifact_fetcher import GitArtifactFetcher
@@ -21,15 +23,44 @@ from conda_recipe_manager.utils.typing import optional_str
 
 log: Final = logging.getLogger(__name__)
 
+# Standardized value returned by a fetching future function. This is a tuple containing:
+#   - The artifact fetcher instance used to fetch a source artifact
+#   - An optionally-included string containing the new target URL, if a URL correction was requested and occurred.
+_FutureFetch = tuple[BaseArtifactFetcher, Optional[str]]
+
 # Maps the `/source` recipe-section path to a corresponding recipe fetcher instance.
 FetcherTable = dict[str, BaseArtifactFetcher]
-# Maps a future to its associated `/source` recipe-section path and a fetcher instance that fetched in the future.
-FetcherFuturesTable = dict[cf.Future[None], tuple[str, BaseArtifactFetcher]]
+# Maps a future to its associated `/source` recipe-section path. The fetcher instance that performed the fetch and the
+# optionally-set corrected/updated URL must be obtained from the resolved future.
+FetcherFuturesTable = dict[cf.Future[_FutureFetch], str]
 
 # Maximum number of retries to attempt when trying to fetch an external artifact.
 DEFAULT_RETRY_LIMIT: Final[int] = 5
 # How much longer (in seconds) we should wait per retry.
 DEFAULT_RETRY_INTERVAL: Final[float] = 10
+
+
+class _RecipePaths:
+    """
+    Namespace to store common recipe path constants.
+    """
+
+    BUILD_NUM: Final[str] = "/build/number"
+    SOURCE: Final[str] = "/source"
+    SINGLE_URL: Final[str] = f"{SOURCE}/url"
+    SINGLE_SHA_256: Final[str] = f"{SOURCE}/sha256"
+    VERSION: Final[str] = "/package/version"
+
+
+class _Regex:
+    """
+    Namespace that contains all pre-compiled regular expressions used in this tool.
+    """
+
+    # Attempts to match PyPi source archive URLs by the start of the URL.
+    PYPI_URL: Final[re.Pattern[str]] = re.compile(
+        r"https?://pypi\.(?:io|org)/packages/source/[a-zA-Z0-9]/|https?://files\.pythonhosted\.org/"
+    )
 
 
 def _render_git_key(recipe: RecipeReader, key: str) -> str:
@@ -126,13 +157,13 @@ def from_recipe(recipe: RecipeReader, ignore_unsupported: bool = False) -> Gener
         yield sources
 
 
-def _fetch_archive(fetcher: BaseArtifactFetcher, retry_interval: float, retries: int) -> None:
+def _fetch_archive(fetcher: BaseArtifactFetcher, retry_interval: float, retries: int) -> _FutureFetch:
     """
     Fetches the target source archive (with retries) for future use.
 
     :param fetcher: Artifact fetching instance to use.
-    :param retry_interval: (Optional) Base quantity of time (in seconds) to wait between fetch attempts.
-    :param retries: (Optional) Number of retries to attempt. Defaults to `_RETRY_LIMIT` constant.
+    :param retry_interval: Base quantity of time (in seconds) to wait between fetch attempts.
+    :param retries: Number of retries to attempt.
     :raises FetchError: If an issue occurred while downloading or extracting the archive.
     """
     # NOTE: This is the most I/O-bound operation in `bump-recipe` by a country mile. At the time of writing,
@@ -145,7 +176,7 @@ def _fetch_archive(fetcher: BaseArtifactFetcher, retry_interval: float, retries:
         try:
             log.info("Fetching artifact `%s`, attempt #%d", fetcher, retry_id)
             fetcher.fetch()
-            return
+            return (fetcher, None)
         except FetchError:
             if retry_id < retries:
                 time.sleep(retry_id * retry_interval)
@@ -162,16 +193,141 @@ def fetch_all_artifacts_with_retry(
 
     :param recipe_reader: READ-ONLY Parser instance for the target recipe. Ensuring this is a read-only parsing class
         provides some thread safety through abusing a type checker (like `mypy`).
+    :param retry_interval: (Optional) Base quantity of time (in seconds) to wait between fetch attempts. Defaults to
+        the `DEFAULT_RETRY_INTERVAL` constant.
+    :param retries: (Optional) Number of retries to attempt. Defaults to the `DEFAULT_RETRY_LIMIT` constant.
+    :raises FetchError: On resolving any returned future, if fetching a source artifact failed.
+    :returns: A generator containing a table that maps futures to the source artifact path in the recipe file and
+        the fetcher instance itself.
+    """
+    # In testing, using a process pool took significantly more time and resources. That aligns with how I/O bound this
+    # process is. We use the `ThreadPoolExecutor` class over a `ThreadPool` so that we may leverage the error handling
+    # features of the `Future` class.
+    with from_recipe(recipe_reader, True) as fetcher_tbl:
+        with cf.ThreadPoolExecutor() as executor:
+            artifact_futures_tbl = {
+                executor.submit(_fetch_archive, fetcher, retry_interval, retries): src_path
+                for src_path, fetcher in fetcher_tbl.items()
+            }
+            yield artifact_futures_tbl
+
+
+def _correct_pypi_url(recipe_reader: RecipeReader) -> str:
+    """
+    Handles correcting PyPi URLs by querying the PyPi API. There are many edge cases here that complicate this process,
+    like managing JINJA variables commonly found in our URL values.
+
+    :param recipe_reader: Read-only parser (enforced by our static analyzer). Editing may not be thread-safe. It is up
+        to the caller to manage that risk.
+    :raises FetchError: If an issue occurred while downloading or extracting the archive.
+    :returns: Corrected PyPi artifact URL for the fetcher.
+    """
+
+    version_value: Final[Optional[str]] = optional_str(
+        recipe_reader.get_value(_RecipePaths.VERSION, default=None, sub_vars=True)
+    )
+    if version_value is None:
+        raise FetchError("Unable to determine recipe version for PyPi API request.")
+
+    # TODO we eventually need to handle the case of mapping conda names to PyPi names.
+    # TODO alternatively regex-out the PyPi name from the URL. However, in many cases, this might be wasted
+    # compute.
+    package_name: Final[Optional[str]] = recipe_reader.get_recipe_name()
+    if package_name is None:
+        raise FetchError("Unable to determine package name for PyPi API request.")
+
+    # TODO add retry mechanism for PyPi API query?
+    try:
+        pypi_meta: Final[pypi.PackageMetadata] = pypi.fetch_package_version_metadata(package_name, version_value)
+    except pypi.ApiException as e:
+        raise FetchError("Failed to access the PyPi API to correct a URL.") from e
+
+    if version_value not in pypi_meta.releases:
+        raise FetchError(f"Failed to retrieve target version: {version_value}")
+
+    # Using the PyPI metadata we can construct a url that will work for the fetcher. In case the recipe name is
+    # different from the PyPI name, we use the PyPI name from the API response to ensure the url is correct.
+    # See this issue for more details: https://github.com/conda/conda-recipe-manager/issues/364
+
+    filename: Final = pypi_meta.releases[version_value].filename
+    name: Final = pypi_meta.info.name
+    if not (filename and name):
+        raise FetchError("Unable to determine download url for PyPi API request.")
+
+    new_url: Final = f"https://pypi.org/packages/source/{ name[0] }/{ name }/{ filename }"
+    return new_url
+
+
+def _fetch_corrected_archive(
+    recipe_reader: RecipeReader, fetcher: BaseArtifactFetcher, retry_interval: float, retries: int
+) -> _FutureFetch:
+    """
+    Wrapper function that attempts to retrieve an HTTP/HTTPS artifact with a retry mechanism. This also determines if a
+    URL correction needs to be made.
+
+    For example, many PyPi archives (as of approximately 2024) now use underscores in the archive file name even though
+    the package name still uses hyphens.
+
+    :param recipe_reader: Read-only parser (enforced by our static analyzer). Editing may not be thread-safe. It is up
+        to the caller to manage that risk.
+    :param fetcher: Artifact fetching instance to use.
+    :param retry_interval: Base quantity of time (in seconds) to wait between fetch attempts.
+    :param retries: Number of retries to attempt. This may be spread-out across the original URL and the corrected URL.
+    :raises FetchError: If an issue occurred while downloading or extracting the archive.
+    :returns: The SHA-256 hash of the artifact, if it was able to be downloaded. Optionally includes a corrected URL to
+        be updated in the recipe file.
+    """
+    # The URL correction algorithm only applies to fetchers that have an HTTP URL to correct.
+    if not isinstance(fetcher, HttpArtifactFetcher):
+        _fetch_archive(fetcher, retry_interval, retries)
+        return (fetcher, None)
+
+    # Skip non-PyPI artifacts.
+    pypi_match: Final = _Regex.PYPI_URL.match(fetcher.get_archive_url())
+    if pypi_match is None:
+        _fetch_archive(fetcher, retry_interval, retries)
+        return (fetcher, None)
+
+    # Attempt to handle PyPi URLs that might have changed.
+    original_retries: Final = retries // 2 + 1 if retries % 2 else retries // 2
+    corrected_retries: Final = retries // 2
+    try:
+        _fetch_archive(fetcher, retry_interval, original_retries)
+        return (fetcher, None)
+    except FetchError:
+        log.info("PyPI URL detected. Attempting to recover URL.")
+        # The `corrected_fetcher_url` is the rendered-out URL, without variables.
+        corrected_fetcher_url: Final = _correct_pypi_url(recipe_reader)
+        corrected_fetcher: Final[HttpArtifactFetcher] = HttpArtifactFetcher(str(fetcher), corrected_fetcher_url)
+
+        _fetch_archive(corrected_fetcher, retry_interval, corrected_retries)
+        log.warning("Archive found at %s. Will attempt to update recipe file.", corrected_fetcher_url)
+        return (corrected_fetcher, corrected_fetcher_url)
+
+
+@contextmanager
+def fetch_all_corrected_artifacts_with_retry(
+    recipe_reader: RecipeReader, retry_interval: float = DEFAULT_RETRY_INTERVAL, retries: int = DEFAULT_RETRY_LIMIT
+) -> Generator[FetcherFuturesTable]:
+    """
+    Starts a threadpool that pulls-down all source artifacts for a recipe file, with a built-in retry mechanism AND
+    attempts to find corrected PyPI source URLs.
+
+    :param recipe_reader: READ-ONLY Parser instance for the target recipe. Ensuring this is a read-only parsing class
+        provides some thread safety through abusing a type checker (like `mypy`).
     :param retry_interval: (Optional) Base quantity of time (in seconds) to wait between fetch attempts.
     :param retries: (Optional) Number of retries to attempt. Defaults to `_RETRY_LIMIT` constant.
     :raises FetchError: On resolving any returned future, if fetching a source artifact failed.
     :returns: A generator containing a table that maps futures to the source artifact path in the recipe file and
         the fetcher instance itself.
     """
+    # In testing, using a process pool took significantly more time and resources. That aligns with how I/O bound this
+    # process is. We use the `ThreadPoolExecutor` class over a `ThreadPool` so that we may leverage the error handling
+    # features of the `Future` class.
     with from_recipe(recipe_reader, True) as fetcher_tbl:
         with cf.ThreadPoolExecutor() as executor:
             artifact_futures_tbl = {
-                executor.submit(_fetch_archive, fetcher, retry_interval, retries): (src_path, fetcher)
+                executor.submit(_fetch_corrected_archive, recipe_reader, fetcher, retry_interval, retries): src_path
                 for src_path, fetcher in fetcher_tbl.items()
             }
             yield artifact_futures_tbl

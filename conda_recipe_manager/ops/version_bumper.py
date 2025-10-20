@@ -3,6 +3,7 @@
     here originates from the `crm bump-recipe` command line interface.
 """
 
+import concurrent.futures as cf
 import logging
 import re
 from enum import Flag, auto
@@ -12,11 +13,15 @@ from typing import Final, NamedTuple, NoReturn, Optional, cast
 from conda_recipe_manager.fetcher.artifact_fetcher import (
     DEFAULT_RETRY_INTERVAL,
     DEFAULT_RETRY_LIMIT,
-    fetch_all_artifacts_with_retry,
+    FetcherFuturesTable,
 )
+from conda_recipe_manager.fetcher.base_artifact_fetcher import BaseArtifactFetcher
+from conda_recipe_manager.fetcher.exceptions import FetchError
+from conda_recipe_manager.fetcher.http_artifact_fetcher import HttpArtifactFetcher
 from conda_recipe_manager.ops.exceptions import VersionBumperInvalidState, VersionBumperPatchError
-from conda_recipe_manager.parser.recipe_parser import ReplacePatchFunc
+from conda_recipe_manager.parser.recipe_parser import RecipeParser, ReplacePatchFunc
 from conda_recipe_manager.parser.recipe_parser_deps import RecipeParserDeps
+from conda_recipe_manager.parser.recipe_reader import RecipeReader
 from conda_recipe_manager.types import JsonPatchType, JsonType
 
 log: Final = logging.getLogger(__name__)
@@ -72,10 +77,6 @@ class _Regex:
     PYPI_DEPRECATED_DOMAINS: Final[re.Pattern[str]] = re.compile(
         r"(https?://)(pypi\.io|cheeseshop\.python\.org|pypi\.python\.org)(.*)"
     )
-    # Attempts to match PyPi source archive URLs by the start of the URL.
-    PYPI_URL: Final[re.Pattern[str]] = re.compile(
-        r"https?://pypi\.(?:io|org)/packages/source/[a-zA-Z0-9]/|https?://files\.pythonhosted\.org/"
-    )
 
 
 class VersionBumperArguments(NamedTuple):
@@ -126,8 +127,8 @@ class VersionBumper:
 
     def _throw_on_failed_patch(self, patch_blob: JsonPatchType) -> None:
         """
-        Convenience function that exits the program when a patch operation fails. This standardizes how we handle patch
-        failures across all patch operations performed in this program.
+        Convenience function that throws when a patch operation fails. This standardizes how we handle patch failures
+        across all patch operations performed in this program.
 
         :param patch_blob: Recipe patch to execute.
         :raises VersionBumperPatchError: If there was a failure attempting to edit the recipe file.
@@ -147,8 +148,8 @@ class VersionBumper:
         patch_with: JsonType | ReplacePatchFunc,
     ) -> None:
         """
-        Convenience function that exits the program when a search and patch-replace operation fails. This standardizes
-        how we handle search and patch-replace failures across all patch operations performed in this program.
+        Convenience function that throws when a search and patch-replace operation fails. This standardizes how we
+        handle search and patch-replace failures across all patch operations performed in this program.
 
         :param regex: Regular expression to match with. This only matches values on patch-able paths.
         :param patch_with: `JsonType` value to replace the matching value with directly or a callback that provides the
@@ -165,6 +166,18 @@ class VersionBumper:
         raise VersionBumperPatchError(
             f"Couldn't perform a {patch_type_str} patch using this regular expressions: {regex}"
         )
+
+    def _throw_on_failed_fetch(self, src_path: str, e: Exception) -> NoReturn:
+        """
+        Convenience function that manages internal state and re-throws upon a failed fetch.
+
+        :param src_path: Recipe path to the `/source` section item that failed to be acquired.
+        :param e: Original exception to throw from.
+        """
+        self._commit_on_failure()
+        raise FetchError(
+            f"Failed to fetch `{src_path}` after attempted {self._bumper_args.fetch_retry_limit} retries."
+        ) from e
 
     @staticmethod
     def _pre_process_cleanup(recipe_content: str) -> str:
@@ -217,12 +230,13 @@ class VersionBumper:
         )
         self._post_process_cleanup()
 
-        # TODO have a function to delay the resolution?
-        self._fetcher_ctx = fetch_all_artifacts_with_retry(
-            self._recipe_parser,
-            retry_interval=self._bumper_args.fetch_retry_interval,
-            retries=self._bumper_args.fetch_retry_limit,
-        )
+    def get_recipe_reader(self) -> RecipeReader:
+        """
+        TODO
+
+        :returns: TODO
+        """
+        return self._recipe_parser
 
     def commit_changes(self) -> None:
         """
@@ -320,3 +334,165 @@ class VersionBumper:
 
         op: Final[str] = "replace" if self._recipe_parser.contains_value(_RecipePaths.VERSION) else "add"
         self._throw_on_failed_patch({"op": op, "path": _RecipePaths.VERSION, "value": target_version})
+
+    ## Functions that require fetched source data ##
+
+    @staticmethod
+    def _is_valid_futures_tbl(fetcher_tbl: FetcherFuturesTable) -> bool:
+        """
+        TODO
+
+        :param fetcher_tbl: TODO
+        :returns: TODO
+        """
+        log.warning(
+            "The futures table is empty. The recipe file's `/source` section is likely missing or does not contain a supported source type."
+        )
+        return bool(fetcher_tbl)
+
+    def update_http_urls(self, fetcher_tbl: FetcherFuturesTable) -> None:
+        """
+        TODO
+
+        NOTE: This function will block on network I/O.
+
+        :param fetcher_tbl: TODO
+        :raises FetchError: TODO
+        :raises VersionBumperPatchError: TODO
+        """
+        if not VersionBumper._is_valid_futures_tbl(fetcher_tbl):
+            return
+
+        url_update_cntr = 0
+        for future, src_path in fetcher_tbl.items():
+            try:
+                fetcher, updated_url = future.result()
+
+                # Filter-out artifacts that don't need URL updates.
+                if not isinstance(fetcher, HttpArtifactFetcher) or updated_url is None:
+                    continue
+
+                url_path = RecipeParser.append_to_path(src_path, "/url")
+                self._throw_on_failed_patch(
+                    {
+                        # Guard against the "should be impossible" scenario that the `url` field is missing.
+                        "op": "replace" if self._recipe_parser.contains_value(url_path) else "add",
+                        "path": url_path,
+                        "value": updated_url,
+                    }
+                )
+                url_update_cntr += 1
+
+            except (FetchError, cf.CancelledError) as e:
+                self._throw_on_failed_fetch(src_path, e)
+
+        log.info(
+            "Updated %d URL(s) in %d source(s).",
+            url_update_cntr,
+            len(fetcher_tbl),
+        )
+
+    def _update_sha256_check_hash_var(self, fetcher_tbl: FetcherFuturesTable) -> bool:
+        """
+        Helper function that checks if the SHA-256 is stored in a variable. If it is, it performs the update.
+
+        :param fetcher_tbl: Table of artifact source locations to corresponding ArtifactFetcher instances.
+        :returns: True if `_update_sha256()` should return early. False otherwise.
+        """
+        # Check to see if the SHA-256 hash might be set in a variable. In extremely rare cases, we log warnings to
+        # indicate that the "correct" action is unclear and likely requires human intervention. Otherwise, if we see a
+        # hash variable and it is used by a single source, we will edit the variable directly.
+        hash_vars_set: Final[set[str]] = _RecipeVars.HASH_NAMES & set(self._recipe_parser.list_variables())
+        if len(hash_vars_set) == 1 and len(fetcher_tbl) == 1:
+            # Acquire the only entries available
+            hash_var: Final[str] = next(iter(hash_vars_set))
+            future, src_path = next(iter(fetcher_tbl.items()))
+
+            try:
+                fetcher, _ = future.result()
+                # Ignore sources that don't apply to the scenario.
+                if not isinstance(fetcher, HttpArtifactFetcher):
+                    return False
+
+                # Bail-out if the variable isn't actually used in the `sha256` key. NOTE: This is a linear search on a
+                # small list.
+                if _RecipePaths.SINGLE_SHA_256 not in self._recipe_parser.get_variable_references(hash_var):
+                    log.warning(
+                        (
+                            "Commonly used hash variable detected: `%s` but is not referenced by `/source/sha256`."
+                            " The hash value will be changed directly at `/source/sha256`."
+                        ),
+                        hash_var,
+                    )
+                    return False
+
+                self._recipe_parser.set_variable(hash_var, fetcher.get_archive_sha256())
+            except (FetchError, cf.CancelledError) as e:
+                log.exception("Failed to update the SHA-256 variable.")
+                self._throw_on_failed_fetch(src_path, e)
+            return True
+
+        elif len(hash_vars_set) > 1:
+            log.warning(
+                "Multiple commonly used hash variables detected. Hash values will be changed directly in `/source` section."
+            )
+
+        return False
+
+    def update_sha256(self, fetcher_tbl: FetcherFuturesTable) -> None:
+        """
+        Attempts to update the SHA-256 hash(s) in the `/source` section of a recipe file, if applicable. Note that this
+        is only required for build artifacts that are hosted as compressed software archives.
+
+        NOTE: This function will block on network I/O.
+        NOTE: For this to make any meaningful changes, the `version` field will need to be updated first.
+
+        :param fetcher_tbl: TODO
+        :raises FetchError: TODO
+        :raises VersionBumperPatchError: TODO
+        """
+        if not VersionBumper._is_valid_futures_tbl(fetcher_tbl):
+            return
+
+        # Bail early in the event the SHA-256 hash is used in a variable in a way that we can easily address.
+        if self._update_sha256_check_hash_var(fetcher_tbl):
+            return
+
+        # NOTE: Each source _might_ have a different SHA-256 hash. This is the case for the `cctools-ld64` feedstock.
+        # That project has a different implementation per architecture. However, in other circumstances, mirrored
+        # sources with different hashes might imply there is a security threat. We will log some statistics so the user
+        # can best decide what to do.
+        unique_hashes: set[str] = set()
+        sha_cntr = 0
+
+        # TODO when completed, SHA-256 needs to be calculated on each HTTP fetcher returned
+        for future, src_path in fetcher_tbl.items():
+            try:
+                fetcher, _ = future.result()
+
+                # Filter-out artifacts that don't need a SHA-256 hash.
+                if not isinstance(fetcher, HttpArtifactFetcher):
+                    continue
+
+                sha = fetcher.get_archive_sha256()
+                sha_cntr += 1
+                unique_hashes.add(sha)
+                sha_path = RecipeParser.append_to_path(src_path, "/sha256")
+                self._throw_on_failed_patch(
+                    {
+                        # Guard against the unlikely scenario that the `sha256` field is missing.
+                        "op": "replace" if self._recipe_parser.contains_value(sha_path) else "add",
+                        "path": sha_path,
+                        "value": sha,
+                    }
+                )
+
+            except (FetchError, cf.CancelledError) as e:
+                self._throw_on_failed_fetch(src_path, e)
+
+        log.info(
+            "Found %d unique SHA-256 hash(es) out of a total of %d hash(es) in %d sources.",
+            len(unique_hashes),
+            sha_cntr,
+            len(fetcher_tbl),
+        )
