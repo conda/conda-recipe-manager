@@ -354,11 +354,13 @@ class VersionBumper:
         :param fetcher_tbl: Futures table to validate.
         :returns: True if the futures table is valid. False otherwise.
         """
-        log.warning(
-            "The futures table is empty. The recipe file's `/source` section is likely missing or does not contain a"
-            " supported source type."
-        )
-        return bool(fetcher_tbl)
+        if not fetcher_tbl:
+            log.warning(
+                "The futures table is empty. The recipe file's `/source` section is likely missing or does not contain a"
+                " supported source type."
+            )
+            return False
+        return True
 
     def update_http_urls(self, fetcher_tbl: FetcherFuturesTable) -> None:
         """

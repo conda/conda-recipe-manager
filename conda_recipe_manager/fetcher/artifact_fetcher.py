@@ -186,16 +186,22 @@ def _fetch_archive(fetcher: BaseArtifactFetcher, retry_interval: float, retries:
 
 @contextmanager
 def fetch_all_artifacts_with_retry(
-    recipe_reader: RecipeReader, retry_interval: float = DEFAULT_RETRY_INTERVAL, retries: int = DEFAULT_RETRY_LIMIT
+    recipe_reader: RecipeReader,
+    ignore_unsupported: bool = False,
+    retry_interval: float = DEFAULT_RETRY_INTERVAL,
+    retries: int = DEFAULT_RETRY_LIMIT,
 ) -> Generator[FetcherFuturesTable]:
     """
     Starts a threadpool that pulls-down all source artifacts for a recipe file, with a built-in retry mechanism.
 
+    :param ignore_unsupported: (Optional) If set to `True`, ignore currently unsupported artifacts found in the source
+        section and return the list of supported sources. Otherwise, throw an exception.
     :param recipe_reader: READ-ONLY Parser instance for the target recipe. Ensuring this is a read-only parsing class
         provides some thread safety through abusing a type checker (like `mypy`).
     :param retry_interval: (Optional) Base quantity of time (in seconds) to wait between fetch attempts. Defaults to
         the `DEFAULT_RETRY_INTERVAL` constant.
     :param retries: (Optional) Number of retries to attempt. Defaults to the `DEFAULT_RETRY_LIMIT` constant.
+    :raises FetchUnsupportedError: If an unsupported source format is found.
     :raises FetchError: On resolving any returned future, if fetching a source artifact failed.
     :returns: A generator containing a table that maps futures to the source artifact path in the recipe file and
         the fetcher instance itself.
@@ -273,6 +279,7 @@ def _fetch_corrected_archive(
     :param fetcher: Artifact fetching instance to use.
     :param retry_interval: Base quantity of time (in seconds) to wait between fetch attempts.
     :param retries: Number of retries to attempt. This may be spread-out across the original URL and the corrected URL.
+    :raises FetchUnsupportedError: If an unsupported source format is found.
     :raises FetchError: If an issue occurred while downloading or extracting the archive.
     :returns: The SHA-256 hash of the artifact, if it was able to be downloaded. Optionally includes a corrected URL to
         be updated in the recipe file.
@@ -301,13 +308,16 @@ def _fetch_corrected_archive(
         corrected_fetcher: Final[HttpArtifactFetcher] = HttpArtifactFetcher(str(fetcher), corrected_fetcher_url)
 
         _fetch_archive(corrected_fetcher, retry_interval, corrected_retries)
-        log.warning("Archive found at %s. Will attempt to update recipe file.", corrected_fetcher_url)
+        log.warning("Updated PyPI archive found at %s. Will attempt to update recipe file.", corrected_fetcher_url)
         return (corrected_fetcher, corrected_fetcher_url)
 
 
 @contextmanager
 def fetch_all_corrected_artifacts_with_retry(
-    recipe_reader: RecipeReader, retry_interval: float = DEFAULT_RETRY_INTERVAL, retries: int = DEFAULT_RETRY_LIMIT
+    recipe_reader: RecipeReader,
+    ignore_unsupported: bool = False,
+    retry_interval: float = DEFAULT_RETRY_INTERVAL,
+    retries: int = DEFAULT_RETRY_LIMIT,
 ) -> Generator[FetcherFuturesTable]:
     """
     Starts a threadpool that pulls-down all source artifacts for a recipe file, with a built-in retry mechanism AND
@@ -315,6 +325,8 @@ def fetch_all_corrected_artifacts_with_retry(
 
     :param recipe_reader: READ-ONLY Parser instance for the target recipe. Ensuring this is a read-only parsing class
         provides some thread safety through abusing a type checker (like `mypy`).
+    :param ignore_unsupported: (Optional) If set to `True`, ignore currently unsupported artifacts found in the source
+        section and return the list of supported sources. Otherwise, throw an exception.
     :param retry_interval: (Optional) Base quantity of time (in seconds) to wait between fetch attempts.
     :param retries: (Optional) Number of retries to attempt. Defaults to `_RETRY_LIMIT` constant.
     :raises FetchError: On resolving any returned future, if fetching a source artifact failed.

@@ -98,7 +98,7 @@ def _full_version_bump(version_bumper: VersionBumper, target_version: str, retry
     """
     # Kick-off the asynchronous fetching mechanism early to overlap some execution.
     with fetch_all_corrected_artifacts_with_retry(
-        version_bumper.get_recipe_reader(), retry_interval=retry_interval
+        version_bumper.get_recipe_reader(), ignore_unsupported=True, retry_interval=retry_interval
     ) as fetcher_tbl:
 
         # Version must be updated before hash to ensure the correct artifact is hashed.
