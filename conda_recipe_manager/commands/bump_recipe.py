@@ -96,24 +96,25 @@ def _full_version_bump(version_bumper: VersionBumper, target_version: str, retry
     :param target_version: The version being bumped to.
     :param retry_interval: Base quantity of time (in seconds) to wait between fetch attempts.
     """
-    # Kick-off the asynchronous fetching mechanism early to overlap some execution.
+    # Version must be updated before hash to ensure the correct artifact is hashed.
+    try:
+        version_bumper.update_version(target_version)
+    except VersionBumperInvalidState:
+        log.exception(
+            "The provided target version is the same value found in the recipe file or empty: %s",
+            target_version,
+        )
+        sys.exit(ExitCode.CLICK_USAGE)
+    except VersionBumperPatchError:
+        log.exception("Failed to edit the target version.")
+        sys.exit(ExitCode.PATCH_ERROR)
+
+    # Although we would like to kick this off sooner (to get more overlapping execution), we need the version to be
+    # updated _before_ we attempt to fetch artifacts. Otherwise, we may attempt to fetch the previous verion's artifacts
+    # from the recipe.
     with fetch_all_corrected_artifacts_with_retry(
         version_bumper.get_recipe_reader(), ignore_unsupported=True, retry_interval=retry_interval
     ) as fetcher_tbl:
-
-        # Version must be updated before hash to ensure the correct artifact is hashed.
-        try:
-            version_bumper.update_version(target_version)
-        except VersionBumperInvalidState:
-            log.exception(
-                "The provided target version is the same value found in the recipe file or empty: %s",
-                target_version,
-            )
-            sys.exit(ExitCode.CLICK_USAGE)
-        except VersionBumperPatchError:
-            log.exception("Failed to edit the target version.")
-            sys.exit(ExitCode.PATCH_ERROR)
-
         # Update recipe file components that require source artifacts. NOTE: These calls block on I/O.
         try:
             version_bumper.update_http_urls(fetcher_tbl)

@@ -340,7 +340,7 @@ class VersionBumper:
                 log.warning("`/package/version` does not use the defined JINJA variable `version`.")
             return
 
-        op: Final[str] = "replace" if self._recipe_parser.contains_value(_RecipePaths.VERSION) else "add"
+        op: Final = "replace" if self._recipe_parser.contains_value(_RecipePaths.VERSION) else "add"
         self._throw_on_failed_patch({"op": op, "path": _RecipePaths.VERSION, "value": target_version})
 
     ## Functions that require fetched source data ##
@@ -356,8 +356,8 @@ class VersionBumper:
         """
         if not fetcher_tbl:
             log.warning(
-                "The futures table is empty. The recipe file's `/source` section is likely missing or does not contain a"
-                " supported source type."
+                "The futures table is empty. The recipe file's `/source` section is likely missing or does not contain"
+                " a supported source type."
             )
             return False
         return True
