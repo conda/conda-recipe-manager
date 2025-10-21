@@ -181,7 +181,9 @@ def _fetch_archive(fetcher: BaseArtifactFetcher, retry_interval: float, retries:
             if retry_id < retries:
                 time.sleep(retry_id * retry_interval)
 
-    raise FetchError(f"Failed to fetch `{fetcher}` after {retries} retries.")
+    raise FetchError(
+        f"Failed to fetch `{fetcher}` | {cast(HttpArtifactFetcher, fetcher).get_archive_url()} after {retries} retries."
+    )
 
 
 @contextmanager

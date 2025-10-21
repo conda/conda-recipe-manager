@@ -12,9 +12,10 @@ from tests.http_mocking import MockHttpJsonResponse, MockHttpResponse, MockHttpS
 
 def mock_artifact_requests_get(*args: tuple[str], **_: dict[str, str | int]) -> MockHttpResponse:
     """
-    Mocking function for HTTP requests made in this test file.
+    Mocking function for HTTP requests for remote software artifacts, used by several artifact-fetching tests.
 
-    NOTE: The artifacts provided are not the real build artifacts.
+    NOTE: The artifacts provided are not the real build artifacts. They are mocked archive files provided by as test
+          data files.
 
     :param args: Arguments passed to the `requests.get()`
     :param _: Name-specified arguments passed to `requests.get()` (Unused)
@@ -22,6 +23,9 @@ def mock_artifact_requests_get(*args: tuple[str], **_: dict[str, str | int]) -> 
     """
     endpoint = cast(str, args[0])
     default_artifact_set: Final[set[str]] = {
+        # types-toml.yaml, pre-version-bump values
+        "https://pypi.io/packages/source/t/types-toml/types-toml-0.10.8.6.tar.gz",
+        "https://pypi.org/packages/source/t/types-toml/types-toml-0.10.8.6.tar.gz",
         # types-toml.yaml
         "https://pypi.io/packages/source/t/types-toml/types-toml-0.10.8.20240310.tar.gz",
         "https://pypi.org/packages/source/t/types-toml/types-toml-0.10.8.20240310.tar.gz",
@@ -49,10 +53,18 @@ def mock_artifact_requests_get(*args: tuple[str], **_: dict[str, str | int]) -> 
         "https://github.com/protocolbuffers/protobuf/archive/v25.3/libprotobuf-v25.3.tar.gz",
         "https://github.com/google/benchmark/archive/5b7683f49e1e9223cf9927b24f6fd3d6bd82e3f8.tar.gz",
         "https://github.com/google/googletest/archive/5ec7f0c4a113e2f18ac2c6cc7df51ad6afc24081.tar.gz",
+        # cctools-ld64.yaml, pre-version-bump values
+        "https://opensource.apple.com/tarballs/cctools/cctools-921.tar.gz",
+        "https://opensource.apple.com/tarballs/ld64/ld64-409.12.tar.gz",
+        "https://opensource.apple.com/tarballs/dyld/dyld-551.4.tar.gz",
+        "http://releases.llvm.org/7.0.0/clang+llvm-7.0.0-x86_64-apple-darwin.tar.xz",
     }
     # Maps mocked PyPi API requests to JSON test files containing the mocked API response.
     pypi_api_requests_map: Final[dict[str, str]] = {
         "https://pypi.org/pypi/types-toml/json": "api/pypi/get_types-toml_package.json",
+        # types-toml, pre-version-bump
+        "https://pypi.org/pypi/types-toml/0.10.8.6/json": "api/pypi/get_types-toml_package_version_0.10.8.6.json",  # pylint: disable=line-too-long
+        # types-toml, post-version-bump
         "https://pypi.org/pypi/types-toml/0.10.8.20240310/json": "api/pypi/get_types-toml_package_version_0.10.8.20240310.json",  # pylint: disable=line-too-long
         "https://pypi.org/pypi/Types-toml/0.10.8.20240310/json": "api/pypi/get_types-toml_package_version_0.10.8.20240310.json",  # pylint: disable=line-too-long
     }
