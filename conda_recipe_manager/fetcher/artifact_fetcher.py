@@ -209,7 +209,7 @@ def fetch_all_artifacts_with_retry(
     # In testing, using a process pool took significantly more time and resources. That aligns with how I/O bound this
     # process is. We use the `ThreadPoolExecutor` class over a `ThreadPool` so that we may leverage the error handling
     # features of the `Future` class.
-    with from_recipe(recipe_reader, True) as fetcher_tbl:
+    with from_recipe(recipe_reader, ignore_unsupported=ignore_unsupported) as fetcher_tbl:
         with cf.ThreadPoolExecutor() as executor:
             artifact_futures_tbl = {
                 executor.submit(_fetch_archive, fetcher, retry_interval, retries): src_path
@@ -336,7 +336,7 @@ def fetch_all_corrected_artifacts_with_retry(
     # In testing, using a process pool took significantly more time and resources. That aligns with how I/O bound this
     # process is. We use the `ThreadPoolExecutor` class over a `ThreadPool` so that we may leverage the error handling
     # features of the `Future` class.
-    with from_recipe(recipe_reader, True) as fetcher_tbl:
+    with from_recipe(recipe_reader, ignore_unsupported=ignore_unsupported) as fetcher_tbl:
         with cf.ThreadPoolExecutor() as executor:
             artifact_futures_tbl = {
                 executor.submit(_fetch_corrected_archive, recipe_reader, fetcher, retry_interval, retries): src_path
