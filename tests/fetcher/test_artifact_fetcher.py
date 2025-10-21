@@ -10,7 +10,6 @@ from typing import Final, Optional, Type
 from unittest.mock import patch
 
 import pytest
-from pyfakefs.fake_filesystem import FakeFilesystem
 
 from conda_recipe_manager.fetcher.artifact_fetcher import (
     fetch_all_artifacts_with_retry,
@@ -26,20 +25,20 @@ from tests.file_loading import get_test_path, load_recipe
 from tests.mock_artifact_fetch import mock_artifact_requests_get
 
 
-def test_from_recipe_teardown(fs: FakeFilesystem) -> None:
+def test_from_recipe_teardown() -> None:
     """
     Verifies that `from_recipe()` cleans up after itself in an expected manner.
-
-    :param fs: `pyfakefs` Fixture used to replace the file system
     """
+    # NOTE: This test does not use `pyfakefs`. The only files written to disk are extracted dummy test archives to
+    #       temporary directories that should be cleaned up via context management.
+
     # This file is used as it has multiple `/source` entries.
     file: Final = "cctools-ld64.yaml"
-    fs.add_real_file(get_test_path() / file)
-    recipe = load_recipe(file, RecipeReader)
+    recipe: Final = load_recipe(file, RecipeReader)
 
     temp_files: list[Path] = []
 
-    with from_recipe(recipe, True) as fetcher_tbl:
+    with from_recipe(recipe, ignore_unsupported=True) as fetcher_tbl:
         for _, fetcher in fetcher_tbl.items():
             assert not fetcher.fetched()
             assert fetcher._temp_dir_path.exists()  # pylint: disable=protected-access
@@ -157,6 +156,35 @@ def test_from_recipe_does_not_throw_on_ignore_unsupported(file: str, request: py
         assert not fetcher_tbl
 
 
+def test_fetch_all_artifacts_with_retry_teardown() -> None:
+    """
+    Verifies that `fetch_all_artifacts_with_retry()` cleans up after itself in an expected manner.
+    """
+    # NOTE: This test does not use `pyfakefs`. The only files written to disk are extracted dummy test archives to
+    #       temporary directories that should be cleaned up via context management.
+
+    # This file is used as it has multiple `/source` entries.
+    file: Final = "cctools-ld64.yaml"
+    recipe: Final = load_recipe(file, RecipeReader)
+
+    temp_files: list[Path] = []
+
+    # NOTE: The test file used only has HTTP artifacts.
+    with patch("requests.get", new=mock_artifact_requests_get):
+        with fetch_all_artifacts_with_retry(recipe, ignore_unsupported=True) as future_tbl:
+            for future in cf.as_completed(future_tbl):
+                fetcher, _ = future.result()
+                assert fetcher.fetched()
+                assert fetcher._temp_dir_path.exists()  # pylint: disable=protected-access
+                temp_files.append(fetcher._temp_dir_path)  # pylint: disable=protected-access
+
+    # This either verifies the context was managed correctly OR we got really really lucky with the garbage collector.
+    # Though some print-line debugging appears to confirm that all `__exit__()` calls will occur as soon as the `with`
+    # block has been exited.
+    for temp_file in temp_files:
+        assert not temp_file.exists()
+
+
 @pytest.mark.parametrize(
     "file,expected",
     [
@@ -222,6 +250,35 @@ def test_fetch_all_artifacts_with_retry_ignore_unsupported(
                         gaf.assert_called_once()
                     # This should always be `None` for calls to `fetch_all_artifacts_with_retry()`
                     assert updated_url is None
+
+
+def test_fetch_all_corrected_artifacts_with_retry_teardown() -> None:
+    """
+    Verifies that `fetch_all_corrected_artifacts_with_retry()` cleans up after itself in an expected manner.
+    """
+    # NOTE: This test does not use `pyfakefs`. The only files written to disk are extracted dummy test archives to
+    #       temporary directories that should be cleaned up via context management.
+
+    # This file is used as it has multiple `/source` entries.
+    file: Final = "cctools-ld64.yaml"
+    recipe: Final = load_recipe(file, RecipeReader)
+
+    temp_files: list[Path] = []
+
+    # NOTE: The test file used only has HTTP artifacts.
+    with patch("requests.get", new=mock_artifact_requests_get):
+        with fetch_all_corrected_artifacts_with_retry(recipe, ignore_unsupported=True) as future_tbl:
+            for future in cf.as_completed(future_tbl):
+                fetcher, _ = future.result()
+                assert fetcher.fetched()
+                assert fetcher._temp_dir_path.exists()  # pylint: disable=protected-access
+                temp_files.append(fetcher._temp_dir_path)  # pylint: disable=protected-access
+
+    # This either verifies the context was managed correctly OR we got really really lucky with the garbage collector.
+    # Though some print-line debugging appears to confirm that all `__exit__()` calls will occur as soon as the `with`
+    # block has been exited.
+    for temp_file in temp_files:
+        assert not temp_file.exists()
 
 
 @pytest.mark.parametrize(
