@@ -38,6 +38,7 @@ class CbcParser(RecipeReader):
         """
         super().__init__(content)
         self._cbc_vars_tbl: _CbcTable = {}
+        self._zip_keys: list[NodeVar | list[NodeVar]] = []
 
         # TODO Handle special cases:
         #   - pin_run_as_build
@@ -56,20 +57,14 @@ class CbcParser(RecipeReader):
             if not isinstance(value_list, list):
                 continue
 
-            # TODO track and calculate zip-key values
             if variable == "zip_keys":
+                self._construct_zip_keys(value_list, comments_tbl)
                 continue
 
             # TODO add V1 support for CBC files? Is there a V1 CBC format?
             for i, value in enumerate(value_list):
                 path = f"/{variable}/{i}"
-
-                # Re-assemble the comment components. If successful, append it to the node.
-                # TODO Improve: This is not very efficient.
-                selector_str = "" if not self.contains_selector_at_path(path) else self.get_selector_at_path(path)
-                comment_str = comments_tbl.get(path, "")
-                combined_comment = f"{selector_str} {comment_str}"
-                entry = NodeVar(value, f"# {combined_comment}" if combined_comment.strip() else None)
+                entry = self._construct_cbc_variable(path, value, comments_tbl)
 
                 # TODO detect duplicates
                 if variable not in self._cbc_vars_tbl:
@@ -87,6 +82,44 @@ class CbcParser(RecipeReader):
         if not isinstance(key, str):
             return False
         return key in self._cbc_vars_tbl
+
+    def _construct_cbc_variable(self, path: str, value: JsonType, comments_tbl: dict[str, str]) -> NodeVar:
+        """
+        Constructs a CBC variable from the value and comment.
+
+        :param path: Path to the variable.
+        :param value: Value of the variable.
+        :param comments_tbl: Table of comments.
+        """
+        # Re-assemble the comment components. If successful, append it to the node.
+        # TODO Improve: This is not very efficient.
+        selector_str = "" if not self.contains_selector_at_path(path) else self.get_selector_at_path(path)
+        comment_str = comments_tbl.get(path, "")
+        combined_comment = f"{selector_str} {comment_str}"
+        return NodeVar(value, f"# {combined_comment}" if combined_comment.strip() else None)
+
+    def _construct_zip_keys(self, value_list: list[JsonType], comments_tbl: dict[str, str]) -> None:
+        """
+        Constructs the zip keys from the value list.
+
+        :param value_list: List of values to construct the zip keys from.
+        :param comments_tbl: Table of comments.
+        """
+        if not all(isinstance(value, list) for value in value_list) or not all(
+            isinstance(value, str) for value in value_list
+        ):
+            return
+
+        for i, value in enumerate(value_list):
+            if isinstance(value, str):
+                path = f"/zip_keys/{i}"
+                self._zip_keys.append(self._construct_cbc_variable(path, value, comments_tbl))
+            elif isinstance(value, list):
+                node_var_list: list[NodeVar] = []
+                for j, inner_value in enumerate(value):
+                    path = f"/zip_keys/{i}/{j}"
+                    node_var_list.append(self._construct_cbc_variable(path, inner_value, comments_tbl))
+                self._zip_keys.append(node_var_list)
 
     def list_cbc_variables(self) -> list[str]:
         """
