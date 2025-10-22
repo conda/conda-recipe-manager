@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from typing import Final
+from typing import Final, Optional
 from unittest.mock import patch
 
 import pytest
@@ -235,46 +235,81 @@ def test_vb_commit_changes(fs: FakeFilesystem, file: str, vbo: VersionBumperOpti
 
 
 @pytest.mark.parametrize(
-    ["file", "vbo"],
+    ["file", "value", "expected"],
     [
         ## V0 Format ##
-        ("types-toml.yaml", _VBO_NONE),
-        ("types-toml.yaml", _VBO_SAFE_MODE),
+        ("types-toml.yaml", None, 1),
+        ("types-toml.yaml", 100, 100),
+        ("types-toml.yaml", 0, 0),
+        ("bump_recipe/build_num_-1.yaml", None, 0),
+        ("bump_recipe/build_num_-1.yaml", 1, 1),
+        ("bump_recipe/build_num_-1.yaml", 0, 0),
+        ("bump_recipe/build_num_42.yaml", None, 43),
+        ("bump_recipe/boto_build_num_1.yaml", None, 2),
+        ("bump_recipe/boto_build_num_1.yaml", 0, 0),
+        ("bump_recipe/no_build_num.yaml", None, 0),
+        ("bump_recipe/no_build_num.yaml", 2, 2),
         ## V1 Format ##
-        ("v1_format/v1_types-toml.yaml", _VBO_NONE),
-        ("v1_format/v1_types-toml.yaml", _VBO_SAFE_MODE),
+        ("v1_format/v1_types-toml.yaml", None, 1),
+        ("v1_format/v1_types-toml.yaml", 100, 100),
     ],
 )
-def test_vb_update_build_num(file: str, vbo: VersionBumperOption) -> None:
+def test_vb_update_build_num(file: str, value: Optional[int], expected: int) -> None:
     """
-    TODO
+    Validates updating the `/build/number` field.
 
     :param file: Target recipe file to use.
-    :param vbo: Options to pass to the `VersionBumper` instance.
+    :param value: Value to set.
+    :param expected: Expected value to be set.
     """
-    vb: Final = VersionBumper(get_test_path() / file, options=vbo)
+    vb: Final = VersionBumper(get_test_path() / file)
+    vb.update_build_num(value)
+    assert vb.get_recipe_reader().get_value("/build/number") == expected
     assert_vb_no_disk_usage(vb)
 
 
 @pytest.mark.parametrize(
-    ["file", "vbo"],
+    ["file", "value"],
     [
-        ## V0 Format ##
-        ("types-toml.yaml", _VBO_NONE),
-        ("types-toml.yaml", _VBO_SAFE_MODE),
-        ## V1 Format ##
-        ("v1_format/v1_types-toml.yaml", _VBO_NONE),
-        ("v1_format/v1_types-toml.yaml", _VBO_SAFE_MODE),
+        ("bump_recipe/no_build_key.yaml", None),
+        ("bump_recipe/no_build_key.yaml", 2),
     ],
 )
-def test_vb_update_version(file: str, vbo: VersionBumperOption) -> None:
+def test_vb_update_build_num_throws_on_missing_build(file: str, value: Optional[int]) -> None:
     """
-    TODO
+    Verifies that `update_build_num()` throws the expected exception if the `/build` key is missing.
 
     :param file: Target recipe file to use.
-    :param vbo: Options to pass to the `VersionBumper` instance.
+    :param value: Value to set.
     """
-    vb: Final = VersionBumper(get_test_path() / file, options=vbo)
+    vb: Final = VersionBumper(get_test_path() / file)
+    with pytest.raises(VersionBumperInvalidState):
+        vb.update_build_num(value)
+
+
+@pytest.mark.parametrize(
+    ["file", "value", "expected"],
+    [
+        ## V0 Format ##
+        ("types-toml.yaml", "1.2.3", "1.2.3"),
+        # This file just so happens to be missing a `version` key (but has "/package").
+        ("bump_recipe/no_build_key.yaml", "3.4.3", "3.4.3"),
+        ## V1 Format ##
+        ("v1_format/v1_types-toml.yaml", "1.2.3", "1.2.3"),
+    ],
+)
+def test_vb_update_version(file: str, value: str, expected: str) -> None:
+    """
+    Validates updating the `/package/version` field.
+
+    :param file: Target recipe file to use.
+    :param value: Value to set.
+    :param expected: Expected value to be set.
+    """
+    vb: Final = VersionBumper(get_test_path() / file)
+    vb.update_version(value)
+    # Checking this way ensures we evaluate the field is correct, regardless if a variable was changed or not.
+    assert vb.get_recipe_reader().get_value("/package/version", sub_vars=True) == expected
     assert_vb_no_disk_usage(vb)
 
 
