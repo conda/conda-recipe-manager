@@ -211,12 +211,41 @@ def test_vb_get_recipe_reader(file: str, vbo: VersionBumperOption, expected_mod:
         ## V0 Format ##
         ("types-toml.yaml", _VBO_NONE),
         ("types-toml.yaml", _VBO_SAFE_MODE),
+        ("types-toml.yaml", _VBO_NO_DELTA),
+        ## V1 Format ##
+        ("v1_format/v1_types-toml.yaml", _VBO_NONE),
+        ("v1_format/v1_types-toml.yaml", _VBO_SAFE_MODE),
+        ("v1_format/v1_types-toml.yaml", _VBO_NO_DELTA),
+    ],
+)
+def test_vb_commit_changes(fs: FakeFilesystem, file: str, vbo: VersionBumperOption) -> None:
+    """
+    Ensures that `VersionBumper::commit_changes()` saves to the disk when it is expected to do so.
+
+    :param fs: `pyfakefs` Fixture used to replace the file system
+    :param file: Target recipe file to use.
+    :param vbo: Options to pass to the `VersionBumper` instance.
+    """
+    file_path: Final = get_test_path() / file
+    fs.add_real_file(file_path, read_only=False)
+    vb: Final = VersionBumper(file_path, options=vbo)
+    vb.commit_changes()
+    # Whether or not the disk was written to depends on if the dry run flag is enabled.
+    assert_vb_n_disk_usage(vb, 0 if vbo & VersionBumperOption.DRY_RUN_MODE else 1)
+
+
+@pytest.mark.parametrize(
+    ["file", "vbo"],
+    [
+        ## V0 Format ##
+        ("types-toml.yaml", _VBO_NONE),
+        ("types-toml.yaml", _VBO_SAFE_MODE),
         ## V1 Format ##
         ("v1_format/v1_types-toml.yaml", _VBO_NONE),
         ("v1_format/v1_types-toml.yaml", _VBO_SAFE_MODE),
     ],
 )
-def test_vb_commit_changes_reader(file: str, vbo: VersionBumperOption) -> None:
+def test_vb_update_build_num(file: str, vbo: VersionBumperOption) -> None:
     """
     TODO
 
@@ -238,29 +267,7 @@ def test_vb_commit_changes_reader(file: str, vbo: VersionBumperOption) -> None:
         ("v1_format/v1_types-toml.yaml", _VBO_SAFE_MODE),
     ],
 )
-def test_vb_update_build_num_reader(file: str, vbo: VersionBumperOption) -> None:
-    """
-    TODO
-
-    :param file: Target recipe file to use.
-    :param vbo: Options to pass to the `VersionBumper` instance.
-    """
-    vb: Final = VersionBumper(get_test_path() / file, options=vbo)
-    assert_vb_no_disk_usage(vb)
-
-
-@pytest.mark.parametrize(
-    ["file", "vbo"],
-    [
-        ## V0 Format ##
-        ("types-toml.yaml", _VBO_NONE),
-        ("types-toml.yaml", _VBO_SAFE_MODE),
-        ## V1 Format ##
-        ("v1_format/v1_types-toml.yaml", _VBO_NONE),
-        ("v1_format/v1_types-toml.yaml", _VBO_SAFE_MODE),
-    ],
-)
-def test_vb_update_version_reader(file: str, vbo: VersionBumperOption) -> None:
+def test_vb_update_version(file: str, vbo: VersionBumperOption) -> None:
     """
     TODO
 
@@ -286,7 +293,7 @@ def test_vb_update_version_reader(file: str, vbo: VersionBumperOption) -> None:
         ("v1_format/v1_types-toml.yaml", _VBO_SAFE_MODE),
     ],
 )
-def test_update_http_urls_reader(file: str, vbo: VersionBumperOption) -> None:
+def test_update_http_urls(file: str, vbo: VersionBumperOption) -> None:
     """
     TODO
 
@@ -308,7 +315,7 @@ def test_update_http_urls_reader(file: str, vbo: VersionBumperOption) -> None:
         ("v1_format/v1_types-toml.yaml", _VBO_SAFE_MODE),
     ],
 )
-def test_vb_update_sha256_reader(file: str, vbo: VersionBumperOption) -> None:
+def test_vb_update_sha256(file: str, vbo: VersionBumperOption) -> None:
     """
     TODO
 
