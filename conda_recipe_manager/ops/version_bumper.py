@@ -20,7 +20,7 @@ from conda_recipe_manager.fetcher.http_artifact_fetcher import HttpArtifactFetch
 from conda_recipe_manager.ops.exceptions import VersionBumperInvalidState, VersionBumperPatchError
 from conda_recipe_manager.parser.recipe_parser import RecipeParser, ReplacePatchFunc
 from conda_recipe_manager.parser.recipe_parser_deps import RecipeParserDeps
-from conda_recipe_manager.parser.recipe_reader import RecipeReader
+from conda_recipe_manager.parser.recipe_reader_deps import RecipeReaderDeps
 from conda_recipe_manager.types import JsonPatchType, JsonType
 
 log: Final = logging.getLogger(__name__)
@@ -206,7 +206,7 @@ class VersionBumper:
     def __init__(
         self,
         recipe_path: Path | str,
-        bumper_args: VersionBumperArguments,
+        bumper_args: Optional[VersionBumperArguments] = None,
         options: Optional[VersionBumperOption] = None,
     ) -> None:
         """
@@ -224,8 +224,10 @@ class VersionBumper:
             recipe text phases. These phases attempt to improve recipe file compatibility with this class.
         """
         self._recipe_path: Final = Path(recipe_path)
-        self._bumper_args: Final = bumper_args
+        self._bumper_args: Final = VersionBumperArguments() if bumper_args is None else bumper_args
         self._options: Final = VersionBumperOption.NONE if options is None else options
+        # Track how many times we've actually written to disk.
+        self._disk_write_cntr = 0
 
         recipe_content: Final = self._recipe_path.read_text(encoding="utf-8")
         self._recipe_parser = RecipeParserDeps(
@@ -233,7 +235,7 @@ class VersionBumper:
         )
         self._post_process_cleanup()
 
-    def get_recipe_reader(self) -> RecipeReader:
+    def get_recipe_reader(self) -> RecipeReaderDeps:
         """
         Exposes the underlying recipe parser instance for read-only access to a recipe file. This can help bootstrap
         the factory functions found the `conda_recipe_manager.fetcher.artifact_fetcher` module
@@ -259,6 +261,7 @@ class VersionBumper:
         self._recipe_path.write_text(
             self._recipe_parser.render(omit_trailing_newline=omit_trailing_newline), encoding="utf-8"
         )
+        self._disk_write_cntr += 1
 
     def update_build_num(self, build_num: Optional[int]) -> None:
         """
