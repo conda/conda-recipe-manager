@@ -5,11 +5,14 @@
 from __future__ import annotations
 
 from typing import Final
+from unittest.mock import patch
 
 import pytest
 from pyfakefs.fake_filesystem import FakeFilesystem
 
-from conda_recipe_manager.ops.version_bumper import VersionBumper, VersionBumperInvalidState, VersionBumperOption
+from conda_recipe_manager.ops.exceptions import VersionBumperInvalidState, VersionBumperPatchError
+from conda_recipe_manager.ops.version_bumper import VersionBumper, VersionBumperOption
+from conda_recipe_manager.parser.recipe_parser import RecipeParser
 from conda_recipe_manager.parser.recipe_parser_deps import RecipeReaderDeps
 from tests.file_loading import get_test_path, load_recipe
 
@@ -88,6 +91,17 @@ def test_vb_simulate_failures_to_save_changes(fs: FakeFilesystem, file: str) -> 
         vb.update_sha256({})
     assert_vb_n_disk_usage(vb, 4)
 
+    def _simulate_failed_patch(_: RecipeParser) -> bool:
+        return False
+
+    with patch(
+        "conda_recipe_manager.parser.recipe_parser.RecipeParser.patch", side_effect=_simulate_failed_patch
+    ) as bad_patch:
+        with pytest.raises(VersionBumperPatchError):
+            vb.update_build_num(1)
+            bad_patch.assert_called_once()
+            assert_vb_n_disk_usage(vb, 5)
+
 
 @pytest.mark.parametrize(
     ["file", "vbo"],
@@ -123,6 +137,16 @@ def test_vb_simulate_failures_to_not_save_changes(fs: FakeFilesystem, file: str,
 
     with pytest.raises(VersionBumperInvalidState):
         vb.update_sha256({})
+
+    def _simulate_failed_patch(_: RecipeParser) -> bool:
+        return False
+
+    with patch(
+        "conda_recipe_manager.parser.recipe_parser.RecipeParser.patch", side_effect=_simulate_failed_patch
+    ) as bad_patch:
+        with pytest.raises(VersionBumperPatchError):
+            vb.update_build_num(1)
+            bad_patch.assert_called_once()
 
     assert_vb_no_disk_usage(vb)
 
