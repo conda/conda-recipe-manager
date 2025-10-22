@@ -54,6 +54,42 @@ def assert_vb_n_disk_usage(vb: VersionBumper, n: int) -> None:
     assert vb._disk_write_cntr == n  # pylint: disable=protected-access
 
 
+def _simulate_failed_patch(_: RecipeParser) -> bool:
+    """
+    Simulates a failed recipe parser `patch()` call.
+
+    :returns: False
+    """
+    return False
+
+
+@pytest.mark.parametrize(
+    "file",
+    [
+        ## V0 Format ##
+        ("types-toml.yaml"),
+        ## V1 Format ##
+        ("v1_format/v1_types-toml.yaml"),
+    ],
+)
+def test_vb_simulate_failure_on_construction(fs: FakeFilesystem, file: str) -> None:
+    """
+    Ensures that the recipe file is saved when a failure occurs. This one test simulates a number of failure scenarios
+    in a row.
+
+    :param fs: `pyfakefs` Fixture used to replace the file system
+    :param file: Target recipe file to use.
+    """
+    file_path: Final = get_test_path() / file
+    fs.add_real_file(file_path, read_only=False)
+    with patch(
+        "conda_recipe_manager.parser.recipe_parser.RecipeParser.patch", side_effect=_simulate_failed_patch
+    ) as bad_patch:
+        with pytest.raises(VersionBumperPatchError):
+            VersionBumper(file_path, options=_VBO_SAFE_MODE)
+            bad_patch.assert_called_once()
+
+
 ## Class flag tests ##
 
 
@@ -92,9 +128,6 @@ def test_vb_simulate_failures_to_save_changes(fs: FakeFilesystem, file: str) -> 
     with pytest.raises(VersionBumperInvalidState):
         vb.update_sha256({})
     assert_vb_n_disk_usage(vb, 4)
-
-    def _simulate_failed_patch(_: RecipeParser) -> bool:
-        return False
 
     with patch(
         "conda_recipe_manager.parser.recipe_parser.RecipeParser.patch", side_effect=_simulate_failed_patch
@@ -139,9 +172,6 @@ def test_vb_simulate_failures_to_not_save_changes(fs: FakeFilesystem, file: str,
 
     with pytest.raises(VersionBumperInvalidState):
         vb.update_sha256({})
-
-    def _simulate_failed_patch(_: RecipeParser) -> bool:
-        return False
 
     with patch(
         "conda_recipe_manager.parser.recipe_parser.RecipeParser.patch", side_effect=_simulate_failed_patch
@@ -379,6 +409,10 @@ def test_update_http_urls(file: str, expected: dict[str, str]) -> None:
         # NOTE: The mocked archive file will always return the same SHA-256 hash.
         ## V0 Format ##
         ("types-toml.yaml", {"/source": "e594f5bc141acabe4b0298d05234e80195116667edad3d6a9cd610cab36bc4e1"}),
+        (
+            "bump_recipe/types-toml_hash_type_var_defined_but_not_used.yaml",
+            {"/source": "e594f5bc141acabe4b0298d05234e80195116667edad3d6a9cd610cab36bc4e1"},
+        ),
         (
             "cctools-ld64.yaml",
             {
