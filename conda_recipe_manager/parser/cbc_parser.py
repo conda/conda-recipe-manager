@@ -38,7 +38,7 @@ class CbcParser(RecipeReader):
         """
         super().__init__(content)
         self._cbc_vars_tbl: _CbcTable = {}
-        self._zip_keys: list[NodeVar | list[NodeVar]] = []
+        self._zip_keys: list[list[NodeVar]] = []
 
         # TODO Handle special cases:
         #   - pin_run_as_build
@@ -98,29 +98,6 @@ class CbcParser(RecipeReader):
         combined_comment = f"{selector_str} {comment_str}"
         return NodeVar(value, f"# {combined_comment}" if combined_comment.strip() else None)
 
-    def _construct_zip_keys(self, value_list: list[JsonType], comments_tbl: dict[str, str]) -> None:
-        """
-        Constructs the zip keys from the value list.
-
-        :param value_list: List of values to construct the zip keys from.
-        :param comments_tbl: Table of comments.
-        """
-        if not all(isinstance(value, list) for value in value_list) or not all(
-            isinstance(value, str) for value in value_list
-        ):
-            return
-
-        for i, value in enumerate(value_list):
-            if isinstance(value, str):
-                path = f"/zip_keys/{i}"
-                self._zip_keys.append(self._construct_cbc_variable(path, value, comments_tbl))
-            elif isinstance(value, list):
-                node_var_list: list[NodeVar] = []
-                for j, inner_value in enumerate(value):
-                    path = f"/zip_keys/{i}/{j}"
-                    node_var_list.append(self._construct_cbc_variable(path, inner_value, comments_tbl))
-                self._zip_keys.append(node_var_list)
-
     def list_cbc_variables(self) -> list[str]:
         """
         Get a list of all the available CBC variable names.
@@ -162,3 +139,63 @@ class CbcParser(RecipeReader):
         if isinstance(default, SentinelType):
             raise ValueError(f"CBC variable does not have a value for the provided selector query: {variable}")
         return default
+
+    def _is_multi_level_list(self, value: JsonType) -> bool:
+        """
+        Checks if the value is a multi-level list.
+        The format is: [{"None": ["python", "numpy"]}, {"None": ["pypy", "pypy3"]}, ...]
+
+        :param value: JSON value to check.
+        :returns: True if the value is a multi-level list. False otherwise.
+        """
+        if not isinstance(value, list) or not all(isinstance(elem, dict) for elem in value):
+            return False
+        for dict_elem in value:
+            dict_elem = cast(dict[str, JsonType], dict_elem)
+            if len(dict_elem) != 1:
+                return False
+            if "None" not in dict_elem:
+                return False
+            if not isinstance(dict_elem["None"], list) or not all(isinstance(elem, str) for elem in dict_elem["None"]):
+                return False
+        return True
+
+    def _construct_zip_keys(self, value_list: list[JsonType], comments_tbl: dict[str, str]) -> None:
+        """
+        Constructs the zip keys from the value list.
+
+        :param value_list: list of JSON values to construct the zip keys from.
+        :param comments_tbl: Table of comments.
+        """
+        is_multi_level_list: Final[bool] = self._is_multi_level_list(value_list)
+        is_list_of_strings: Final[bool] = isinstance(value_list, list) and all(
+            isinstance(elem, str) for elem in value_list
+        )
+        if not is_multi_level_list and not is_list_of_strings:
+            return
+
+        list_of_strings = cast(list[str], value_list)
+        if is_list_of_strings:
+            node_var_list: list[NodeVar] = []
+            for i, elem in enumerate(list_of_strings):
+                path = f"/zip_keys/{i}"
+                node_var_list.append(self._construct_cbc_variable(path, elem, comments_tbl))
+            self._zip_keys.append(node_var_list)
+            return
+
+        multi_level_list = cast(list[dict[str, list[str]]], value_list)
+        for i, inner_dict in enumerate(multi_level_list):
+            inner_list = inner_dict["None"]
+            node_var_list: list[NodeVar] = []  # type: ignore
+            for j, elem in enumerate(inner_list):
+                path = f"/zip_keys/{i}/None/{j}"
+                node_var_list.append(self._construct_cbc_variable(path, elem, comments_tbl))
+            self._zip_keys.append(node_var_list)
+
+    def get_zip_keys(self) -> list[set[str]]:
+        """
+        Returns the zip keys from the CBC file.
+
+        :returns: List of zip keys.
+        """
+        return [set(key.get_value() for key in list_of_keys) for list_of_keys in self._zip_keys]  # type: ignore

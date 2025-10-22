@@ -10,6 +10,8 @@ from conda_recipe_manager.parser.platform_types import (
     Arch,
     OperatingSystem,
     Platform,
+    PlatformAlias,
+    get_platforms_by_alias,
     get_platforms_by_arch,
     get_platforms_by_os,
 )
@@ -29,8 +31,8 @@ from conda_recipe_manager.parser.platform_types import (
         (Arch.SYS_390, {Platform.LINUX_SYS_390}),
         (Arch.ARM_V6L, {Platform.LINUX_ARM_V6L}),
         (Arch.ARM_V7L, {Platform.LINUX_ARM_V7L}),
-        (Arch.PPC_64, {Platform.LINUX_PPC_64}),
         (Arch.PPC_64_LE, {Platform.LINUX_PPC_64_LE}),
+        (Arch.AARCH_64, {Platform.LINUX_AARCH_64}),
     ],
 )
 def test_get_platforms_by_arch(arch: Arch | str, expected: set[Platform]) -> None:
@@ -56,9 +58,7 @@ def test_get_platforms_by_arch(arch: Arch | str, expected: set[Platform]) -> Non
                 Platform.LINUX_AARCH_64,
                 Platform.LINUX_ARM_V6L,
                 Platform.LINUX_ARM_V7L,
-                Platform.LINUX_PPC_64,
                 Platform.LINUX_PPC_64_LE,
-                Platform.LINUX_RISC_V64,
                 Platform.LINUX_SYS_390,
             },
         ),
@@ -73,9 +73,7 @@ def test_get_platforms_by_arch(arch: Arch | str, expected: set[Platform]) -> Non
                 Platform.LINUX_AARCH_64,
                 Platform.LINUX_ARM_V6L,
                 Platform.LINUX_ARM_V7L,
-                Platform.LINUX_PPC_64,
                 Platform.LINUX_PPC_64_LE,
-                Platform.LINUX_RISC_V64,
                 Platform.LINUX_SYS_390,
             },
         ),
@@ -90,3 +88,27 @@ def test_get_platforms_by_os(os: OperatingSystem | str, expected: set[Platform])
     :param expected: Expected value to return
     """
     assert get_platforms_by_os(os) == expected
+
+
+@pytest.mark.parametrize(
+    "alias,expected",
+    [
+        ("fake_alias", set()),
+        ("linux32", {Platform.LINUX_32}),
+        ("linux64", {Platform.LINUX_64}),
+        ("win32", {Platform.WIN_32}),
+        ("win64", {Platform.WIN_64}),
+        (PlatformAlias.LINUX_32, {Platform.LINUX_32}),
+        (PlatformAlias.LINUX_64, {Platform.LINUX_64}),
+        (PlatformAlias.WIN_32, {Platform.WIN_32}),
+        (PlatformAlias.WIN_64, {Platform.WIN_64}),
+    ],
+)
+def test_get_platforms_by_alias(alias: PlatformAlias | str, expected: set[Platform]) -> None:
+    """
+    Tests the construction of a selector parse tree by comparing the debug string representation of the tree.
+
+    :param alias: Target Platform Alias
+    :param expected: Expected value to return
+    """
+    assert get_platforms_by_alias(alias) == expected

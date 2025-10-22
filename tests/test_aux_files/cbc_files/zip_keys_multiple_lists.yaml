@@ -1,0 +1,7 @@
+zip_keys:
+  -
+    - python
+    - numpy
+  -
+    - pypy
+    - pypy3

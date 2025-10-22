@@ -232,3 +232,19 @@ def test_get_cbc_variable_value_with_default(
     """
     parser = load_cbc(file)
     assert parser.get_cbc_variable_value(variable, query, default) == expected
+
+
+@pytest.mark.parametrize(
+    "file,expected",
+    [
+        ("anaconda_cbc_01.yaml", [{"python", "numpy"}]),
+        ("zip_keys_simple_list.yaml", [{"python", "numpy"}]),
+        ("zip_keys_multiple_lists.yaml", [{"python", "numpy"}, {"pypy", "pypy3"}]),
+    ],
+)
+def test_get_zip_keys(file: str, expected: list[set[str]]) -> None:
+    """
+    Validates fetching the zip keys from a CBC file.
+    """
+    parser = load_cbc(file)
+    assert parser.get_zip_keys() == expected

@@ -13,11 +13,14 @@ from conda_recipe_manager.parser.enums import ALL_LOGIC_OPS, LogicOp, SchemaVers
 from conda_recipe_manager.parser.platform_types import (
     ALL_ARCHITECTURES,
     ALL_OPERATING_SYSTEMS,
+    ALL_PLATFORM_ALIASES,
     ALL_PLATFORMS,
     Arch,
     OperatingSystem,
     Platform,
+    PlatformAlias,
     PlatformQualifiers,
+    get_platforms_by_alias,
     get_platforms_by_arch,
     get_platforms_by_os,
 )
@@ -42,8 +45,8 @@ class _SelectorNode:
         # Enumerate special/known selector types
         def _init_value() -> SelectorValue:
             lower_val: Final[str] = value.lower()
-            if lower_val in ALL_PLATFORMS:
-                return Platform(lower_val)
+            if lower_val in ALL_PLATFORM_ALIASES:
+                return PlatformAlias(lower_val)
             if lower_val in ALL_OPERATING_SYSTEMS:
                 return OperatingSystem(lower_val)
             if lower_val in ALL_ARCHITECTURES:
@@ -130,6 +133,7 @@ class SelectorParser(IsModifiable):
         :param tokens: Selector tokens to process
         :returns: The root of the parse tree
         """
+        # TODO: Handle parentheses
 
         # Shunting yard
         op_stack: list[_SelectorNode] = []
@@ -208,8 +212,8 @@ class SelectorParser(IsModifiable):
                 return set()
 
             match node.value:
-                case Platform():
-                    return {node.value}
+                case PlatformAlias():
+                    return get_platforms_by_alias(node.value)
                 case Arch():
                     return get_platforms_by_arch(node.value)
                 case OperatingSystem():
