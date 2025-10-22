@@ -1,7 +1,32 @@
 zip_keys:
+  -           # [win]
+    - python  # [win]
+    - numpy   # [win]
+  -           # [osx and arm64]
+    - pypy    # [osx and arm64]
+    - pypy3   # [osx and arm64]
+  -               # [linux and aarch64]
+    - boost       # [linux and aarch64]
+    - boost_cpp   # [linux and aarch64]
+  -           # [linux and armv6l]
+    - libpng    # [linux and armv6l]
+    - libtiff   # [linux and armv6l]
+  -           # [linux and armv7l]
+    - lzo    # [linux and armv7l]
+    - lz4   # [linux and armv7l]
+  -           # [linux and ppc64le]
+    - xz    # [linux and ppc64le]
+    - zstd   # [linux and ppc64le]
+  -           # [linux and s390x]
+    - liblzma   # [linux and s390x]
+    - libzstd   # [linux and s390x]
+  -           # [linux and x86_64]
+    - m2w64_c_compiler_version    # [linux and x86_64]
+    - m2w64_cxx_compiler_version  # [linux and x86_64]
+    - m2w64_fortran_compiler_version  # [linux and x86_64]
+  -           # [not win and not osx]
+    - rust_compiler_version    # [not win and not osx]
+    - rust_gnu_compiler_version  # [not win and not osx]
   -
-    - python
-    - numpy
-  -
-    - pypy
-    - pypy3
+    - r_version    # [linux32]
+    - r_implementation    # [linux32]

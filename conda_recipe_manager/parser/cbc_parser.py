@@ -188,14 +188,24 @@ class CbcParser(RecipeReader):
             inner_list = inner_dict["None"]
             node_var_list: list[NodeVar] = []  # type: ignore
             for j, elem in enumerate(inner_list):
-                path = f"/zip_keys/{i}/None/{j}"
+                path = f"/zip_keys/{i}/{j}"
                 node_var_list.append(self._construct_cbc_variable(path, elem, comments_tbl))
             self._zip_keys.append(node_var_list)
 
-    def get_zip_keys(self) -> list[set[str]]:
+    def get_zip_keys(self, query: SelectorQuery) -> list[set[str]]:
         """
         Returns the zip keys from the CBC file.
 
+        :param query: Query that represents the state of the target build environment.
         :returns: List of zip keys.
         """
-        return [set(key.get_value() for key in list_of_keys) for list_of_keys in self._zip_keys]  # type: ignore
+        zip_keys: list[set[str]] = []
+        for list_of_keys in self._zip_keys:
+            potential_keys: set[str] = set()
+            for key in list_of_keys:
+                selector = key.get_selector()
+                if selector is None or selector.does_selector_apply(query):
+                    potential_keys.add(key.get_value())  # type: ignore
+            if potential_keys:
+                zip_keys.append(potential_keys)
+        return zip_keys

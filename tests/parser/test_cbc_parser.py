@@ -235,16 +235,105 @@ def test_get_cbc_variable_value_with_default(
 
 
 @pytest.mark.parametrize(
-    "file,expected",
+    "file,query,expected",
     [
-        ("anaconda_cbc_01.yaml", [{"python", "numpy"}]),
-        ("zip_keys_simple_list.yaml", [{"python", "numpy"}]),
-        ("zip_keys_multiple_lists.yaml", [{"python", "numpy"}, {"pypy", "pypy3"}]),
+        # Complete CBC file
+        ("anaconda_cbc_01.yaml", SelectorQuery(), [{"python", "numpy"}]),
+        ("anaconda_cbc_01.yaml", SelectorQuery(Platform.WIN_64), [{"python", "numpy"}]),
+        ("anaconda_cbc_01.yaml", SelectorQuery(Platform.LINUX_64), [{"python", "numpy"}]),
+        ("anaconda_cbc_01.yaml", SelectorQuery(Platform.OSX_64), [{"python", "numpy"}]),
+        # ZIP Keys CBC file with simple list
+        (
+            "zip_keys_simple_list.yaml",
+            SelectorQuery(Platform.LINUX_ARM_V6L),
+            [{"libpng", "libtiff", "rust_compiler_version", "rust_gnu_compiler_version"}],
+        ),
+        (
+            "zip_keys_simple_list.yaml",
+            SelectorQuery(Platform.LINUX_ARM_V7L),
+            [{"lzo", "lz4", "rust_compiler_version", "rust_gnu_compiler_version"}],
+        ),
+        (
+            "zip_keys_simple_list.yaml",
+            SelectorQuery(Platform.LINUX_PPC_64_LE),
+            [{"xz", "zstd", "rust_compiler_version", "rust_gnu_compiler_version"}],
+        ),
+        (
+            "zip_keys_simple_list.yaml",
+            SelectorQuery(Platform.LINUX_SYS_390),
+            [{"liblzma", "libzstd", "rust_compiler_version", "rust_gnu_compiler_version"}],
+        ),
+        (
+            "zip_keys_simple_list.yaml",
+            SelectorQuery(Platform.LINUX_32),
+            [{"r_version", "r_implementation", "rust_compiler_version", "rust_gnu_compiler_version"}],
+        ),
+        (
+            "zip_keys_simple_list.yaml",
+            SelectorQuery(Platform.LINUX_AARCH_64),
+            [{"boost", "boost_cpp", "rust_compiler_version", "rust_gnu_compiler_version"}],
+        ),
+        (
+            "zip_keys_simple_list.yaml",
+            SelectorQuery(Platform.LINUX_64),
+            [
+                {
+                    "m2w64_c_compiler_version",
+                    "m2w64_cxx_compiler_version",
+                    "m2w64_fortran_compiler_version",
+                    "rust_compiler_version",
+                    "rust_gnu_compiler_version",
+                }
+            ],
+        ),
+        ("zip_keys_simple_list.yaml", SelectorQuery(Platform.OSX_ARM_64), [{"pypy", "pypy3"}]),
+        ("zip_keys_simple_list.yaml", SelectorQuery(Platform.WIN_64), [{"python", "numpy"}]),
+        # ZIP Keys CBC file with multiple lists and several selector combinations
+        (
+            "zip_keys_multiple_lists.yaml",
+            SelectorQuery(Platform.LINUX_ARM_V6L),
+            [{"libpng", "libtiff"}, {"rust_compiler_version", "rust_gnu_compiler_version"}],
+        ),
+        (
+            "zip_keys_multiple_lists.yaml",
+            SelectorQuery(Platform.LINUX_ARM_V7L),
+            [{"lzo", "lz4"}, {"rust_compiler_version", "rust_gnu_compiler_version"}],
+        ),
+        (
+            "zip_keys_multiple_lists.yaml",
+            SelectorQuery(Platform.LINUX_PPC_64_LE),
+            [{"xz", "zstd"}, {"rust_compiler_version", "rust_gnu_compiler_version"}],
+        ),
+        (
+            "zip_keys_multiple_lists.yaml",
+            SelectorQuery(Platform.LINUX_SYS_390),
+            [{"liblzma", "libzstd"}, {"rust_compiler_version", "rust_gnu_compiler_version"}],
+        ),
+        (
+            "zip_keys_multiple_lists.yaml",
+            SelectorQuery(Platform.LINUX_32),
+            [{"rust_compiler_version", "rust_gnu_compiler_version"}, {"r_version", "r_implementation"}],
+        ),
+        (
+            "zip_keys_multiple_lists.yaml",
+            SelectorQuery(Platform.LINUX_AARCH_64),
+            [{"boost", "boost_cpp"}, {"rust_compiler_version", "rust_gnu_compiler_version"}],
+        ),
+        (
+            "zip_keys_multiple_lists.yaml",
+            SelectorQuery(Platform.LINUX_64),
+            [
+                {"m2w64_c_compiler_version", "m2w64_cxx_compiler_version", "m2w64_fortran_compiler_version"},
+                {"rust_compiler_version", "rust_gnu_compiler_version"},
+            ],
+        ),
+        ("zip_keys_multiple_lists.yaml", SelectorQuery(Platform.OSX_ARM_64), [{"pypy", "pypy3"}]),
+        ("zip_keys_multiple_lists.yaml", SelectorQuery(Platform.WIN_64), [{"python", "numpy"}]),
     ],
 )
-def test_get_zip_keys(file: str, expected: list[set[str]]) -> None:
+def test_get_zip_keys(file: str, query: SelectorQuery, expected: list[set[str]]) -> None:
     """
     Validates fetching the zip keys from a CBC file.
     """
     parser = load_cbc(file)
-    assert parser.get_zip_keys() == expected
+    assert parser.get_zip_keys(query) == expected
