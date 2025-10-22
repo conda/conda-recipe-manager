@@ -119,7 +119,7 @@ def _full_version_bump(version_bumper: VersionBumper, target_version: str, retry
         except FetchError:
             log.exception("Failed to fetch the source artifacts found in the recipe file.")
             sys.exit(ExitCode.HTTP_ERROR)
-        except VersionBumperPatchError:
+        except (VersionBumperPatchError, VersionBumperInvalidState):
             log.exception("Failed to update the recipe file components that require source artifacts.")
             sys.exit(ExitCode.PATCH_ERROR)
 
