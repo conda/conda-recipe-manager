@@ -11,11 +11,7 @@ from unittest.mock import patch
 
 import pytest
 
-from conda_recipe_manager.fetcher.artifact_fetcher import (
-    fetch_all_artifacts_with_retry,
-    fetch_all_corrected_artifacts_with_retry,
-    from_recipe,
-)
+from conda_recipe_manager.fetcher.artifact_fetcher import from_recipe, from_recipe_fetch, from_recipe_fetch_corrected
 from conda_recipe_manager.fetcher.base_artifact_fetcher import BaseArtifactFetcher
 from conda_recipe_manager.fetcher.exceptions import FetchUnsupportedError
 from conda_recipe_manager.fetcher.git_artifact_fetcher import GitArtifactFetcher
@@ -156,9 +152,9 @@ def test_from_recipe_does_not_throw_on_ignore_unsupported(file: str, request: py
         assert not fetcher_tbl
 
 
-def test_fetch_all_artifacts_with_retry_teardown() -> None:
+def test_from_recipe_fetch_teardown() -> None:
     """
-    Verifies that `fetch_all_artifacts_with_retry()` cleans up after itself in an expected manner.
+    Verifies that `from_recipe_fetch()` cleans up after itself in an expected manner.
     """
     # NOTE: This test does not use `pyfakefs`. The only files written to disk are extracted dummy test archives to
     #       temporary directories that should be cleaned up via context management.
@@ -171,7 +167,7 @@ def test_fetch_all_artifacts_with_retry_teardown() -> None:
 
     # NOTE: The test file used only has HTTP artifacts.
     with patch("requests.get", new=mock_artifact_requests_get):
-        with fetch_all_artifacts_with_retry(recipe, ignore_unsupported=True) as future_tbl:
+        with from_recipe_fetch(recipe, ignore_unsupported=True) as future_tbl:
             for future in cf.as_completed(future_tbl):
                 fetcher, _ = future.result()
                 assert fetcher.fetched()
@@ -218,9 +214,7 @@ def test_fetch_all_artifacts_with_retry_teardown() -> None:
         ),
     ],
 )
-def test_fetch_all_artifacts_with_retry_ignore_unsupported(
-    file: str, expected: dict[str, Type[BaseArtifactFetcher]]
-) -> None:
+def test_from_recipe_fetch_ignore_unsupported(file: str, expected: dict[str, Type[BaseArtifactFetcher]]) -> None:
     """
     Tests that a collection of Artifact Fetchers can be derived from a parsed recipe and fetched automatically.
 
@@ -238,7 +232,7 @@ def test_fetch_all_artifacts_with_retry_ignore_unsupported(
     with patch("requests.get", new=mock_artifact_requests_get):
         # Prevent `GitArtifactFetcher` instances from reaching out to the network by doing a no-op patch.
         with patch("conda_recipe_manager.fetcher.git_artifact_fetcher.GitArtifactFetcher.fetch") as gaf:
-            with fetch_all_artifacts_with_retry(recipe, ignore_unsupported=True) as futures_tbl:
+            with from_recipe_fetch(recipe, ignore_unsupported=True) as futures_tbl:
                 assert len(futures_tbl) == len(expected)
                 for future in cf.as_completed(futures_tbl):
                     assert futures_tbl[future] in expected
@@ -248,13 +242,13 @@ def test_fetch_all_artifacts_with_retry_ignore_unsupported(
                     # Ensure the `git` mocker is working.
                     if isinstance(fetcher, GitArtifactFetcher):
                         gaf.assert_called_once()
-                    # This should always be `None` for calls to `fetch_all_artifacts_with_retry()`
+                    # This should always be `None` for calls to `from_recipe_fetch()`
                     assert updated_url is None
 
 
-def test_fetch_all_corrected_artifacts_with_retry_teardown() -> None:
+def test_from_recipe_fetch_corrected_teardown() -> None:
     """
-    Verifies that `fetch_all_corrected_artifacts_with_retry()` cleans up after itself in an expected manner.
+    Verifies that `from_recipe_fetch_corrected()` cleans up after itself in an expected manner.
     """
     # NOTE: This test does not use `pyfakefs`. The only files written to disk are extracted dummy test archives to
     #       temporary directories that should be cleaned up via context management.
@@ -267,7 +261,7 @@ def test_fetch_all_corrected_artifacts_with_retry_teardown() -> None:
 
     # NOTE: The test file used only has HTTP artifacts.
     with patch("requests.get", new=mock_artifact_requests_get):
-        with fetch_all_corrected_artifacts_with_retry(recipe, ignore_unsupported=True) as future_tbl:
+        with from_recipe_fetch_corrected(recipe, ignore_unsupported=True) as future_tbl:
             for future in cf.as_completed(future_tbl):
                 fetcher, _ = future.result()
                 assert fetcher.fetched()
@@ -333,7 +327,7 @@ def test_fetch_all_corrected_artifacts_with_retry_teardown() -> None:
         ),
     ],
 )
-def test_fetch_all_corrected_artifacts_with_retry(
+def test_from_recipe_fetch_corrected(
     file: str, expected: dict[str, tuple[Type[BaseArtifactFetcher], Optional[str]]]
 ) -> None:
     """
@@ -356,9 +350,7 @@ def test_fetch_all_corrected_artifacts_with_retry(
         with patch("conda_recipe_manager.fetcher.git_artifact_fetcher.GitArtifactFetcher.fetch") as gaf:
             # NOTE: We set the retry interval low here as we _expect_ the retry mechanism to trip on PyPI URLs that need
             #       to be corrected.
-            with fetch_all_corrected_artifacts_with_retry(
-                recipe, ignore_unsupported=True, retry_interval=0.01
-            ) as futures_tbl:
+            with from_recipe_fetch_corrected(recipe, ignore_unsupported=True, retry_interval=0.01) as futures_tbl:
                 assert len(futures_tbl) == len(expected)
                 for future in cf.as_completed(futures_tbl):
                     assert futures_tbl[future] in expected
@@ -368,5 +360,5 @@ def test_fetch_all_corrected_artifacts_with_retry(
                     # Ensure the `git` mocker is working.
                     if isinstance(fetcher, GitArtifactFetcher):
                         gaf.assert_called_once()
-                    # This should always be `None` for calls to `fetch_all_artifacts_with_retry()`
+                    # This should always be `None` for calls to `from_recipe_fetch()`
                     assert updated_url == expected_update_url

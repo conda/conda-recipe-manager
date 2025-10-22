@@ -365,7 +365,7 @@ class VersionBumper:
     def update_http_urls(self, fetcher_tbl: FetcherFuturesTable) -> None:
         """
         Updates any outdated URLs found in the recipe file. Should be used in conjunction with
-        `fetch_all_corrected_artifacts_with_retry()`, which attempts to flag outdated URLs and find their replacement
+        `from_recipe_fetch_corrected()`, which attempts to flag outdated URLs and find their replacement
         URLs.
 
         NOTE: Most of the URLs updated are tied to changes made by PyPI over the years, including a significant change

@@ -187,7 +187,7 @@ def _fetch_archive(fetcher: BaseArtifactFetcher, retry_interval: float, retries:
 
 
 @contextmanager
-def fetch_all_artifacts_with_retry(
+def from_recipe_fetch(
     recipe_reader: RecipeReader,
     ignore_unsupported: bool = False,
     retry_interval: float = DEFAULT_RETRY_INTERVAL,
@@ -315,7 +315,7 @@ def _fetch_corrected_archive(
 
 
 @contextmanager
-def fetch_all_corrected_artifacts_with_retry(
+def from_recipe_fetch_corrected(
     recipe_reader: RecipeReader,
     ignore_unsupported: bool = False,
     retry_interval: float = DEFAULT_RETRY_INTERVAL,

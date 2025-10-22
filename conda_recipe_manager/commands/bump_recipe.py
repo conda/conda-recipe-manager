@@ -11,10 +11,7 @@ from typing import Final, Optional
 import click
 
 from conda_recipe_manager.commands.utils.types import CONTEXT_SETTINGS, ExitCode
-from conda_recipe_manager.fetcher.artifact_fetcher import (
-    DEFAULT_RETRY_INTERVAL,
-    fetch_all_corrected_artifacts_with_retry,
-)
+from conda_recipe_manager.fetcher.artifact_fetcher import DEFAULT_RETRY_INTERVAL, from_recipe_fetch_corrected
 from conda_recipe_manager.fetcher.exceptions import FetchError
 from conda_recipe_manager.ops.exceptions import VersionBumperInvalidState, VersionBumperPatchError
 from conda_recipe_manager.ops.version_bumper import VersionBumper, VersionBumperArguments, VersionBumperOption
@@ -112,7 +109,7 @@ def _full_version_bump(version_bumper: VersionBumper, target_version: str, retry
     # Although we would like to kick this off sooner (to get more overlapping execution), we need the version to be
     # updated _before_ we attempt to fetch artifacts. Otherwise, we may attempt to fetch the previous verion's artifacts
     # from the recipe.
-    with fetch_all_corrected_artifacts_with_retry(
+    with from_recipe_fetch_corrected(
         version_bumper.get_recipe_reader(), ignore_unsupported=True, retry_interval=retry_interval
     ) as fetcher_tbl:
         # Update recipe file components that require source artifacts. NOTE: These calls block on I/O.
