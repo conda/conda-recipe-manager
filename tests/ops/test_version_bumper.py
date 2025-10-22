@@ -10,11 +10,13 @@ from unittest.mock import patch
 import pytest
 from pyfakefs.fake_filesystem import FakeFilesystem
 
+from conda_recipe_manager.fetcher.artifact_fetcher import from_recipe_fetch, from_recipe_fetch_corrected
 from conda_recipe_manager.ops.exceptions import VersionBumperInvalidState, VersionBumperPatchError
 from conda_recipe_manager.ops.version_bumper import VersionBumper, VersionBumperOption
 from conda_recipe_manager.parser.recipe_parser import RecipeParser
 from conda_recipe_manager.parser.recipe_parser_deps import RecipeReaderDeps
 from tests.file_loading import get_test_path, load_recipe
+from tests.mock_artifact_fetch import mock_artifact_requests_get
 
 ## Constants ##
 
@@ -318,44 +320,106 @@ def test_vb_update_version(file: str, value: str, expected: str) -> None:
 
 
 @pytest.mark.parametrize(
-    ["file", "vbo"],
+    ["file", "expected"],
     [
         ## V0 Format ##
-        ("types-toml.yaml", _VBO_NONE),
-        ("types-toml.yaml", _VBO_SAFE_MODE),
+        (
+            "types-toml.yaml",
+            {"/source": "https://pypi.org/packages/source/{{ name[0] }}/{{ name }}/types-toml-{{ version }}.tar.gz"},
+        ),
+        (
+            "cctools-ld64.yaml",
+            {
+                "/source/0": "https://opensource.apple.com/tarballs/cctools/cctools-{{ cctools_version }}.tar.gz",
+                "/source/1": "https://opensource.apple.com/tarballs/ld64/ld64-{{ ld64_version }}.tar.gz",
+                "/source/2": "https://opensource.apple.com/tarballs/dyld/dyld-{{ dyld_version }}.tar.gz",
+                "/source/3": "http://releases.llvm.org/{{ clang_version }}/clang+llvm-{{ clang_version }}-x86_64-apple-darwin.tar.xz",  # pylint: disable=line-too-long
+            },
+        ),
         ## V1 Format ##
-        ("v1_format/v1_types-toml.yaml", _VBO_NONE),
-        ("v1_format/v1_types-toml.yaml", _VBO_SAFE_MODE),
+        (
+            "v1_format/v1_types-toml.yaml",
+            {"/source": "https://pypi.org/packages/source/${{ name[0] }}/${{ name }}/types-toml-${{ version }}.tar.gz"},
+        ),
+        (
+            "v1_format/v1_cctools-ld64.yaml",
+            {
+                "/source/0": "https://opensource.apple.com/tarballs/cctools/cctools-${{ cctools_version }}.tar.gz",
+                "/source/1": "https://opensource.apple.com/tarballs/ld64/ld64-${{ ld64_version }}.tar.gz",
+                "/source/2": "https://opensource.apple.com/tarballs/dyld/dyld-${{ dyld_version }}.tar.gz",
+                "/source/3": "http://releases.llvm.org/${{ clang_version }}/clang+llvm-${{ clang_version }}-x86_64-apple-darwin.tar.xz",  # pylint: disable=line-too-long
+            },
+        ),
     ],
 )
-def test_update_http_urls(file: str, vbo: VersionBumperOption) -> None:
+def test_update_http_urls(file: str, expected: dict[str, str]) -> None:
     """
-    TODO
+    Validates correcting source URLs found in a recipe file.
 
     :param file: Target recipe file to use.
-    :param vbo: Options to pass to the `VersionBumper` instance.
+    :param expected: A look-up table mapping the location of a "source" object to the new expected value.
     """
-    vb: Final = VersionBumper(get_test_path() / file, options=vbo)
+    vb: Final = VersionBumper(get_test_path() / file)
+
+    with patch("requests.get", new=mock_artifact_requests_get):
+        # Prevent `GitArtifactFetcher` instances from reaching out to the network by doing a no-op patch.
+        with patch("conda_recipe_manager.fetcher.git_artifact_fetcher.GitArtifactFetcher.fetch"):
+            # This function MUST be used with this test, as `from_recipe_fetch()` will never return an updated URL.
+            with from_recipe_fetch_corrected(vb.get_recipe_reader(), ignore_unsupported=True) as futures_tbl:
+                vb.update_http_urls(futures_tbl)
+
+    for src_path, expected_url in expected.items():
+        assert vb.get_recipe_reader().get_value(RecipeParser.append_to_path(src_path, "/url")) == expected_url
     assert_vb_no_disk_usage(vb)
 
 
 @pytest.mark.parametrize(
-    ["file", "vbo"],
+    ["file", "expected"],
     [
+        # NOTE: The mocked archive file will always return the same SHA-256 hash.
         ## V0 Format ##
-        ("types-toml.yaml", _VBO_NONE),
-        ("types-toml.yaml", _VBO_SAFE_MODE),
+        ("types-toml.yaml", {"/source": "e594f5bc141acabe4b0298d05234e80195116667edad3d6a9cd610cab36bc4e1"}),
+        (
+            "cctools-ld64.yaml",
+            {
+                "/source/0": "e594f5bc141acabe4b0298d05234e80195116667edad3d6a9cd610cab36bc4e1",
+                "/source/1": "e594f5bc141acabe4b0298d05234e80195116667edad3d6a9cd610cab36bc4e1",
+                "/source/2": "e594f5bc141acabe4b0298d05234e80195116667edad3d6a9cd610cab36bc4e1",
+                "/source/3": "e594f5bc141acabe4b0298d05234e80195116667edad3d6a9cd610cab36bc4e1",
+            },
+        ),
         ## V1 Format ##
-        ("v1_format/v1_types-toml.yaml", _VBO_NONE),
-        ("v1_format/v1_types-toml.yaml", _VBO_SAFE_MODE),
+        (
+            "v1_format/v1_types-toml.yaml",
+            {"/source": "e594f5bc141acabe4b0298d05234e80195116667edad3d6a9cd610cab36bc4e1"},
+        ),
+        (
+            "v1_format/v1_cctools-ld64.yaml",
+            {
+                "/source/0": "e594f5bc141acabe4b0298d05234e80195116667edad3d6a9cd610cab36bc4e1",
+                "/source/1": "e594f5bc141acabe4b0298d05234e80195116667edad3d6a9cd610cab36bc4e1",
+                "/source/2": "e594f5bc141acabe4b0298d05234e80195116667edad3d6a9cd610cab36bc4e1",
+                "/source/3": "e594f5bc141acabe4b0298d05234e80195116667edad3d6a9cd610cab36bc4e1",
+            },
+        ),
     ],
 )
-def test_vb_update_sha256(file: str, vbo: VersionBumperOption) -> None:
+def test_vb_update_sha256(file: str, expected: dict[str, str]) -> None:
     """
-    TODO
+    Validates updating the SHA-256 hash value for applicable sources found in a recipe file.
 
     :param file: Target recipe file to use.
-    :param vbo: Options to pass to the `VersionBumper` instance.
+    :param expected: A look-up table mapping the location of a "source" object to the new expected value.
     """
-    vb: Final = VersionBumper(get_test_path() / file, options=vbo)
+    vb: Final = VersionBumper(get_test_path() / file)
+
+    with patch("requests.get", new=mock_artifact_requests_get):
+        # Prevent `GitArtifactFetcher` instances from reaching out to the network by doing a no-op patch.
+        with patch("conda_recipe_manager.fetcher.git_artifact_fetcher.GitArtifactFetcher.fetch"):
+            with from_recipe_fetch(vb.get_recipe_reader(), ignore_unsupported=True) as futures_tbl:
+                vb.update_sha256(futures_tbl)
+
+    for src_path, expected_url in expected.items():
+        assert vb.get_recipe_reader().get_value(RecipeParser.append_to_path(src_path, "/sha256")) == expected_url
+
     assert_vb_no_disk_usage(vb)
