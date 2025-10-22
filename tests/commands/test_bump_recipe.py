@@ -3,7 +3,7 @@
 """
 
 from pathlib import Path
-from typing import Final, Optional, cast
+from typing import Final, Optional
 from unittest.mock import patch
 
 import pytest
