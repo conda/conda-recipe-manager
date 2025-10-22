@@ -11,7 +11,7 @@ from pyfakefs.fake_filesystem import FakeFilesystem
 
 from conda_recipe_manager.ops.version_bumper import VersionBumper, VersionBumperInvalidState, VersionBumperOption
 from conda_recipe_manager.parser.recipe_parser_deps import RecipeReaderDeps
-from tests.file_loading import get_test_path
+from tests.file_loading import get_test_path, load_recipe
 
 ## Constants ##
 
@@ -125,6 +125,28 @@ def test_vb_simulate_failures_to_not_save_changes(fs: FakeFilesystem, file: str,
         vb.update_sha256({})
 
     assert_vb_no_disk_usage(vb)
+
+
+@pytest.mark.parametrize(
+    ["file", "expected_file"],
+    [
+        ("bump_recipe/build_num_1.yaml", "bump_recipe/build_num_1_no_new_line.yaml"),
+    ],
+)
+def test_vb_omit_new_line(fs: FakeFilesystem, file: str, expected_file: str) -> None:
+    """
+    Ensures that a `VersionBumper` instance can save a file without a trailing new line.
+
+    :param fs: `pyfakefs` Fixture used to replace the file system
+    :param file: Target recipe file to use.
+    :param expected_file: Expected recipe file after a simulated save.
+    """
+    file_path: Final = get_test_path() / file
+    fs.add_real_file(file_path, read_only=False)
+    fs.add_real_file(get_test_path() / expected_file, read_only=True)
+    vb: Final = VersionBumper(file_path, options=VersionBumperOption.OMIT_TRAILING_NEW_LINE)
+    vb.commit_changes()
+    assert load_recipe(file, RecipeReaderDeps) == load_recipe(expected_file, RecipeReaderDeps)
 
 
 ## Member function tests ##
