@@ -14,7 +14,7 @@ from conda_recipe_manager.commands.utils.types import CONTEXT_SETTINGS, ExitCode
 from conda_recipe_manager.fetcher.artifact_fetcher import DEFAULT_RETRY_INTERVAL, from_recipe_fetch_corrected
 from conda_recipe_manager.fetcher.exceptions import FetchError
 from conda_recipe_manager.ops.exceptions import VersionBumperInvalidState, VersionBumperPatchError
-from conda_recipe_manager.ops.version_bumper import VersionBumper, VersionBumperArguments, VersionBumperOption
+from conda_recipe_manager.ops.version_bumper import VersionBumper, VersionBumperOption
 from conda_recipe_manager.parser.exceptions import ParsingException
 
 # Truncates the `__name__` to the crm command name.
@@ -214,7 +214,6 @@ def bump_recipe(
     try:
         version_bumper: Final = VersionBumper(
             recipe_file_path,
-            bumper_args=VersionBumperArguments(fetch_retry_interval=retry_interval),
             options=options,
         )
     except IOError:

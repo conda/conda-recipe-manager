@@ -8,13 +8,9 @@ import logging
 import re
 from enum import Flag, auto
 from pathlib import Path
-from typing import Final, NamedTuple, NoReturn, Optional, cast
+from typing import Final, NoReturn, Optional, cast
 
-from conda_recipe_manager.fetcher.artifact_fetcher import (
-    DEFAULT_RETRY_INTERVAL,
-    DEFAULT_RETRY_LIMIT,
-    FetcherFuturesTable,
-)
+from conda_recipe_manager.fetcher.artifact_fetcher import FetcherFuturesTable
 from conda_recipe_manager.fetcher.exceptions import FetchError
 from conda_recipe_manager.fetcher.http_artifact_fetcher import HttpArtifactFetcher
 from conda_recipe_manager.ops.exceptions import VersionBumperInvalidState, VersionBumperPatchError
@@ -76,17 +72,6 @@ class _Regex:
     PYPI_DEPRECATED_DOMAINS: Final[re.Pattern[str]] = re.compile(
         r"(https?://)(pypi\.io|cheeseshop\.python\.org|pypi\.python\.org)(.*)"
     )
-
-
-class VersionBumperArguments(NamedTuple):
-    """
-    Set of variables that control how the `VersionBumper` class operates.
-    """
-
-    # The amount of time (in seconds) between attempts at fetching a remote resource.
-    fetch_retry_interval: float = DEFAULT_RETRY_INTERVAL
-    # How many times to attempt to fetch a remote resource, if a failure occurs.
-    fetch_retry_limit: int = DEFAULT_RETRY_LIMIT
 
 
 class VersionBumperOption(Flag):
@@ -174,9 +159,7 @@ class VersionBumper:
         :param e: Original exception to throw from.
         """
         self._commit_on_failure()
-        raise FetchError(
-            f"Failed to fetch `{src_path}` after attempted {self._bumper_args.fetch_retry_limit} retries."
-        ) from e
+        raise FetchError(f"Failed to fetch the artifact found at `{src_path}` in the recipe file.") from e
 
     @staticmethod
     def _pre_process_cleanup(recipe_content: str) -> str:
@@ -206,7 +189,6 @@ class VersionBumper:
     def __init__(
         self,
         recipe_path: Path | str,
-        bumper_args: Optional[VersionBumperArguments] = None,
         options: Optional[VersionBumperOption] = None,
     ) -> None:
         """
@@ -214,8 +196,6 @@ class VersionBumper:
         target a new software version.
 
         :param recipe_path: Path to the underlying recipe file to "version bump".
-        :param bumper_args: A series of optional arguments that change how this class operates. See the
-            `VersionBumperArguments` docs for more details.
         :param options: (Optional) A series of flags that change how this class operates. See the `VersionBumperOption`
             docs for more details.
         :raises IOError: If there is an issue accessing the recipe file on disk.
@@ -224,7 +204,6 @@ class VersionBumper:
             recipe text phases. These phases attempt to improve recipe file compatibility with this class.
         """
         self._recipe_path: Final = Path(recipe_path)
-        self._bumper_args: Final = VersionBumperArguments() if bumper_args is None else bumper_args
         self._options: Final = VersionBumperOption.NONE if options is None else options
         # Track how many times we've actually written to disk.
         self._disk_write_cntr = 0
