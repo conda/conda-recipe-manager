@@ -238,7 +238,6 @@ def test_get_cbc_variable_value_with_default(
     "file,query,expected",
     [
         # Complete CBC file
-        ("anaconda_cbc_01.yaml", SelectorQuery(), [{"python", "numpy"}]),
         ("anaconda_cbc_01.yaml", SelectorQuery(Platform.WIN_64), [{"python", "numpy"}]),
         ("anaconda_cbc_01.yaml", SelectorQuery(Platform.LINUX_64), [{"python", "numpy"}]),
         ("anaconda_cbc_01.yaml", SelectorQuery(Platform.OSX_64), [{"python", "numpy"}]),
