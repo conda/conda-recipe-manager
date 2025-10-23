@@ -17,7 +17,6 @@ from conda_recipe_manager.ops.exceptions import VersionBumperInvalidState, Versi
 from conda_recipe_manager.parser.recipe_parser import RecipeParser, ReplacePatchFunc
 from conda_recipe_manager.parser.recipe_parser_deps import RecipeParserDeps
 from conda_recipe_manager.parser.recipe_reader_deps import RecipeReaderDeps
-from conda_recipe_manager.parser.types import SchemaVersion
 from conda_recipe_manager.types import JsonPatchType, JsonType
 
 log: Final = logging.getLogger(__name__)
@@ -316,23 +315,16 @@ class VersionBumper:
         # If the `version` variable is found, patch that. This is an artifact/pattern from Grayskull.
         old_variable: Final = self._recipe_parser.get_variable(_RecipeVars.VERSION, None)
         if old_variable is not None:
-            self._recipe_parser.set_variable(_RecipeVars.VERSION, target_version)
+            # If the variable is used in the `/package/version` field, update the variable only.
             # NOTE: This is a linear search on a small list.
-            if _RecipePaths.VERSION not in self._recipe_parser.get_variable_references(_RecipeVars.VERSION):
-                # In the off-chance the key is missing, add it.
-                if not self._recipe_parser.contains_value(_RecipePaths.VERSION):
-                    ver_var: Final = (
-                        "{{ version }}"
-                        if self._recipe_parser.get_schema_version() == SchemaVersion.V0
-                        else "${{ version }}"
-                    )
-                    self._throw_on_failed_patch({"op": "add", "path": _RecipePaths.VERSION, "value": ver_var})
-                    return
-
-                # Generate a warning if `version` is not being used in the `/package/version` field.
-                log.warning("`/package/version` does not use the defined JINJA variable `version`.")
-
-            return
+            if _RecipePaths.VERSION in self._recipe_parser.get_variable_references(_RecipeVars.VERSION):
+                self._recipe_parser.set_variable(_RecipeVars.VERSION, target_version)
+                return
+            # If the version variable is unused, we want to be careful. We don't know what the intended meaning of the
+            # variable is. We will log that the recipe doesn't follow the "standard" naming conventions, and will focus
+            # on modifying the `/package/version` field directly.
+            else:
+                log.info("`/package/version` does not use the defined JINJA variable `version`.")
 
         op: Final = "replace" if self._recipe_parser.contains_value(_RecipePaths.VERSION) else "add"
         self._throw_on_failed_patch({"op": op, "path": _RecipePaths.VERSION, "value": target_version})
