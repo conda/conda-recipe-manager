@@ -58,7 +58,7 @@ try:
 except ImportError:
     from yaml import SafeLoader  # type: ignore[assignment]
 
-log = logging.getLogger(__name__)
+log: Final = logging.getLogger(__name__)
 
 # Type for the internal recipe variables table. Although relatively uncommon, variables may be defined multiple times
 # (in V0), usually in the context of string concatenation. Hence why the table contains a list of `NodeVar`s.

@@ -3,7 +3,7 @@
 """
 
 from pathlib import Path
-from typing import Final, Optional, cast
+from typing import Final, Optional
 from unittest.mock import patch
 
 import pytest
@@ -14,67 +14,8 @@ from conda_recipe_manager.commands import bump_recipe
 from conda_recipe_manager.commands.utils.types import ExitCode
 from conda_recipe_manager.parser.recipe_reader import RecipeReader
 from tests.file_loading import get_test_path, load_file, load_recipe
-from tests.http_mocking import MockHttpJsonResponse, MockHttpResponse, MockHttpStreamResponse
+from tests.mock_artifact_fetch import mock_artifact_requests_get
 from tests.smoke_testing import assert_cli_usage
-
-
-def mock_requests_get(*args: tuple[str], **_: dict[str, str | int]) -> MockHttpResponse:
-    """
-    Mocking function for HTTP requests made in this test file.
-
-    NOTE: The artifacts provided are not the real build artifacts.
-
-    :param args: Arguments passed to the `requests.get()`
-    :param _: Name-specified arguments passed to `requests.get()` (Unused)
-    :returns: Mocked HTTP response object.
-    """
-    endpoint = cast(str, args[0])
-    default_artifact_set: Final[set[str]] = {
-        # types-toml.yaml
-        "https://pypi.io/packages/source/t/types-toml/types-toml-0.10.8.20240310.tar.gz",
-        "https://pypi.org/packages/source/t/types-toml/types-toml-0.10.8.20240310.tar.gz",
-        # boto.yaml
-        "https://pypi.org/packages/source/b/boto/boto-2.50.0.tar.gz",
-        # huggingface_hub.yaml
-        "https://pypi.io/packages/source/h/huggingface_hub/huggingface_hub-0.24.6.tar.gz",
-        "https://pypi.org/packages/source/h/huggingface_hub/huggingface_hub-0.24.6.tar.gz",
-        # gsm-amzn2-aarch64.yaml
-        "https://graviton-rpms.s3.amazonaws.com/amzn2-core_2021_01_26/amzn2-core/gsm-1.0.13-11.amzn2.0.2.aarch64.rpm",
-        (
-            "https://graviton-rpms.s3.amazonaws.com/amzn2-core-source_2021_01_26/"
-            "amzn2-core-source/gsm-1.0.13-11.amzn2.0.2.src.rpm"
-        ),
-        # pytest-pep8.yaml
-        "https://pypi.io/packages/source/p/pytest-pep8/pytest-pep8-1.0.7.tar.gz",
-        "https://pypi.org/packages/source/p/pytest-pep8/pytest-pep8-1.0.7.tar.gz",
-        # google-cloud-cpp.yaml
-        "https://github.com/googleapis/google-cloud-cpp/archive/v2.31.0.tar.gz",
-        # x264
-        "http://download.videolan.org/pub/videolan/x264/snapshots/x264-snapshot-20191217-2245-stable.tar.bz2",
-        # curl.yaml
-        "https://curl.se/download/curl-8.11.0.tar.bz2",
-        # libprotobuf.yaml
-        "https://github.com/protocolbuffers/protobuf/archive/v25.3/libprotobuf-v25.3.tar.gz",
-        "https://github.com/google/benchmark/archive/5b7683f49e1e9223cf9927b24f6fd3d6bd82e3f8.tar.gz",
-        "https://github.com/google/googletest/archive/5ec7f0c4a113e2f18ac2c6cc7df51ad6afc24081.tar.gz",
-    }
-    # Maps mocked PyPi API requests to JSON test files containing the mocked API response.
-    pypi_api_requests_map: Final[dict[str, str]] = {
-        "https://pypi.org/pypi/types-toml/json": "api/pypi/get_types-toml_package.json",
-        "https://pypi.org/pypi/types-toml/0.10.8.20240310/json": "api/pypi/get_types-toml_package_version_0.10.8.20240310.json",  # pylint: disable=line-too-long
-        "https://pypi.org/pypi/Types-toml/0.10.8.20240310/json": "api/pypi/get_types-toml_package_version_0.10.8.20240310.json",  # pylint: disable=line-too-long
-    }
-    match endpoint:
-        case endpoint if endpoint in default_artifact_set:
-            return MockHttpStreamResponse(200, "archive_files/dummy_project_01.tar.gz")
-        case endpoint if endpoint in pypi_api_requests_map:
-            return MockHttpJsonResponse(200, pypi_api_requests_map[endpoint])
-        # Error cases
-        case "https://pypi.io/error_500.html":
-            return MockHttpStreamResponse(500, "archive_files/dummy_project_01.tar.gz")
-        case _:
-            # This points to an empty test file.
-            return MockHttpStreamResponse(404, "null_file.txt")
 
 
 def test_usage() -> None:
@@ -191,7 +132,7 @@ def test_bump_recipe_cli(
     # Special thanks to @mrbean-bremen for assisting with this investigation.
     cli_args.extend(["--retry-interval", "0.001"])
 
-    with patch("requests.get", new=mock_requests_get):
+    with patch("requests.get", new=mock_artifact_requests_get):
         result = runner.invoke(bump_recipe.bump_recipe, cli_args)
 
     # Ensure that we don't check against the file that was edited.
@@ -235,7 +176,7 @@ def test_bump_recipe_cli_with_same_version(
         else ["-t", version, str(recipe_file_path)]
     )
 
-    with patch("requests.get", new=mock_requests_get):
+    with patch("requests.get", new=mock_artifact_requests_get):
         result = runner.invoke(bump_recipe.bump_recipe, cli_args)
 
     # Testing that it exits with the correct error code
@@ -270,7 +211,7 @@ def test_bump_recipe_override_build_num(
 
     cli_args: Final[list[str]] = ["--override-build-num", build_num, "-t", version, str(recipe_file_path)]
 
-    with patch("requests.get", new=mock_requests_get):
+    with patch("requests.get", new=mock_artifact_requests_get):
         result = runner.invoke(bump_recipe.bump_recipe, cli_args)
 
     # Ensure that we don't check against the file that was edited.
@@ -293,7 +234,7 @@ def test_bump_recipe_override_build_num_negative() -> None:
         str(get_test_path() / "simple-recipe.yaml"),
     ]
 
-    with patch("requests.get", new=mock_requests_get):
+    with patch("requests.get", new=mock_artifact_requests_get):
         result = runner.invoke(bump_recipe.bump_recipe, cli_args)
     assert result.exit_code == ExitCode.CLICK_USAGE
 
@@ -305,7 +246,7 @@ def test_bump_recipe_override_build_num_exits_if_target_version_missing() -> Non
     runner = CliRunner()
     cli_args: Final[list[str]] = ["--override-build-num", "100", str(get_test_path() / "simple-recipe.yaml")]
 
-    with patch("requests.get", new=mock_requests_get):
+    with patch("requests.get", new=mock_artifact_requests_get):
         result = runner.invoke(bump_recipe.bump_recipe, cli_args)
     assert result.exit_code == ExitCode.CLICK_USAGE
 
@@ -322,7 +263,7 @@ def test_bump_recipe_exit_if_override_build_num_and_build_num_used_together() ->
         str(get_test_path() / "simple-recipe.yaml"),
     ]
 
-    with patch("requests.get", new=mock_requests_get):
+    with patch("requests.get", new=mock_artifact_requests_get):
         result = runner.invoke(bump_recipe.bump_recipe, cli_args)
     assert result.exit_code == ExitCode.CLICK_USAGE
 
@@ -477,7 +418,7 @@ def test_bump_recipe_save_on_failure(
     expected_recipe_file_path: Final[Path] = get_test_path() / expected_recipe_file
     start_mod_time: Final[float] = recipe_file_path.stat().st_mtime
 
-    with patch("requests.get", new=mock_requests_get):
+    with patch("requests.get", new=mock_artifact_requests_get):
         result = runner.invoke(
             bump_recipe.bump_recipe, ["--save-on-failure", "-i", "0.01", "-t", version, str(recipe_file_path)]
         )
@@ -517,7 +458,7 @@ def test_new_line_removal(
 
     cli_args: Final[list[str]] = ["--omit-trailing-newline", "-b", str(recipe_file_path)]
 
-    with patch("requests.get", new=mock_requests_get):
+    with patch("requests.get", new=mock_artifact_requests_get):
         result = runner.invoke(bump_recipe.bump_recipe, cli_args)
 
     assert recipe_file_path != expected_recipe_file_path

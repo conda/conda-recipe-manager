@@ -18,7 +18,7 @@ from conda_recipe_manager.scanner.dependency.base_dep_scanner import (
     new_project_dependency,
 )
 
-log = logging.getLogger(__name__)
+log: Final = logging.getLogger(__name__)
 
 # Table that maps import names that do not match the package name for common packages. See this StackOverflow post for
 # more details:

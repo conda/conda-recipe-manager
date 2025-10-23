@@ -45,7 +45,7 @@ from conda_recipe_manager.types import PRIMITIVES_TUPLE, JsonPatchType, JsonType
 # Callback that allows the caller to perform custom replacements using `search_and_patch_replace()`.
 ReplacePatchFunc = Callable[[JsonType], JsonType]
 
-log = logging.getLogger(__name__)
+log: Final = logging.getLogger(__name__)
 
 
 class RecipeParser(RecipeReader):
