@@ -165,6 +165,7 @@ def _fetch_archive(fetcher: BaseArtifactFetcher, retry_interval: float, retries:
     :param retry_interval: Base quantity of time (in seconds) to wait between fetch attempts.
     :param retries: Number of retries to attempt.
     :raises FetchError: If an issue occurred while downloading or extracting the archive.
+    :returns: A tuple containing the applicable fetcher instance and `None`.
     """
     # NOTE: This is the most I/O-bound operation in `bump-recipe` by a country mile. At the time of writing,
     # running this operation in the background will not make any significant improvements to performance. Every other
@@ -281,10 +282,9 @@ def _fetch_corrected_archive(
     :param fetcher: Artifact fetching instance to use.
     :param retry_interval: Base quantity of time (in seconds) to wait between fetch attempts.
     :param retries: Number of retries to attempt. This may be spread-out across the original URL and the corrected URL.
-    :raises FetchUnsupportedError: If an unsupported source format is found.
     :raises FetchError: If an issue occurred while downloading or extracting the archive.
-    :returns: The SHA-256 hash of the artifact, if it was able to be downloaded. Optionally includes a corrected URL to
-        be updated in the recipe file.
+    :returns: A tuple containing the appropriate fetcher instance (which may have been changed) and an optional string
+        indicating the URL has been changed.
     """
     # The URL correction algorithm only applies to fetchers that have an HTTP URL to correct.
     if not isinstance(fetcher, HttpArtifactFetcher):
@@ -331,6 +331,7 @@ def from_recipe_fetch_corrected(
         section and return the list of supported sources. Otherwise, throw an exception.
     :param retry_interval: (Optional) Base quantity of time (in seconds) to wait between fetch attempts.
     :param retries: (Optional) Number of retries to attempt. Defaults to `_RETRY_LIMIT` constant.
+    :raises FetchUnsupportedError: If an unsupported source format is found.
     :raises FetchError: On resolving any returned future, if fetching a source artifact failed.
     :returns: A generator containing a table that maps futures to the source artifact path in the recipe file and
         the fetcher instance itself.
