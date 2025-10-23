@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+import logging
+import re
 import shutil
 from pathlib import Path
 from typing import Final, NamedTuple, Optional
@@ -13,6 +15,8 @@ from git import exc as git_exceptions
 
 from conda_recipe_manager.fetcher.base_artifact_fetcher import BaseArtifactFetcher
 from conda_recipe_manager.fetcher.exceptions import FetchError
+
+log: Final = logging.getLogger(__name__)
 
 
 class _GitTarget(NamedTuple):
@@ -53,6 +57,8 @@ class GitArtifactFetcher(BaseArtifactFetcher):
             tag=tag,
             rev=rev,
         )
+        # This will remain empty until it is populated by `fetch()`
+        self._git_tags: Final[list[str]] = []
 
     def _clone(self) -> Repo:
         """
@@ -95,7 +101,11 @@ class GitArtifactFetcher(BaseArtifactFetcher):
         :raises FetchError: If an issue occurred while cloning the repository.
         """
         try:
-            repo: Final[Repo] = self._clone()
+            repo: Final = self._clone()
+            for t in repo.tags:
+                if t.tag is not None and isinstance(t.tag.tag, str):
+                    self._git_tags.append(t.tag.tag)
+
         except git_exceptions.GitError as e:
             raise FetchError(f"Failed to git clone from: {self._git_target.url}") from e
         except IOError as e:
@@ -121,3 +131,63 @@ class GitArtifactFetcher(BaseArtifactFetcher):
         # Since we clone directly to the target temp directory, that is all we need to return. GitPython does not create
         # a folder with the name of the repository in this case.
         return self._temp_dir_path
+
+    def get_repo_tags(self) -> list[str]:
+        """
+        Returns the list of `git` tags found with the target repository.
+
+        :raises FetchRequiredError: If a call to `fetch()` is required before using this function.
+        :returns: A list of tags found in the `git` repo.
+        """
+        self._fetch_guard("Repository has not been cloned, so the list of available `git` tags is unknown.")
+
+        return self._git_tags
+
+    @staticmethod
+    def _version_matches_tag(version: str, tag: str) -> bool:
+        """
+        Check if a version string matches a tag using a comprehensive regex pattern.
+
+        This handles major stable release tag formats (excludes pre-release versions):
+          - Exact: 1.0.0
+          - v-prefix: v1.0.0
+          - release-prefix: release-1.0.0, release-v1.0.0
+          - Build metadata: v1.0.0+build.1
+
+        Note: Pre-release versions (e.g., v1.0.0-rc1, v1.0.0-beta.1) are excluded.
+
+        :param version: Version string to match
+        :param tag: Tag name to match against
+        :returns: True if the version matches the tag
+        """
+        # Escape the version string for regex
+        escaped_version: Final = re.escape(version.strip())
+
+        # Comprehensive regex pattern that matches stable release tag formats only
+        pattern: Final[str] = (
+            r"^"  # Start of string
+            r"(?:v|release-|release-v)?"  # Optional prefixes (non-capturing)
+            r"(?P<version>" + escaped_version + r")"  # The version (captured)
+            r"(?:\+.*)?"  # Optional build metadata (+build.1, etc.)
+            r"$"  # End of string
+        )
+
+        return bool(re.match(pattern, tag, re.IGNORECASE))
+
+    @staticmethod
+    def match_tag_from_version(version: str, tags: list[str]) -> Optional[str]:
+        """
+        Attempts to match a version string to a corresponding `git` tag.
+
+        :param version: Version string to find the tag for
+        :param tags: List of tags to check against.
+        :returns: The matching tag name if found, otherwise `None`.
+        """
+        # NOTE: This is a linear search that performs a custom regex match.
+        for tag in tags:
+            if tag and GitArtifactFetcher._version_matches_tag(version, tag):
+                log.debug("Found matching tag '%s' for version '%s'", tag, version)
+                return tag
+
+        log.warning("No matching tag found for version '%s'", version)
+        return None
