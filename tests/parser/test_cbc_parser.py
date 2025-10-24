@@ -169,6 +169,26 @@ def test_list_cbc_variables(file: str, expected: list[str]) -> None:
         # TODO Figure out typing for this 1-dot versioning edge case
         ("anaconda_cbc_01.yaml", "perl", SelectorQuery(platform=Platform.WIN_64), [5.26]),
         ("anaconda_cbc_01.yaml", "perl", SelectorQuery(platform=Platform.LINUX_64), [5.34]),
+        # Test build environment variable selectors
+        (
+            "anaconda_cbc_02.yaml",
+            "python",
+            SelectorQuery(platform=Platform.OSX_64),
+            ["3.9", "3.10", "3.11", "3.12", "3.13"],
+        ),
+        (
+            "anaconda_cbc_02.yaml",
+            "python",
+            SelectorQuery(platform=Platform.OSX_64, build_env_vars={"ANACONDA_ROCKET_ENABLE_PY314"}),
+            ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"],
+        ),
+        ("anaconda_cbc_02.yaml", "numpy", SelectorQuery(platform=Platform.OSX_64), [2.0, 2.0, 2.0, 2.0, 2.1]),
+        (
+            "anaconda_cbc_02.yaml",
+            "numpy",
+            SelectorQuery(platform=Platform.OSX_64, build_env_vars={"ANACONDA_ROCKET_ENABLE_PY314"}),
+            [2.0, 2.0, 2.0, 2.0, 2.1, 2.3],
+        ),
     ],
 )
 def test_get_cbc_variable_values(file: str, variable: str, query: SelectorQuery, expected: list[Primitives]) -> None:
