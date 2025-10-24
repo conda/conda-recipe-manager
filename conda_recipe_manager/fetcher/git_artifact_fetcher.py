@@ -163,6 +163,7 @@ class GitArtifactFetcher(BaseArtifactFetcher):
         # Escape the version string for regex
         escaped_version: Final = re.escape(version.strip())
 
+        # TODO Future: consider using a fuzzy matcher.
         # Comprehensive regex pattern that matches stable release tag formats only
         pattern: Final[str] = (
             r"^"  # Start of string
@@ -177,7 +178,7 @@ class GitArtifactFetcher(BaseArtifactFetcher):
     @staticmethod
     def match_tag_from_version(version: str, tags: list[str]) -> Optional[str]:
         """
-        Attempts to match a version string to a corresponding `git` tag.
+        Attempts to match a version string to a corresponding `git` tag. These results may not be perfect.
 
         :param version: Version string to find the tag for
         :param tags: List of tags to check against.
