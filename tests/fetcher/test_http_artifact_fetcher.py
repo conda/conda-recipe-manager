@@ -269,7 +269,7 @@ def test_get_path_to_archive_raises_no_fetch(
     :param http_fetcher_failure: HttpArtifactFetcher test fixture.
     """
     with pytest.raises(FetchRequiredError):
-        http_fetcher_failure.get_path_to_source_code()
+        http_fetcher_failure.get_path_to_archive()
 
 
 @pytest.mark.parametrize(
