@@ -13,7 +13,7 @@ Some of these CLIs are very demo-focused and others provide significant value, l
 All commands defined are subcommands of the `conda-recipe-manager` command. The top-level command has also been
 abbreviated to `crm` for your typing convenience.
 
-### `fetcher` (WIP)
+### `fetcher`
 This module provides tools for fetching and normalizing remote resources. Files that are downloaded are done so using
 secure temporary directories.
 
@@ -24,11 +24,15 @@ other.
 ### `licenses` (WIP)
 This module provides license file utilities.
 
+### `ops`
+This module provides higher-level recipe editing tooling than what you might find in the `parser` module. In other
+words, library components found in `ops` tend to use `parser` components. For example, the `version_bumper` module
+uses the recipe parser(s) to upgrade a recipe file to a new target software version.
+
 ### `parser`
 This module provides various tools to parse common `conda` recipe file formats and other `conda-build` constructs.
 The primary class for reading recipe files is called the `RecipeReader` while editing capabilities can be found in the
 `RecipeParser`. For additional recipe management features, seek out the derivatives of these two base classes.
-
 
 ### `scanner` (WIP)
 This module provides tools for _scanning_ files and other feedstock/recipe artifacts. Unlike the parsers, full
