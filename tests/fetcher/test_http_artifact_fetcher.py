@@ -38,6 +38,8 @@ def fixture_http_fetcher_p01_tar() -> HttpArtifactFetcher:
     """
     `HttpArtifactFetcher` test fixture for a simple tar'd project.
     """
+    # NOTE: This creates a temp directory on construction. That should be safe enough for some tests to not have to
+    #       worry about managing a fake filesystem.
     return HttpArtifactFetcher("dummy_project_01_tar", MockUrl.DUMMY_PROJECT_01_TAR_URL)
 
 
@@ -46,6 +48,8 @@ def fixture_http_fetcher_p01_zip() -> HttpArtifactFetcher:
     """
     `HttpArtifactFetcher` test fixture for a simple zipped project.
     """
+    # NOTE: This creates a temp directory on construction. That should be safe enough for some tests to not have to
+    #       worry about managing a fake filesystem.
     return HttpArtifactFetcher("dummy_project_01_zip", MockUrl.DUMMY_PROJECT_01_ZIP_URL)
 
 
@@ -55,6 +59,8 @@ def fixture_http_fetcher_failure() -> HttpArtifactFetcher:
     Single-instance `HttpArtifactFetcher` test fixture. This can be used for error cases that don't need multiple tests
     to be run or need to simulate a failed HTTP request.
     """
+    # NOTE: This creates a temp directory on construction. That should be safe enough for some tests to not have to
+    #       worry about managing a fake filesystem.
     return HttpArtifactFetcher("dummy_project_failure", MockUrl.HTTP_500)
 
 
@@ -199,8 +205,8 @@ def test_get_path_to_source_code(http_fixture: str, expected_src: str, request: 
     """
     Tests getting the path to the extracted source code.
 
-    :param http_fixture: Name of the target `HttpArtifactFetcher` test fixture
-    :param expected_src: Expected name of the extracted source directory
+    :param http_fixture: Name of the target `HttpArtifactFetcher` test fixture.
+    :param expected_src: Expected name of the extracted source directory.
     :param request: Pytest fixture request object.
     """
     # Make the test directory accessible to the HTTP mocker
@@ -216,16 +222,54 @@ def test_get_path_to_source_code(http_fixture: str, expected_src: str, request: 
 
 
 def test_get_path_to_source_code_raises_no_fetch(
-    fs: FakeFilesystem, http_fetcher_failure: HttpArtifactFetcher  # pylint: disable=unused-argument
+    http_fetcher_failure: HttpArtifactFetcher,  # pylint: disable=unused-argument
 ) -> None:
     """
     Ensures `get_path_to_source_code()` throws if `fetch()` has not been called.
 
-    :param fs: pyfakefs fixture used to replace the file system
-    :param http_fetcher_failure: HttpArtifactFetcher test fixture
+    :param http_fetcher_failure: HttpArtifactFetcher test fixture.
     """
     with pytest.raises(FetchRequiredError):
         http_fetcher_failure.get_path_to_source_code()
+
+
+@pytest.mark.parametrize(
+    "http_fixture,expected_archive",
+    [
+        ("http_fetcher_p01_tar", "dummy_project_01.tar.gz"),
+        ("http_fetcher_p01_zip", "dummy_project_01.zip"),
+    ],
+)
+def test_get_path_to_archive(http_fixture: str, expected_archive: str, request: pytest.FixtureRequest) -> None:
+    """
+    Tests getting the path to the compressed archive file code.
+
+    :param http_fixture: Name of the target `HttpArtifactFetcher` test fixture.
+    :param expected_archive: Expected name of the archive file.
+    :param request: Pytest fixture request object.
+    """
+    # Make the test directory accessible to the HTTP mocker
+    request.getfixturevalue("fs").add_real_directory(get_test_path() / "archive_files")  # type: ignore[misc]
+
+    http_fetcher = cast(HttpArtifactFetcher, request.getfixturevalue(http_fixture))
+    with patch("requests.get", new=mock_requests_get):
+        http_fetcher.fetch()
+
+    archive_path: Final[Path] = http_fetcher.get_path_to_archive()
+    assert archive_path.name == expected_archive
+    assert archive_path.exists()
+
+
+def test_get_path_to_archive_raises_no_fetch(
+    http_fetcher_failure: HttpArtifactFetcher,  # pylint: disable=unused-argument
+) -> None:
+    """
+    Ensures `get_path_to_archive()` throws if `fetch()` has not been called.
+
+    :param http_fetcher_failure: HttpArtifactFetcher test fixture.
+    """
+    with pytest.raises(FetchRequiredError):
+        http_fetcher_failure.get_path_to_archive()
 
 
 @pytest.mark.parametrize(
@@ -239,8 +283,8 @@ def test_get_archive_sha256(http_fixture: str, expected_hash: str, request: pyte
     """
     Tests calculating the SHA-256 hash of the downloaded archive file.
 
-    :param http_fixture: Name of the target `HttpArtifactFetcher` test fixture
-    :param expected_hash: Expected hash of the archive file
+    :param http_fixture: Name of the target `HttpArtifactFetcher` test fixture.
+    :param expected_hash: Expected hash of the archive file.
     :param request: Pytest fixture request object.
     """
     # Make the test directory accessible to the HTTP mocker
@@ -254,12 +298,11 @@ def test_get_archive_sha256(http_fixture: str, expected_hash: str, request: pyte
 
 
 def test_get_archive_sha256_raises_no_fetch(
-    fs: FakeFilesystem, http_fetcher_failure: HttpArtifactFetcher  # pylint: disable=unused-argument
+    http_fetcher_failure: HttpArtifactFetcher,  # pylint: disable=unused-argument
 ) -> None:
     """
     Ensures `get_archive_sha256()` throws if `fetch()` has not been called.
 
-    :param fs: pyfakefs fixture used to replace the file system
     :param http_fetcher_failure: HttpArtifactFetcher test fixture
     """
     with pytest.raises(FetchRequiredError):
@@ -294,12 +337,11 @@ def test_get_archive_type(
 
 
 def test_get_archive_type_raises_no_fetch(
-    fs: FakeFilesystem, http_fetcher_failure: HttpArtifactFetcher  # pylint: disable=unused-argument
+    http_fetcher_failure: HttpArtifactFetcher,  # pylint: disable=unused-argument
 ) -> None:
     """
     Ensures `get_archive_type()` throws if `fetch()` has not been called.
 
-    :param fs: pyfakefs fixture used to replace the file system
     :param http_fetcher_failure: HttpArtifactFetcher test fixture
     """
     with pytest.raises(FetchRequiredError):
