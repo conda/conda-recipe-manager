@@ -14,10 +14,8 @@ from conda_recipe_manager.parser.platform_types import (
     ALL_ARCHITECTURES,
     ALL_OPERATING_SYSTEMS,
     ALL_PLATFORM_ALIASES,
-    ALL_PLATFORMS,
     Arch,
     OperatingSystem,
-    Platform,
     PlatformAlias,
     PlatformQualifiers,
     get_platforms_by_alias,
@@ -134,6 +132,7 @@ class SelectorParser(IsModifiable):
         :returns: The root of the parse tree
         """
         # TODO: Handle parentheses
+        # TODO: Handle ==, !=, >=, <=, >, <
 
         # Shunting yard
         op_stack: list[_SelectorNode] = []
@@ -198,39 +197,6 @@ class SelectorParser(IsModifiable):
         # TODO Improve: This is a short-hand for checking if the two parse trees are the same
         return self._schema_version == other._schema_version and str(self) == str(other)
 
-    def get_selected_platforms(self) -> set[Platform]:
-        """
-        Returns the set of platforms selected by this selector
-
-        :returns: Set of platforms selected for by the target selector.
-        """
-
-        # Recursive helper function that performs a post-order traversal
-        def _eval_node(node: Optional[_SelectorNode]) -> set[Platform]:
-            # Typeguard base-case
-            if node is None:
-                return set()
-
-            match node.value:
-                case PlatformAlias():
-                    return get_platforms_by_alias(node.value)
-                case Arch():
-                    return get_platforms_by_arch(node.value)
-                case OperatingSystem():
-                    return get_platforms_by_os(node.value)
-                case LogicOp():
-                    match node.value:
-                        case LogicOp.NOT:
-                            return ALL_PLATFORMS - _eval_node(node.l_node)
-                        case LogicOp.AND:
-                            return _eval_node(node.l_node) & _eval_node(node.r_node)
-                        case LogicOp.OR:
-                            return _eval_node(node.l_node) | _eval_node(node.r_node)
-                case _:
-                    return set()
-
-        return _eval_node(self._root)
-
     def does_selector_apply(self, query: SelectorQuery) -> bool:
         """
         Determines if this selector applies to the current target environment.
@@ -238,14 +204,39 @@ class SelectorParser(IsModifiable):
         :param query: Target environment constraints.
         :returns: True if the selector applies to the current situation. False otherwise.
         """
-        # TODO support more than platforms
+        # No selector? No problem!
+        if self._root is None:
+            return True
+        # No platform with a non-empty selector is actually a problem
+        # a platform is required to meaningfully evaluate the selector.
+        if query.platform is None:
+            return False
 
-        platform_set: Final[set[Platform]] = self.get_selected_platforms()
-        if query.platform is not None:
-            return query.platform in platform_set
+        # Recursive helper function that performs a post-order traversal
+        def _eval_node(node: Optional[_SelectorNode]) -> bool:
+            # Typeguard base-case
+            if node is None:
+                return False
 
-        # No constraints? No problem!
-        return True
+            match node.value:
+                case PlatformAlias():
+                    return query.platform in get_platforms_by_alias(node.value)
+                case Arch():
+                    return query.platform in get_platforms_by_arch(node.value)
+                case OperatingSystem():
+                    return query.platform in get_platforms_by_os(node.value)
+                case LogicOp():
+                    match node.value:
+                        case LogicOp.NOT:
+                            return not _eval_node(node.l_node)
+                        case LogicOp.AND:
+                            return _eval_node(node.l_node) and _eval_node(node.r_node)
+                        case LogicOp.OR:
+                            return _eval_node(node.l_node) or _eval_node(node.r_node)
+                case str():
+                    return node.value in query.build_env_vars
+
+        return _eval_node(self._root)
 
     def render(self) -> str:
         """

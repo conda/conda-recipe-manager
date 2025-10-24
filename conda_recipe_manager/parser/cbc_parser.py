@@ -106,7 +106,7 @@ class CbcParser(RecipeReader):
         """
         return list(self._cbc_vars_tbl.keys())
 
-    def get_cbc_variable_value(
+    def get_cbc_variable_values(
         self, variable: str, query: SelectorQuery, default: JsonType | SentinelType = RecipeReader._sentinel
     ) -> JsonType:
         """
@@ -124,16 +124,13 @@ class CbcParser(RecipeReader):
                 raise KeyError(f"CBC variable not found: {variable}")
             return default
 
-        cbc_entries: Final = self._cbc_vars_tbl[variable]
-
-        # Short-circuit on trivial case: one value, no selector
-        if len(cbc_entries) == 1 and not cbc_entries[0].contains_selector():
-            return cbc_entries[0].get_value()
-
-        for entry in cbc_entries:
+        selected_entries: list[JsonType] = []
+        for entry in self._cbc_vars_tbl[variable]:
             selector = entry.get_selector()
             if selector is None or selector.does_selector_apply(query):
-                return entry.get_value()
+                selected_entries.append(entry.get_value())
+        if selected_entries:
+            return selected_entries
 
         # No applicable entries have been found to match any selector variant.
         if isinstance(default, SentinelType):

@@ -7,7 +7,7 @@ from __future__ import annotations
 import pytest
 
 from conda_recipe_manager.parser.enums import SchemaVersion
-from conda_recipe_manager.parser.platform_types import Platform
+from conda_recipe_manager.parser.platform_types import ALL_PLATFORMS, Platform
 from conda_recipe_manager.parser.selector_parser import SelectorParser
 from conda_recipe_manager.parser.selector_query import SelectorQuery
 
@@ -64,8 +64,8 @@ def test_selector_eq(selector0: SelectorParser, selector1: object, expected: boo
 @pytest.mark.parametrize(
     "selector,schema,expected",
     [
-        ("", SchemaVersion.V0, set()),
-        ("[]", SchemaVersion.V0, set()),
+        ("", SchemaVersion.V0, ALL_PLATFORMS),
+        ("[]", SchemaVersion.V0, ALL_PLATFORMS),
         ("osx", SchemaVersion.V0, {Platform.OSX_64, Platform.OSX_ARM_64}),
         ("[osx]", SchemaVersion.V0, {Platform.OSX_64, Platform.OSX_ARM_64}),
         (
@@ -136,14 +136,17 @@ def test_selector_eq(selector0: SelectorParser, selector1: object, expected: boo
 )
 def test_get_selected_platforms(selector: str, schema: SchemaVersion, expected: set[Platform]) -> None:
     """
-    Validates the set of platforms returned that apply to a selector.
+    Validates the set of platforms that apply to a selector.
 
     :param selector: Selector string to parse
     :param schema: Target schema version
     :param expected: Expected value to return
     """
     parser = SelectorParser(selector, schema)
-    assert parser.get_selected_platforms() == expected
+    for platform in expected:
+        assert parser.does_selector_apply(SelectorQuery(platform=platform))
+    for platform in set(Platform) - expected:
+        assert not parser.does_selector_apply(SelectorQuery(platform=platform))
     assert not parser.is_modified()
 
 

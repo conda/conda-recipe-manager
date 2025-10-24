@@ -165,15 +165,13 @@ def test_list_cbc_variables(file: str, expected: list[str]) -> None:
 @pytest.mark.parametrize(
     "file,variable,query,expected",
     [
-        ("anaconda_cbc_01.yaml", "zstd", SelectorQuery(), "1.5.2"),
-        # TODO Determine if picking the 1st option is appropriate when the SelectorQuery is ambiguous
-        ("anaconda_cbc_01.yaml", "perl", SelectorQuery(), 5.26),
+        ("anaconda_cbc_01.yaml", "zstd", SelectorQuery(), ["1.5.2"]),
         # TODO Figure out typing for this 1-dot versioning edge case
-        ("anaconda_cbc_01.yaml", "perl", SelectorQuery(platform=Platform.WIN_64), 5.26),
-        ("anaconda_cbc_01.yaml", "perl", SelectorQuery(platform=Platform.LINUX_64), 5.34),
+        ("anaconda_cbc_01.yaml", "perl", SelectorQuery(platform=Platform.WIN_64), [5.26]),
+        ("anaconda_cbc_01.yaml", "perl", SelectorQuery(platform=Platform.LINUX_64), [5.34]),
     ],
 )
-def test_get_cbc_variable_value(file: str, variable: str, query: SelectorQuery, expected: Primitives) -> None:
+def test_get_cbc_variable_values(file: str, variable: str, query: SelectorQuery, expected: list[Primitives]) -> None:
     """
     Validates fetching the value of a CBC variable without specifying a default value.
 
@@ -183,17 +181,18 @@ def test_get_cbc_variable_value(file: str, variable: str, query: SelectorQuery, 
     :param expected: Expected result of the test
     """
     parser = load_cbc(file)
-    assert parser.get_cbc_variable_value(variable, query) == expected
+    assert parser.get_cbc_variable_values(variable, query) == expected
 
 
 @pytest.mark.parametrize(
     "file,variable,query,exception",
     [
         ("anaconda_cbc_01.yaml", "The Limit Does Not Exist", SelectorQuery(), KeyError),
+        ("anaconda_cbc_01.yaml", "perl", SelectorQuery(), ValueError),
         ("anaconda_cbc_01.yaml", "macos_machine", SelectorQuery(platform=Platform.WIN_64), ValueError),
     ],
 )
-def test_get_cbc_variable_raises(file: str, variable: str, query: SelectorQuery, exception: Exception) -> None:
+def test_get_cbc_variable_values_raises(file: str, variable: str, query: SelectorQuery, exception: Exception) -> None:
     """
     Validates that an error is thrown when a variable does not exist in a CBC file or is not found for the provided
     selector.
@@ -205,7 +204,7 @@ def test_get_cbc_variable_raises(file: str, variable: str, query: SelectorQuery,
     """
     parser = load_cbc(file)
     with pytest.raises(exception):  # type: ignore
-        parser.get_cbc_variable_value(variable, query)
+        parser.get_cbc_variable_values(variable, query)
 
 
 @pytest.mark.parametrize(
@@ -213,13 +212,13 @@ def test_get_cbc_variable_raises(file: str, variable: str, query: SelectorQuery,
     [
         ("anaconda_cbc_01.yaml", "DNE", SelectorQuery(), None, None),
         ("anaconda_cbc_01.yaml", "DNE", SelectorQuery(), 42, 42),
-        ("anaconda_cbc_01.yaml", "zstd", SelectorQuery(), 42, "1.5.2"),
+        ("anaconda_cbc_01.yaml", "zstd", SelectorQuery(), 42, ["1.5.2"]),
         # Returns a default value when the query parameters are not a match
         ("anaconda_cbc_01.yaml", "macos_machine", SelectorQuery(platform=Platform.WIN_64), "not_a_mac", "not_a_mac"),
     ],
 )
-def test_get_cbc_variable_value_with_default(
-    file: str, variable: str, query: SelectorQuery, default: Primitives, expected: Primitives
+def test_get_cbc_variable_values_with_default(
+    file: str, variable: str, query: SelectorQuery, default: Primitives, expected: Primitives | list[Primitives]
 ) -> None:
     """
     Validates fetching the value of a CBC variable when specifying a default value.
@@ -231,7 +230,7 @@ def test_get_cbc_variable_value_with_default(
     :param expected: Expected result of the test
     """
     parser = load_cbc(file)
-    assert parser.get_cbc_variable_value(variable, query, default) == expected
+    assert parser.get_cbc_variable_values(variable, query, default) == expected
 
 
 @pytest.mark.parametrize(
