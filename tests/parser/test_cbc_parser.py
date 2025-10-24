@@ -165,15 +165,33 @@ def test_list_cbc_variables(file: str, expected: list[str]) -> None:
 @pytest.mark.parametrize(
     "file,variable,query,expected",
     [
-        ("anaconda_cbc_01.yaml", "zstd", SelectorQuery(), "1.5.2"),
-        # TODO Determine if picking the 1st option is appropriate when the SelectorQuery is ambiguous
-        ("anaconda_cbc_01.yaml", "perl", SelectorQuery(), 5.26),
+        ("anaconda_cbc_01.yaml", "zstd", SelectorQuery(), ["1.5.2"]),
         # TODO Figure out typing for this 1-dot versioning edge case
-        ("anaconda_cbc_01.yaml", "perl", SelectorQuery(platform=Platform.WIN_64), 5.26),
-        ("anaconda_cbc_01.yaml", "perl", SelectorQuery(platform=Platform.LINUX_64), 5.34),
+        ("anaconda_cbc_01.yaml", "perl", SelectorQuery(platform=Platform.WIN_64), [5.26]),
+        ("anaconda_cbc_01.yaml", "perl", SelectorQuery(platform=Platform.LINUX_64), [5.34]),
+        # Test build environment variable selectors
+        (
+            "anaconda_cbc_02.yaml",
+            "python",
+            SelectorQuery(platform=Platform.OSX_64),
+            ["3.9", "3.10", "3.11", "3.12", "3.13"],
+        ),
+        (
+            "anaconda_cbc_02.yaml",
+            "python",
+            SelectorQuery(platform=Platform.OSX_64, build_env_vars={"ANACONDA_ROCKET_ENABLE_PY314"}),
+            ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"],
+        ),
+        ("anaconda_cbc_02.yaml", "numpy", SelectorQuery(platform=Platform.OSX_64), [2.0, 2.0, 2.0, 2.0, 2.1]),
+        (
+            "anaconda_cbc_02.yaml",
+            "numpy",
+            SelectorQuery(platform=Platform.OSX_64, build_env_vars={"ANACONDA_ROCKET_ENABLE_PY314"}),
+            [2.0, 2.0, 2.0, 2.0, 2.1, 2.3],
+        ),
     ],
 )
-def test_get_cbc_variable_value(file: str, variable: str, query: SelectorQuery, expected: Primitives) -> None:
+def test_get_cbc_variable_values(file: str, variable: str, query: SelectorQuery, expected: list[Primitives]) -> None:
     """
     Validates fetching the value of a CBC variable without specifying a default value.
 
@@ -183,17 +201,18 @@ def test_get_cbc_variable_value(file: str, variable: str, query: SelectorQuery, 
     :param expected: Expected result of the test
     """
     parser = load_cbc(file)
-    assert parser.get_cbc_variable_value(variable, query) == expected
+    assert parser.get_cbc_variable_values(variable, query) == expected
 
 
 @pytest.mark.parametrize(
     "file,variable,query,exception",
     [
         ("anaconda_cbc_01.yaml", "The Limit Does Not Exist", SelectorQuery(), KeyError),
+        ("anaconda_cbc_01.yaml", "perl", SelectorQuery(), ValueError),
         ("anaconda_cbc_01.yaml", "macos_machine", SelectorQuery(platform=Platform.WIN_64), ValueError),
     ],
 )
-def test_get_cbc_variable_raises(file: str, variable: str, query: SelectorQuery, exception: Exception) -> None:
+def test_get_cbc_variable_values_raises(file: str, variable: str, query: SelectorQuery, exception: Exception) -> None:
     """
     Validates that an error is thrown when a variable does not exist in a CBC file or is not found for the provided
     selector.
@@ -205,7 +224,7 @@ def test_get_cbc_variable_raises(file: str, variable: str, query: SelectorQuery,
     """
     parser = load_cbc(file)
     with pytest.raises(exception):  # type: ignore
-        parser.get_cbc_variable_value(variable, query)
+        parser.get_cbc_variable_values(variable, query)
 
 
 @pytest.mark.parametrize(
@@ -213,13 +232,13 @@ def test_get_cbc_variable_raises(file: str, variable: str, query: SelectorQuery,
     [
         ("anaconda_cbc_01.yaml", "DNE", SelectorQuery(), None, None),
         ("anaconda_cbc_01.yaml", "DNE", SelectorQuery(), 42, 42),
-        ("anaconda_cbc_01.yaml", "zstd", SelectorQuery(), 42, "1.5.2"),
+        ("anaconda_cbc_01.yaml", "zstd", SelectorQuery(), 42, ["1.5.2"]),
         # Returns a default value when the query parameters are not a match
         ("anaconda_cbc_01.yaml", "macos_machine", SelectorQuery(platform=Platform.WIN_64), "not_a_mac", "not_a_mac"),
     ],
 )
-def test_get_cbc_variable_value_with_default(
-    file: str, variable: str, query: SelectorQuery, default: Primitives, expected: Primitives
+def test_get_cbc_variable_values_with_default(
+    file: str, variable: str, query: SelectorQuery, default: Primitives, expected: Primitives | list[Primitives]
 ) -> None:
     """
     Validates fetching the value of a CBC variable when specifying a default value.
@@ -231,4 +250,108 @@ def test_get_cbc_variable_value_with_default(
     :param expected: Expected result of the test
     """
     parser = load_cbc(file)
-    assert parser.get_cbc_variable_value(variable, query, default) == expected
+    assert parser.get_cbc_variable_values(variable, query, default) == expected
+
+
+@pytest.mark.parametrize(
+    "file,query,expected",
+    [
+        # Complete CBC file
+        ("anaconda_cbc_01.yaml", SelectorQuery(Platform.WIN_64), [{"python", "numpy"}]),
+        ("anaconda_cbc_01.yaml", SelectorQuery(Platform.LINUX_64), [{"python", "numpy"}]),
+        ("anaconda_cbc_01.yaml", SelectorQuery(Platform.OSX_64), [{"python", "numpy"}]),
+        # ZIP Keys CBC file with simple list
+        (
+            "zip_keys_simple_list.yaml",
+            SelectorQuery(Platform.LINUX_ARM_V6L),
+            [{"libpng", "libtiff", "rust_compiler_version", "rust_gnu_compiler_version"}],
+        ),
+        (
+            "zip_keys_simple_list.yaml",
+            SelectorQuery(Platform.LINUX_ARM_V7L),
+            [{"lzo", "lz4", "rust_compiler_version", "rust_gnu_compiler_version"}],
+        ),
+        (
+            "zip_keys_simple_list.yaml",
+            SelectorQuery(Platform.LINUX_PPC_64_LE),
+            [{"xz", "zstd", "rust_compiler_version", "rust_gnu_compiler_version"}],
+        ),
+        (
+            "zip_keys_simple_list.yaml",
+            SelectorQuery(Platform.LINUX_SYS_390),
+            [{"liblzma", "libzstd", "rust_compiler_version", "rust_gnu_compiler_version"}],
+        ),
+        (
+            "zip_keys_simple_list.yaml",
+            SelectorQuery(Platform.LINUX_32),
+            [{"r_version", "r_implementation", "rust_compiler_version", "rust_gnu_compiler_version"}],
+        ),
+        (
+            "zip_keys_simple_list.yaml",
+            SelectorQuery(Platform.LINUX_AARCH_64),
+            [{"boost", "boost_cpp", "rust_compiler_version", "rust_gnu_compiler_version"}],
+        ),
+        (
+            "zip_keys_simple_list.yaml",
+            SelectorQuery(Platform.LINUX_64),
+            [
+                {
+                    "m2w64_c_compiler_version",
+                    "m2w64_cxx_compiler_version",
+                    "m2w64_fortran_compiler_version",
+                    "rust_compiler_version",
+                    "rust_gnu_compiler_version",
+                }
+            ],
+        ),
+        ("zip_keys_simple_list.yaml", SelectorQuery(Platform.OSX_ARM_64), [{"pypy", "pypy3"}]),
+        ("zip_keys_simple_list.yaml", SelectorQuery(Platform.WIN_64), [{"python", "numpy"}]),
+        # ZIP Keys CBC file with multiple lists and several selector combinations
+        (
+            "zip_keys_multiple_lists.yaml",
+            SelectorQuery(Platform.LINUX_ARM_V6L),
+            [{"libpng", "libtiff"}, {"rust_compiler_version", "rust_gnu_compiler_version"}],
+        ),
+        (
+            "zip_keys_multiple_lists.yaml",
+            SelectorQuery(Platform.LINUX_ARM_V7L),
+            [{"lzo", "lz4"}, {"rust_compiler_version", "rust_gnu_compiler_version"}],
+        ),
+        (
+            "zip_keys_multiple_lists.yaml",
+            SelectorQuery(Platform.LINUX_PPC_64_LE),
+            [{"xz", "zstd"}, {"rust_compiler_version", "rust_gnu_compiler_version"}],
+        ),
+        (
+            "zip_keys_multiple_lists.yaml",
+            SelectorQuery(Platform.LINUX_SYS_390),
+            [{"liblzma", "libzstd"}, {"rust_compiler_version", "rust_gnu_compiler_version"}],
+        ),
+        (
+            "zip_keys_multiple_lists.yaml",
+            SelectorQuery(Platform.LINUX_32),
+            [{"rust_compiler_version", "rust_gnu_compiler_version"}, {"r_version", "r_implementation"}],
+        ),
+        (
+            "zip_keys_multiple_lists.yaml",
+            SelectorQuery(Platform.LINUX_AARCH_64),
+            [{"boost", "boost_cpp"}, {"rust_compiler_version", "rust_gnu_compiler_version"}],
+        ),
+        (
+            "zip_keys_multiple_lists.yaml",
+            SelectorQuery(Platform.LINUX_64),
+            [
+                {"m2w64_c_compiler_version", "m2w64_cxx_compiler_version", "m2w64_fortran_compiler_version"},
+                {"rust_compiler_version", "rust_gnu_compiler_version"},
+            ],
+        ),
+        ("zip_keys_multiple_lists.yaml", SelectorQuery(Platform.OSX_ARM_64), [{"pypy", "pypy3"}]),
+        ("zip_keys_multiple_lists.yaml", SelectorQuery(Platform.WIN_64), [{"python", "numpy"}]),
+    ],
+)
+def test_get_zip_keys(file: str, query: SelectorQuery, expected: list[set[str]]) -> None:
+    """
+    Validates fetching the zip keys from a CBC file.
+    """
+    parser = load_cbc(file)
+    assert parser.get_zip_keys(query) == expected

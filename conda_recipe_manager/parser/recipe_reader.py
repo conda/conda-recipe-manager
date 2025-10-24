@@ -944,6 +944,7 @@ class RecipeReader(IsModifiable):
             return
 
         key = cast(str, node.value)
+        data.setdefault(key, {})
         for child in node.children:
             # Ignore comment-only lines
             if child.is_comment():
@@ -975,7 +976,7 @@ class RecipeReader(IsModifiable):
 
             # List members accumulate values in a list
             if child.list_member_flag:
-                if key not in data:
+                if not isinstance(data[key], list):
                     data[key] = []
                 data[key].append(value)
                 continue
@@ -985,17 +986,16 @@ class RecipeReader(IsModifiable):
                 data[key] = value
                 continue
 
-            # All other keys prep for containing more dictionaries
-            data.setdefault(key, {})
             self._render_object_tree(child, replace_variables, data[key])
 
-    def render_to_object(self, replace_variables: bool = False) -> JsonType:
+    def render_to_object(self, replace_variables: bool = False, start_node: Optional[Node] = None) -> JsonType:
         """
         Takes the underlying state of the parse tree and produces a Pythonic object/dictionary representation. Analogous
         to `json.load()`.
 
         :param replace_variables: (Optional) If set to True, this replaces all variable substitutions with their set
             values.
+        :param start_node: (Optional) Node to start the traversal from. If not provided, the root node will be used.
         :returns: Pythonic data object representation of the recipe.
         """
         data: JsonType = {}
@@ -1003,13 +1003,11 @@ class RecipeReader(IsModifiable):
         assert isinstance(data, dict)
 
         # Bootstrap/flatten the root-level
-        for child in self._root.children:
-            if child.is_comment():
-                continue
-            data.setdefault(cast(str, child.value), {})
-            self._render_object_tree(child, replace_variables, data)
+        if start_node is None:
+            start_node = self._root
+        self._render_object_tree(start_node, replace_variables, data)
 
-        return data
+        return data[cast(str, start_node.value)]
 
     ## YAML Access Functions ##
 
@@ -1082,11 +1080,7 @@ class RecipeReader(IsModifiable):
         elif node.is_strong_leaf():
             return_value = cast(Primitives, node.value)
         else:
-            # NOTE: Traversing the tree and generating our own data structures will be more efficient than rendering and
-            # leveraging the YAML parser, BUT this method re-uses code and is easier to maintain.
-            lst: list[str] = []
-            RecipeReader._render_tree(node, -1, lst, self._schema_version)
-            return_value = "\n".join(lst)
+            return self.render_to_object(replace_variables=sub_vars, start_node=node)
 
         # Collection types are transformed into strings above and will need to be transformed into a proper data type.
         # `_parse_yaml()` will also render JINJA variables for us, if requested.
