@@ -175,6 +175,12 @@ def test_get_selected_platforms(selector: str, schema: SchemaVersion, expected: 
         (
             "[osx and ANACONDA_ROCKET_ENABLE_PY314]",
             SchemaVersion.V0,
+            SelectorQuery(platform=Platform.OSX_ARM_64),
+            False,
+        ),
+        (
+            "[osx and ANACONDA_ROCKET_ENABLE_PY314]",
+            SchemaVersion.V0,
             SelectorQuery(platform=Platform.WIN_64, build_env_vars={"ANACONDA_ROCKET_ENABLE_PY314"}),
             False,
         ),
