@@ -208,3 +208,13 @@ class Node:
         :returns: True if the node represents an element that is a collection. False otherwise.
         """
         return self.value == Node._sentinel and self.list_member_flag and bool(self.children)
+
+    def contains_list(self) -> bool:
+        """
+        Indicates if the node contains a list.
+
+        :returns: True if the node contains a list. False otherwise.
+        """
+
+        # In princple, all children of a list node are list members, we still check all children to be safe.
+        return bool(self.children) and all(child.list_member_flag for child in self.children if not child.is_comment())

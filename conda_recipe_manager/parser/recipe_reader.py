@@ -928,6 +928,22 @@ class RecipeReader(IsModifiable):
 
         return "\n".join(lines)
 
+    def _preprocess_node_value(self, node: Node, replace_variables: bool) -> JsonType:
+        """
+        Handle multi-line strings and variable replacement.
+
+        :param node: Node from which to extract the value to preprocess
+        :param replace_variables: If set to True, this replaces all variable substitutions with their set values.
+        :returns: Preprocessed value
+        """
+        value = normalize_multiline_strings(node.value, node.multiline_variant)
+        if isinstance(value, str):
+            if replace_variables:
+                value = self._render_jinja_vars(value)
+            elif node.multiline_variant != MultilineVariant.NONE:
+                value = cast(str, yaml.load(value, Loader=SafeLoader))
+        return value
+
     @no_type_check
     def _render_object_tree(self, node: Node, replace_variables: bool, data: JsonType) -> None:
         # pylint: disable=too-complex
@@ -939,74 +955,107 @@ class RecipeReader(IsModifiable):
         :param replace_variables: If set to True, this replaces all variable substitutions with their set values.
         :param data: Accumulated data structure
         """
-        # Ignore comment-only lines
+
+        def _ensure_list(json: JsonType) -> list[JsonType]:
+            """
+            Ensure the given JSON is a list. If it is not, return an empty list.
+
+            :param json: JSON to ensure is a list
+            :returns: List if the JSON is a list, otherwise an empty list
+            """
+            if not isinstance(json, list):
+                return []
+            return json
+
+        def _ensure_dict(json: JsonType) -> dict[str, JsonType]:
+            """
+            Ensure the given JSON is a dictionary. If it is not, return an empty dictionary.
+
+            :param json: JSON to ensure is a dictionary
+            :returns: Dictionary if the JSON is a dictionary, otherwise an empty dictionary
+            """
+            if not isinstance(json, dict):
+                return {}
+            return json
+
+        # Ignore comment-only nodes
         if node.is_comment():
             return
 
-        key = cast(str, node.value)
-        for child in node.children:
-            # Ignore comment-only lines
-            if child.is_comment():
-                continue
+        # Handle terminal nodes
+        if node.is_empty_key():
+            if isinstance(data, list):
+                data.append({node.value: None})
+            elif isinstance(data, dict):
+                data[node.value] = None
+            return
 
-            # Handle multiline strings and variable replacement
-            value = normalize_multiline_strings(child.value, child.multiline_variant)
-            if isinstance(value, str):
-                if replace_variables:
-                    value = self._render_jinja_vars(value)
-                elif child.multiline_variant != MultilineVariant.NONE:
-                    value = cast(str, yaml.load(value, Loader=SafeLoader))
+        if node.is_single_key():
+            child_value = self._preprocess_node_value(node.children[0], replace_variables)
+            if node.children[0].list_member_flag:
+                child_value = [child_value]
+            if isinstance(data, list):
+                data.append({node.value: child_value})
+            elif isinstance(data, dict):
+                data[node.value] = child_value
+            return
 
-            # Empty keys are interpreted to point to `None`
-            if child.is_empty_key():
-                data[key][child.value] = None
-                continue
+        if node.is_strong_leaf():
+            # At this point, we know the data is a list
+            data.append(self._preprocess_node_value(node, replace_variables))
+            return
 
-            # Collection nodes are skipped as they are placeholders. However, their children are rendered recursively
-            # and added to a list.
-            if child.is_collection_element():
-                elem_dict = {}
-                for element in child.children:
-                    self._render_object_tree(element, replace_variables, elem_dict)
-                if len(data[key]) == 0:
-                    data[key] = []
-                data[key].append(elem_dict)
-                continue
+        # Process collection nodes (lists or dicts that are list members)
+        if node.is_collection_element():
+            if node.contains_list():
+                elem_json = []
+            else:
+                elem_json = {}
+            for element in node.children:
+                self._render_object_tree(element, replace_variables, elem_json)
+            data = _ensure_list(data)
+            data.append(elem_json)
+            return
 
-            # List members accumulate values in a list
-            if child.list_member_flag:
-                if key not in data:
-                    data[key] = []
-                data[key].append(value)
-                continue
+        # List nodes (lists that are not list members)
+        if node.contains_list():
+            key = node.value
+            data = _ensure_dict(data)
+            data.setdefault(key, [])
+            data[key] = _ensure_list(data[key])
+            for element in node.children:
+                self._render_object_tree(element, replace_variables, data[key])
+            return
 
-            # Other (non list and non-empty-key) leaf nodes set values directly
-            if child.is_strong_leaf():
-                data[key] = value
-                continue
+        # What should remain is dicts that are not list members
+        key = node.value
+        data = _ensure_dict(data)
+        data.setdefault(key, {})
+        data[key] = _ensure_dict(data[key])
+        for element in node.children:
+            self._render_object_tree(element, replace_variables, data[key])
+        return
 
-            # All other keys prep for containing more dictionaries
-            data.setdefault(key, {})
-            self._render_object_tree(child, replace_variables, data[key])
-
-    def render_to_object(self, replace_variables: bool = False) -> JsonType:
+    def render_to_object(self, replace_variables: bool = False, root_node: Optional[Node] = None) -> JsonType:
         """
         Takes the underlying state of the parse tree and produces a Pythonic object/dictionary representation. Analogous
         to `json.load()`.
 
         :param replace_variables: (Optional) If set to True, this replaces all variable substitutions with their set
             values.
+        :param root_node: (Optional) If provided, this will use the provided node as the root node instead of the default root node.
         :returns: Pythonic data object representation of the recipe.
         """
-        data: JsonType = {}
-        # Type narrow after assignment
-        assert isinstance(data, dict)
-
         # Bootstrap/flatten the root-level
-        for child in self._root.children:
-            if child.is_comment():
-                continue
-            data.setdefault(cast(str, child.value), {})
+        if root_node is None:
+            root_node = self._root
+
+        if root_node.contains_list():
+            data = []
+        else:
+            data = {}
+
+        for child in root_node.children:
             self._render_object_tree(child, replace_variables, data)
 
         return data
@@ -1082,11 +1131,7 @@ class RecipeReader(IsModifiable):
         elif node.is_strong_leaf():
             return_value = cast(Primitives, node.value)
         else:
-            # NOTE: Traversing the tree and generating our own data structures will be more efficient than rendering and
-            # leveraging the YAML parser, BUT this method re-uses code and is easier to maintain.
-            lst: list[str] = []
-            RecipeReader._render_tree(node, -1, lst, self._schema_version)
-            return_value = "\n".join(lst)
+            return self.render_to_object(sub_vars, node)
 
         # Collection types are transformed into strings above and will need to be transformed into a proper data type.
         # `_parse_yaml()` will also render JINJA variables for us, if requested.
