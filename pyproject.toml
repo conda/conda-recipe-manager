@@ -1,3 +1,7 @@
+# NOTE: As this is a project for the Conda Community that does not publish to PyPI, this file is mostly used to set the
+#       current software version. We do not actively maintain the dependencies list here, see `environment.yaml` for
+#       the current list of dependencies.
+
 [build-system]
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
@@ -14,7 +18,7 @@ exclude = ["tests"]
 
 [project]
 name = "conda_recipe_manager"
-version = "0.7.1"
+version = "0.8.0"
 authors = [
   { name="Anaconda, Inc.", email="distribution_team@anaconda.com" },
 ]
