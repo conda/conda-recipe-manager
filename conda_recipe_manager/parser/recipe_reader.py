@@ -1117,7 +1117,6 @@ class RecipeReader(IsModifiable):
     def get_value(self, path: str, default: JsonType | SentinelType = _sentinel, sub_vars: bool = False) -> JsonType:
         """
         Retrieves a value at a given path. If the value is not found, return a specified default value or throw.
-        TODO Refactor: This function could leverage `render_to_object()` to simplify/de-dupe the logic.
 
         :param path: JSON patch (RFC 6902)-style path to a value.
         :param default: (Optional) If the value is not found, return this value instead.
