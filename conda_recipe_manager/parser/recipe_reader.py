@@ -313,6 +313,9 @@ class RecipeReader(IsModifiable):
                 elem_node = Node(comment=comment, list_member_flag=True)
                 elem_node.children.append(key_node)
                 return elem_node
+            # Handle lists of lists
+            if output[0] is None:
+                return Node(comment=comment, list_member_flag=True)
             return Node(value=cast(Primitives, output[0]), comment=comment, list_member_flag=True)
         # Other types are just leaf nodes. This is scenario should likely not be triggered given our recipe files don't
         # have single valid lines of YAML, but we cover this case for the sake of correctness.
@@ -966,17 +969,6 @@ class RecipeReader(IsModifiable):
         :raises SentinelTypeEvaluationException: If a node value with a sentinel type is evaluated.
         """
 
-        def _ensure_dict(obj: JsonType) -> dict[str, JsonType]:
-            """
-            Ensure the given JSON is a dictionary. If it is not, return an empty dictionary.
-
-            :param json: JSON to ensure is a dictionary
-            :returns: Dictionary if the JSON is a dictionary, otherwise an empty dictionary
-            """
-            if not isinstance(obj, dict):
-                return {}
-            return obj
-
         # Ignore comment-only nodes
         if node.is_comment():
             return
@@ -1018,7 +1010,6 @@ class RecipeReader(IsModifiable):
         # List nodes (lists that are not list members)
         if node.contains_list():
             key = node.value
-            data = _ensure_dict(data)
             data.setdefault(key, [])
             for element in node.children:
                 self._render_object_tree(element, replace_variables, data[key])
@@ -1065,7 +1056,6 @@ class RecipeReader(IsModifiable):
 
         for child in root_node.children:
             self._render_object_tree(child, replace_variables, data)
-
         return data
 
     def render_to_object(self, replace_variables: bool = False) -> JsonType:
