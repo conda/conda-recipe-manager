@@ -153,6 +153,7 @@ class RecipeParserDeps(RecipeParser, RecipeReaderDeps):
             existing dependency. Duplicates match by name only.
         :param sel_mode: (Optional) Indicates how an existing selector should be handled. Defaults to replacing the
             existing selector.
+        :raises SentinelTypeEvaluationException: If a node value with a sentinel type is evaluated.
         :returns: The result of the underlying patch command, indicating that a change occurred.
         """
         # TODO add V1 support

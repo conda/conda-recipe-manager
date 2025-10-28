@@ -251,6 +251,7 @@ class VersionBumper:
         :raises VersionBumperInvalidState: If the build number field could not be set because the recipe file is in or
             would be put into an invalid state.
         :raises VersionBumperPatchError: If there was a failure attempting to edit the `/build/number` field.
+        :raises SentinelTypeEvaluationException: If a node value with a sentinel type is evaluated.
         """
 
         def _throw_on_build_num_failure(msg: str) -> NoReturn:
@@ -298,6 +299,7 @@ class VersionBumper:
         :raises VersionBumperInvalidState: If the target version could not be set because the recipe file is in or
             would be put into an invalid state.
         :raises VersionBumperPatchError: If there was a failure attempting to edit the target version.
+        :raises SentinelTypeEvaluationException: If a node value with a sentinel type is evaluated.
         """
         # TODO Add V0 multi-output version support for some recipes (version field is duplicated in cctools-ld64 but not
         # in most multi-output recipes)

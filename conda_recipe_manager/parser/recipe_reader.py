@@ -44,7 +44,11 @@ from conda_recipe_manager.parser.dependency import (
     dependency_section_to_str,
 )
 from conda_recipe_manager.parser.enums import SchemaVersion
-from conda_recipe_manager.parser.exceptions import ParsingException, ParsingJinjaException
+from conda_recipe_manager.parser.exceptions import (
+    ParsingException,
+    ParsingJinjaException,
+    SentinelTypeEvaluationException,
+)
 from conda_recipe_manager.parser.selector_parser import SelectorParser
 from conda_recipe_manager.parser.types import TAB_AS_SPACES, TAB_SPACE_COUNT, MultilineVariant
 from conda_recipe_manager.parser.v0_recipe_formatter import V0RecipeFormatter
@@ -433,6 +437,8 @@ class RecipeReader(IsModifiable):
         """
         Initializes the variable table, `vars_tbl` based on the document content.
         Requires parse-tree and `_schema_version` to be initialized.
+
+        :raises SentinelTypeEvaluationException: If a node value with a sentinel type is evaluated.
         """
         # Tracks Jinja variables set by the file
         self._vars_tbl: _VarTable = {}
@@ -934,11 +940,11 @@ class RecipeReader(IsModifiable):
 
         :param node: Node from which to extract the value to preprocess
         :param replace_variables: If set to True, this replaces all variable substitutions with their set values.
-        :raises TypeError: If the node value is a sentinel type
+        :raises SentinelTypeEvaluationException: If the node value is a sentinel type
         :returns: Preprocessed value
         """
         if isinstance(node.value, SentinelType):
-            raise TypeError(f"Node value is a sentinel type: {node.value}")
+            raise SentinelTypeEvaluationException(node)
         value: Final = normalize_multiline_strings(node.value, node.multiline_variant)
         if isinstance(value, str):
             if replace_variables:
@@ -957,6 +963,7 @@ class RecipeReader(IsModifiable):
         :param node: Current node in the tree
         :param replace_variables: If set to True, this replaces all variable substitutions with their set values.
         :param data: Accumulated data structure
+        :raises SentinelTypeEvaluationException: If a node value with a sentinel type is evaluated.
         """
 
         def _ensure_list(json: JsonType) -> list[JsonType]:
@@ -1048,6 +1055,7 @@ class RecipeReader(IsModifiable):
             values.
         :param root_node: (Optional) If provided, this will use the provided node as the root node instead of the
             default root node.
+        :raises SentinelTypeEvaluationException: If a node value with a sentinel type is evaluated.
         :returns: Pythonic data object representation of the recipe.
         """
         if root_node is None:
@@ -1082,6 +1090,7 @@ class RecipeReader(IsModifiable):
 
         :param replace_variables: (Optional) If set to True, this replaces all variable substitutions with their set
             values.
+        :raises SentinelTypeEvaluationException: If a node value with a sentinel type is evaluated.
         :returns: Pythonic data object representation of the recipe.
         """
         return self._render_to_object(replace_variables)
@@ -1123,6 +1132,7 @@ class RecipeReader(IsModifiable):
         :param sub_vars: (Optional) If set to True and the value contains a Jinja template variable, the Jinja value
             will be "rendered". Any variables that can't be resolved will be escaped with `${{ }}`.
         :raises KeyError: If the value is not found AND no default is specified
+        :raises SentinelTypeEvaluationException: If a node value with a sentinel type is evaluated.
         :returns: If found, the value in the recipe at that path. Otherwise, the caller-specified default value.
         """
         path_stack = str_to_stack_path(path)
@@ -1174,6 +1184,7 @@ class RecipeReader(IsModifiable):
         In V1 recipe files, the name must be included to pass the schema check that should be enforced by any build
         system.
 
+        :raises SentinelTypeEvaluationException: If a node value with a sentinel type is evaluated.
         :returns: The name associated with the recipe file. In the unlikely event that no name is found, `None` is
             returned instead.
         """
@@ -1196,6 +1207,7 @@ class RecipeReader(IsModifiable):
         """
         Indicates if a recipe is a "pure Python" recipe.
 
+        :raises SentinelTypeEvaluationException: If a node value with a sentinel type is evaluated.
         :return: True if the recipe is a "pure Python recipe". False otherwise.
         """
         # TODO cache this or otherwise find a way to reduce the computation complexity.
@@ -1242,6 +1254,7 @@ class RecipeReader(IsModifiable):
           - Recipes that have both top-level and multi-output sections. An example can be found here:
               https://github.com/AnacondaRecipes/curl-feedstock/blob/master/recipe/meta.yaml
 
+        :raises SentinelTypeEvaluationException: If a node value with a sentinel type is evaluated.
         """
         paths: list[str] = ["/"]
 
@@ -1276,6 +1289,7 @@ class RecipeReader(IsModifiable):
         """
         Convenience function that returns a list of all dependency lines in a recipe.
 
+        :raises SentinelTypeEvaluationException: If a node value with a sentinel type is evaluated.
         :returns: A list of all paths in a recipe file that point to dependencies.
         """
         paths: list[str] = []

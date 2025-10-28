@@ -108,6 +108,7 @@ def from_recipe(recipe: RecipeReader, ignore_unsupported: bool = False) -> Gener
     :param ignore_unsupported: (Optional) If set to `True`, ignore currently unsupported artifacts found in the source
         section and return the list of supported sources. Otherwise, throw an exception.
     :raises FetchUnsupportedError: If an unsupported source format is found.
+    :raises SentinelTypeEvaluationException: If a node value with a sentinel type is evaluated.
     :returns: A context-managed-generator that yields a map containing one path and Artifact Fetcher instance pair per
         source found in the recipe file.
     """
@@ -229,6 +230,7 @@ def _correct_pypi_url(recipe_reader: RecipeReader) -> str:
     :param recipe_reader: Read-only parser (enforced by our static analyzer). Editing may not be thread-safe. It is up
         to the caller to manage that risk.
     :raises FetchError: If an issue occurred while downloading or extracting the archive.
+    :raises SentinelTypeEvaluationException: If a node value with a sentinel type is evaluated.
     :returns: Corrected PyPi artifact URL for the fetcher.
     """
 
