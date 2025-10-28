@@ -939,7 +939,7 @@ class RecipeReader(IsModifiable):
         """
         if isinstance(node.value, SentinelType):
             raise TypeError(f"Node value is a sentinel type: {node.value}")
-        value = normalize_multiline_strings(node.value, node.multiline_variant)
+        value: Final = normalize_multiline_strings(node.value, node.multiline_variant)
         if isinstance(value, str):
             if replace_variables:
                 return self._render_jinja_vars(value)
