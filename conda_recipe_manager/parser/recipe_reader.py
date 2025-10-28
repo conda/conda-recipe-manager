@@ -1026,6 +1026,7 @@ class RecipeReader(IsModifiable):
         """
         Takes the underlying state of the parse tree and produces a Pythonic object/dictionary representation. Analogous
         to `json.load()`.
+        NOTE: This private function is used to hide the Node class (which is private) from the public interface.
 
         :param replace_variables: (Optional) If set to True, this replaces all variable substitutions with their set
             values.
