@@ -1039,7 +1039,7 @@ class RecipeReader(IsModifiable):
             self._render_object_tree(element, replace_variables, data[key])
         return
 
-    def render_to_object(self, replace_variables: bool = False, root_node: Optional[Node] = None) -> JsonType:
+    def _render_to_object(self, replace_variables: bool = False, root_node: Optional[Node] = None) -> JsonType:
         """
         Takes the underlying state of the parse tree and produces a Pythonic object/dictionary representation. Analogous
         to `json.load()`.
@@ -1074,6 +1074,17 @@ class RecipeReader(IsModifiable):
             self._render_object_tree(child, replace_variables, data)
 
         return data
+
+    def render_to_object(self, replace_variables: bool = False) -> JsonType:
+        """
+        Takes the underlying state of the parse tree and produces a Pythonic object/dictionary representation. Analogous
+        to `json.load()`.
+
+        :param replace_variables: (Optional) If set to True, this replaces all variable substitutions with their set
+            values.
+        :returns: Pythonic data object representation of the recipe.
+        """
+        return self._render_to_object(replace_variables)
 
     ## YAML Access Functions ##
 
@@ -1124,7 +1135,7 @@ class RecipeReader(IsModifiable):
                 raise KeyError(f"No value/key found at path {path!r}")
             return default
 
-        return self.render_to_object(sub_vars, node)
+        return self._render_to_object(sub_vars, node)
 
     def find_value(self, value: Primitives) -> list[str]:
         """
