@@ -934,15 +934,18 @@ class RecipeReader(IsModifiable):
 
         :param node: Node from which to extract the value to preprocess
         :param replace_variables: If set to True, this replaces all variable substitutions with their set values.
+        :raises TypeError: If the node value is a sentinel type
         :returns: Preprocessed value
         """
+        if isinstance(node.value, SentinelType):
+            raise TypeError(f"Node value is a sentinel type: {node.value}")
         value = normalize_multiline_strings(node.value, node.multiline_variant)
         if isinstance(value, str):
             if replace_variables:
-                value = self._render_jinja_vars(value)
-            elif node.multiline_variant != MultilineVariant.NONE:
-                value = cast(str, yaml.load(value, Loader=SafeLoader))
-        return value
+                return self._render_jinja_vars(value)
+            if node.multiline_variant != MultilineVariant.NONE:
+                return cast(str, yaml.load(value, Loader=SafeLoader))
+        return cast(JsonType, value)
 
     @no_type_check
     def _render_object_tree(self, node: Node, replace_variables: bool, data: JsonType) -> None:
@@ -1043,17 +1046,28 @@ class RecipeReader(IsModifiable):
 
         :param replace_variables: (Optional) If set to True, this replaces all variable substitutions with their set
             values.
-        :param root_node: (Optional) If provided, this will use the provided node as the root node instead of the default root node.
+        :param root_node: (Optional) If provided, this will use the provided node as the root node instead of the
+            default root node.
         :returns: Pythonic data object representation of the recipe.
         """
-        # Bootstrap/flatten the root-level
         if root_node is None:
             root_node = self._root
 
+        # Handle terminal nodes immediately
+        if root_node.is_single_key():
+            child_value = self._preprocess_node_value(root_node.children[0], replace_variables)
+            if root_node.children[0].list_member_flag:
+                child_value = [child_value]
+            return child_value
+
+        if root_node.is_strong_leaf():
+            return self._preprocess_node_value(root_node, replace_variables)
+
+        # Bootstrap/flatten the root-level
         if root_node.contains_list():
-            data = []
+            data: list[JsonType] = []
         else:
-            data = {}
+            data: dict[str, JsonType] = {}  # type: ignore
 
         for child in root_node.children:
             self._render_object_tree(child, replace_variables, data)
@@ -1113,37 +1127,7 @@ class RecipeReader(IsModifiable):
         if node.is_empty_key():
             return None
 
-        return_value: JsonType = None
-        # Handle unpacking of the last key-value set of nodes.
-        if node.is_single_key() and not node.is_root():
-            if node.children[0].multiline_variant != MultilineVariant.NONE:
-                multiline_str = cast(
-                    str,
-                    normalize_multiline_strings(
-                        cast(list[str], node.children[0].value), node.children[0].multiline_variant
-                    ),
-                )
-                if sub_vars:
-                    return self._render_jinja_vars(multiline_str)
-                return cast(JsonType, yaml.load(multiline_str, Loader=SafeLoader))
-            return_value = cast(Primitives, node.children[0].value)
-        # Leaf nodes can return their value directly
-        elif node.is_strong_leaf():
-            return_value = cast(Primitives, node.value)
-        else:
-            return self.render_to_object(sub_vars, node)
-
-        # Collection types are transformed into strings above and will need to be transformed into a proper data type.
-        # `_parse_yaml()` will also render JINJA variables for us, if requested.
-        if isinstance(return_value, str):
-            parser = self if sub_vars else None
-            parsed_value = RecipeReader._parse_yaml(return_value, parser)
-            # Lists containing 1 value will drop the surrounding list by the YAML parser. To ensure greater consistency
-            # and provide better type-safety, we will re-wrap such values.
-            if not isinstance(parsed_value, list) and len(node.children) == 1 and node.children[0].list_member_flag:
-                return [parsed_value]
-            return parsed_value
-        return return_value
+        return self.render_to_object(sub_vars, node)
 
     def find_value(self, value: Primitives) -> list[str]:
         """
