@@ -1049,11 +1049,7 @@ class RecipeReader(IsModifiable):
             return self._preprocess_node_value(root_node, replace_variables)
 
         # Bootstrap/flatten the root-level
-        if root_node.contains_list():
-            data: list[JsonType] = []
-        else:
-            data: dict[str, JsonType] = {}  # type: ignore
-
+        data: JsonType = [] if root_node.contains_list() else {}
         for child in root_node.children:
             self._render_object_tree(child, replace_variables, data)
 
