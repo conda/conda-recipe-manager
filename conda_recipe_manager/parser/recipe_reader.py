@@ -1054,12 +1054,13 @@ class RecipeReader(IsModifiable):
             root_node = self._root
 
         # Handle terminal nodes immediately
+        if root_node.is_empty_key():
+            return None
         if root_node.is_single_key():
             child_value = self._preprocess_node_value(root_node.children[0], replace_variables)
             if root_node.children[0].list_member_flag:
                 child_value = [child_value]
             return child_value
-
         if root_node.is_strong_leaf():
             return self._preprocess_node_value(root_node, replace_variables)
 
@@ -1122,10 +1123,6 @@ class RecipeReader(IsModifiable):
             if default == RecipeReader._sentinel or isinstance(default, SentinelType):
                 raise KeyError(f"No value/key found at path {path!r}")
             return default
-
-        # Handle empty keys
-        if node.is_empty_key():
-            return None
 
         return self.render_to_object(sub_vars, node)
 
