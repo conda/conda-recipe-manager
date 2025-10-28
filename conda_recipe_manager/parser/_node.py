@@ -219,6 +219,8 @@ class Node:
         :returns: True if the node contains a list. False otherwise.
         """
 
+        # We track both list members and non-list members to ensure the node tree is consistent.
+        # Either all children must be list members or all children must be non-list members.
         contains_list_member = False
         contains_non_list_member = False
         for child in self.children:
