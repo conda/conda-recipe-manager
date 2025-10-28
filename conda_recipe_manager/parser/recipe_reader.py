@@ -44,7 +44,11 @@ from conda_recipe_manager.parser.dependency import (
     dependency_section_to_str,
 )
 from conda_recipe_manager.parser.enums import SchemaVersion
-from conda_recipe_manager.parser.exceptions import ParsingException, ParsingJinjaException
+from conda_recipe_manager.parser.exceptions import (
+    ParsingException,
+    ParsingJinjaException,
+    SentinelTypeEvaluationException,
+)
 from conda_recipe_manager.parser.selector_parser import SelectorParser
 from conda_recipe_manager.parser.types import TAB_AS_SPACES, TAB_SPACE_COUNT, MultilineVariant
 from conda_recipe_manager.parser.v0_recipe_formatter import V0RecipeFormatter
@@ -309,6 +313,9 @@ class RecipeReader(IsModifiable):
                 elem_node = Node(comment=comment, list_member_flag=True)
                 elem_node.children.append(key_node)
                 return elem_node
+            # Handle lists of lists
+            if output[0] is None:
+                return Node(comment=comment, list_member_flag=True)
             return Node(value=cast(Primitives, output[0]), comment=comment, list_member_flag=True)
         # Other types are just leaf nodes. This is scenario should likely not be triggered given our recipe files don't
         # have single valid lines of YAML, but we cover this case for the sake of correctness.
@@ -433,6 +440,8 @@ class RecipeReader(IsModifiable):
         """
         Initializes the variable table, `vars_tbl` based on the document content.
         Requires parse-tree and `_schema_version` to be initialized.
+
+        :raises SentinelTypeEvaluationException: If a node value with a sentinel type is evaluated.
         """
         # Tracks Jinja variables set by the file
         self._vars_tbl: _VarTable = {}
@@ -928,6 +937,25 @@ class RecipeReader(IsModifiable):
 
         return "\n".join(lines)
 
+    def _preprocess_node_value(self, node: Node, replace_variables: bool) -> JsonType:
+        """
+        Handle multi-line strings and variable replacement.
+
+        :param node: Node from which to extract the value to preprocess
+        :param replace_variables: If set to True, this replaces all variable substitutions with their set values.
+        :raises SentinelTypeEvaluationException: If the node value is a sentinel type
+        :returns: Preprocessed value
+        """
+        if isinstance(node.value, SentinelType):
+            raise SentinelTypeEvaluationException(node)
+        value: Final = normalize_multiline_strings(node.value, node.multiline_variant)
+        if isinstance(value, str):
+            if replace_variables:
+                return self._render_jinja_vars(value)
+            if node.multiline_variant != MultilineVariant.NONE:
+                return cast(str, yaml.load(value, Loader=SafeLoader))
+        return cast(JsonType, value)
+
     @no_type_check
     def _render_object_tree(self, node: Node, replace_variables: bool, data: JsonType) -> None:
         # pylint: disable=too-complex
@@ -938,56 +966,95 @@ class RecipeReader(IsModifiable):
         :param node: Current node in the tree
         :param replace_variables: If set to True, this replaces all variable substitutions with their set values.
         :param data: Accumulated data structure
+        :raises SentinelTypeEvaluationException: If a node value with a sentinel type is evaluated.
         """
-        # Ignore comment-only lines
+
+        # Ignore comment-only nodes
         if node.is_comment():
             return
 
-        key = cast(str, node.value)
-        for child in node.children:
-            # Ignore comment-only lines
-            if child.is_comment():
-                continue
+        # Handle terminal nodes
+        if node.is_empty_key():
+            if isinstance(data, list):
+                data.append({node.value: None})
+            elif isinstance(data, dict):
+                data[node.value] = None
+            return
 
-            # Handle multiline strings and variable replacement
-            value = normalize_multiline_strings(child.value, child.multiline_variant)
-            if isinstance(value, str):
-                if replace_variables:
-                    value = self._render_jinja_vars(value)
-                elif child.multiline_variant != MultilineVariant.NONE:
-                    value = cast(str, yaml.load(value, Loader=SafeLoader))
+        if node.is_single_key():
+            child_value = self._preprocess_node_value(node.children[0], replace_variables)
+            if node.children[0].list_member_flag:
+                child_value = [child_value]
+            if isinstance(data, list):
+                data.append({node.value: child_value})
+            elif isinstance(data, dict):
+                data[node.value] = child_value
+            return
 
-            # Empty keys are interpreted to point to `None`
-            if child.is_empty_key():
-                data[key][child.value] = None
-                continue
+        if node.is_strong_leaf():
+            # At this point, we know the data is a list
+            data.append(self._preprocess_node_value(node, replace_variables))
+            return
 
-            # Collection nodes are skipped as they are placeholders. However, their children are rendered recursively
-            # and added to a list.
-            if child.is_collection_element():
-                elem_dict = {}
-                for element in child.children:
-                    self._render_object_tree(element, replace_variables, elem_dict)
-                if len(data[key]) == 0:
-                    data[key] = []
-                data[key].append(elem_dict)
-                continue
+        # Process collection nodes (lists or dicts that are list members)
+        if node.is_collection_element():
+            if node.contains_list():
+                elem_json = []
+            else:
+                elem_json = {}
+            for element in node.children:
+                self._render_object_tree(element, replace_variables, elem_json)
+            data.append(elem_json)
+            return
 
-            # List members accumulate values in a list
-            if child.list_member_flag:
-                if key not in data:
-                    data[key] = []
-                data[key].append(value)
-                continue
+        # List nodes (lists that are not list members)
+        if node.contains_list():
+            key = node.value
+            data.setdefault(key, [])
+            for element in node.children:
+                self._render_object_tree(element, replace_variables, data[key])
+            return
 
-            # Other (non list and non-empty-key) leaf nodes set values directly
-            if child.is_strong_leaf():
-                data[key] = value
-                continue
+        # What should remain is dicts that are not list members
+        key = node.value
+        data.setdefault(key, {})
+        for element in node.children:
+            self._render_object_tree(element, replace_variables, data[key])
+        return
 
-            # All other keys prep for containing more dictionaries
-            data.setdefault(key, {})
-            self._render_object_tree(child, replace_variables, data[key])
+    def _render_to_object(self, replace_variables: bool = False, root_node: Optional[Node] = None) -> JsonType:
+        """
+        Takes the underlying state of the parse tree and produces a Pythonic object/dictionary representation. Analogous
+        to `json.load()`.
+        NOTE: This private function is used to hide the Node class (which is private) from the public interface.
+
+        :param replace_variables: (Optional) If set to True, this replaces all variable substitutions with their set
+            values.
+        :param root_node: (Optional) If provided, this will use the provided node as the root node instead of the
+            default root node.
+        :raises SentinelTypeEvaluationException: If a node value with a sentinel type is evaluated.
+        :returns: Pythonic data object representation of the recipe.
+        """
+        if root_node is None:
+            root_node = self._root
+
+        # Handle terminal nodes immediately
+        if root_node.is_empty_key():
+            return None
+        if root_node.is_single_key():
+            child_value = self._preprocess_node_value(root_node.children[0], replace_variables)
+            if root_node.children[0].list_member_flag:
+                child_value = [child_value]
+            return child_value
+        if root_node.is_strong_leaf():
+            return self._preprocess_node_value(root_node, replace_variables)
+
+        # Bootstrap/flatten the root-level
+        data: JsonType = [] if root_node.contains_list() else {}
+        for child in root_node.children:
+            self._render_object_tree(child, replace_variables, data)
+
+        return data
 
     def render_to_object(self, replace_variables: bool = False) -> JsonType:
         """
@@ -996,20 +1063,10 @@ class RecipeReader(IsModifiable):
 
         :param replace_variables: (Optional) If set to True, this replaces all variable substitutions with their set
             values.
+        :raises SentinelTypeEvaluationException: If a node value with a sentinel type is evaluated.
         :returns: Pythonic data object representation of the recipe.
         """
-        data: JsonType = {}
-        # Type narrow after assignment
-        assert isinstance(data, dict)
-
-        # Bootstrap/flatten the root-level
-        for child in self._root.children:
-            if child.is_comment():
-                continue
-            data.setdefault(cast(str, child.value), {})
-            self._render_object_tree(child, replace_variables, data)
-
-        return data
+        return self._render_to_object(replace_variables)
 
     ## YAML Access Functions ##
 
@@ -1042,13 +1099,13 @@ class RecipeReader(IsModifiable):
     def get_value(self, path: str, default: JsonType | SentinelType = _sentinel, sub_vars: bool = False) -> JsonType:
         """
         Retrieves a value at a given path. If the value is not found, return a specified default value or throw.
-        TODO Refactor: This function could leverage `render_to_object()` to simplify/de-dupe the logic.
 
         :param path: JSON patch (RFC 6902)-style path to a value.
         :param default: (Optional) If the value is not found, return this value instead.
         :param sub_vars: (Optional) If set to True and the value contains a Jinja template variable, the Jinja value
             will be "rendered". Any variables that can't be resolved will be escaped with `${{ }}`.
         :raises KeyError: If the value is not found AND no default is specified
+        :raises SentinelTypeEvaluationException: If a node value with a sentinel type is evaluated.
         :returns: If found, the value in the recipe at that path. Otherwise, the caller-specified default value.
         """
         path_stack = str_to_stack_path(path)
@@ -1060,45 +1117,7 @@ class RecipeReader(IsModifiable):
                 raise KeyError(f"No value/key found at path {path!r}")
             return default
 
-        # Handle empty keys
-        if node.is_empty_key():
-            return None
-
-        return_value: JsonType = None
-        # Handle unpacking of the last key-value set of nodes.
-        if node.is_single_key() and not node.is_root():
-            if node.children[0].multiline_variant != MultilineVariant.NONE:
-                multiline_str = cast(
-                    str,
-                    normalize_multiline_strings(
-                        cast(list[str], node.children[0].value), node.children[0].multiline_variant
-                    ),
-                )
-                if sub_vars:
-                    return self._render_jinja_vars(multiline_str)
-                return cast(JsonType, yaml.load(multiline_str, Loader=SafeLoader))
-            return_value = cast(Primitives, node.children[0].value)
-        # Leaf nodes can return their value directly
-        elif node.is_strong_leaf():
-            return_value = cast(Primitives, node.value)
-        else:
-            # NOTE: Traversing the tree and generating our own data structures will be more efficient than rendering and
-            # leveraging the YAML parser, BUT this method re-uses code and is easier to maintain.
-            lst: list[str] = []
-            RecipeReader._render_tree(node, -1, lst, self._schema_version)
-            return_value = "\n".join(lst)
-
-        # Collection types are transformed into strings above and will need to be transformed into a proper data type.
-        # `_parse_yaml()` will also render JINJA variables for us, if requested.
-        if isinstance(return_value, str):
-            parser = self if sub_vars else None
-            parsed_value = RecipeReader._parse_yaml(return_value, parser)
-            # Lists containing 1 value will drop the surrounding list by the YAML parser. To ensure greater consistency
-            # and provide better type-safety, we will re-wrap such values.
-            if not isinstance(parsed_value, list) and len(node.children) == 1 and node.children[0].list_member_flag:
-                return [parsed_value]
-            return parsed_value
-        return return_value
+        return self._render_to_object(sub_vars, node)
 
     def find_value(self, value: Primitives) -> list[str]:
         """
@@ -1138,6 +1157,7 @@ class RecipeReader(IsModifiable):
         In V1 recipe files, the name must be included to pass the schema check that should be enforced by any build
         system.
 
+        :raises SentinelTypeEvaluationException: If a node value with a sentinel type is evaluated.
         :returns: The name associated with the recipe file. In the unlikely event that no name is found, `None` is
             returned instead.
         """
@@ -1160,6 +1180,7 @@ class RecipeReader(IsModifiable):
         """
         Indicates if a recipe is a "pure Python" recipe.
 
+        :raises SentinelTypeEvaluationException: If a node value with a sentinel type is evaluated.
         :return: True if the recipe is a "pure Python recipe". False otherwise.
         """
         # TODO cache this or otherwise find a way to reduce the computation complexity.
@@ -1206,6 +1227,7 @@ class RecipeReader(IsModifiable):
           - Recipes that have both top-level and multi-output sections. An example can be found here:
               https://github.com/AnacondaRecipes/curl-feedstock/blob/master/recipe/meta.yaml
 
+        :raises SentinelTypeEvaluationException: If a node value with a sentinel type is evaluated.
         """
         paths: list[str] = ["/"]
 
@@ -1240,6 +1262,7 @@ class RecipeReader(IsModifiable):
         """
         Convenience function that returns a list of all dependency lines in a recipe.
 
+        :raises SentinelTypeEvaluationException: If a node value with a sentinel type is evaluated.
         :returns: A list of all paths in a recipe file that point to dependencies.
         """
         paths: list[str] = []

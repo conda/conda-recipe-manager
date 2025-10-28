@@ -35,6 +35,7 @@ class CbcParser(RecipeReader):
         Constructs a CBC Parser instance from the contents of a CBC file.
 
         :param content: conda-build formatted configuration file, as a single text string.
+        :raises SentinelTypeEvaluationException: If a node value with a sentinel type is evaluated.
         """
         super().__init__(content)
         self._cbc_vars_tbl: _CbcTable = {}
