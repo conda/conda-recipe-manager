@@ -1056,6 +1056,7 @@ class RecipeReader(IsModifiable):
 
         for child in root_node.children:
             self._render_object_tree(child, replace_variables, data)
+
         return data
 
     def render_to_object(self, replace_variables: bool = False) -> JsonType:
