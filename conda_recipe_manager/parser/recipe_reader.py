@@ -966,17 +966,6 @@ class RecipeReader(IsModifiable):
         :raises SentinelTypeEvaluationException: If a node value with a sentinel type is evaluated.
         """
 
-        def _ensure_list(obj: JsonType) -> list[JsonType]:
-            """
-            Ensure the given JSON is a list. If it is not, return an empty list.
-
-            :param json: JSON to ensure is a list
-            :returns: List if the JSON is a list, otherwise an empty list
-            """
-            if not isinstance(obj, list):
-                return []
-            return obj
-
         def _ensure_dict(obj: JsonType) -> dict[str, JsonType]:
             """
             Ensure the given JSON is a dictionary. If it is not, return an empty dictionary.
@@ -1023,7 +1012,6 @@ class RecipeReader(IsModifiable):
                 elem_json = {}
             for element in node.children:
                 self._render_object_tree(element, replace_variables, elem_json)
-            data = _ensure_list(data)
             data.append(elem_json)
             return
 
@@ -1032,16 +1020,13 @@ class RecipeReader(IsModifiable):
             key = node.value
             data = _ensure_dict(data)
             data.setdefault(key, [])
-            data[key] = _ensure_list(data[key])
             for element in node.children:
                 self._render_object_tree(element, replace_variables, data[key])
             return
 
         # What should remain is dicts that are not list members
         key = node.value
-        data = _ensure_dict(data)
         data.setdefault(key, {})
-        data[key] = _ensure_dict(data[key])
         for element in node.children:
             self._render_object_tree(element, replace_variables, data[key])
         return
