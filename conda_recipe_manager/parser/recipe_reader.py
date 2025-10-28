@@ -966,27 +966,27 @@ class RecipeReader(IsModifiable):
         :raises SentinelTypeEvaluationException: If a node value with a sentinel type is evaluated.
         """
 
-        def _ensure_list(json: JsonType) -> list[JsonType]:
+        def _ensure_list(obj: JsonType) -> list[JsonType]:
             """
             Ensure the given JSON is a list. If it is not, return an empty list.
 
             :param json: JSON to ensure is a list
             :returns: List if the JSON is a list, otherwise an empty list
             """
-            if not isinstance(json, list):
+            if not isinstance(obj, list):
                 return []
-            return json
+            return obj
 
-        def _ensure_dict(json: JsonType) -> dict[str, JsonType]:
+        def _ensure_dict(obj: JsonType) -> dict[str, JsonType]:
             """
             Ensure the given JSON is a dictionary. If it is not, return an empty dictionary.
 
             :param json: JSON to ensure is a dictionary
             :returns: Dictionary if the JSON is a dictionary, otherwise an empty dictionary
             """
-            if not isinstance(json, dict):
+            if not isinstance(obj, dict):
                 return {}
-            return json
+            return obj
 
         # Ignore comment-only nodes
         if node.is_comment():
