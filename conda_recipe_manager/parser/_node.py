@@ -219,16 +219,16 @@ class Node:
         :returns: True if the node contains a list. False otherwise.
         """
 
-        # First, check for an inconsistent list and log an error if found.
-        inconsistent_list = (
-            bool(self.children)
-            and any(not child.list_member_flag for child in self.children if not child.is_comment())
-            and any(child.list_member_flag for child in self.children if not child.is_comment())
-        )
-        if inconsistent_list:
-            log.error("The node tree is inconsistent: a list node contains both list members and non-list members.")
-        # Return True only if all children are list members.
-        contains_list = bool(self.children) and all(
-            child.list_member_flag for child in self.children if not child.is_comment()
-        )
-        return contains_list
+        contains_list_member = False
+        contains_non_list_member = False
+        for child in self.children:
+            if child.is_comment():
+                continue
+            if child.list_member_flag:
+                contains_list_member = True
+            else:
+                contains_non_list_member = True
+            if contains_list_member and contains_non_list_member:
+                log.error("The node tree is inconsistent: a list node contains both list members and non-list members.")
+                return False
+        return contains_list_member
