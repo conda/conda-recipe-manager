@@ -947,6 +947,8 @@ def test_contains_value(file: str, path: str, expected: bool) -> None:
         # TODO FIX: This case
         # ("v1_format/v1_multi-output.yaml", "/outputs/0/build", False, None),
         ("v1_format/v1_multi-output.yaml", "/outputs/0/requirements", False, {"run_exports": ["bar"]}),
+        # Check that types are retrieved correctly (int vs str)
+        ("cbc_files/anaconda_cbc_01.yaml", "/python", False, [3.8, 3.9, "3.10", "3.11", "3.12"]),
     ],
 )
 def test_get_value(file: str, path: str, sub_vars: bool, expected: JsonType) -> None:
