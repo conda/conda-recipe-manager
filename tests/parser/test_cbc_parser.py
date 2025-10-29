@@ -174,13 +174,13 @@ def test_list_cbc_variables(file: str, expected: list[str]) -> None:
             "anaconda_cbc_02.yaml",
             "python",
             SelectorQuery(platform=Platform.OSX_64),
-            ["3.9", "3.10", "3.11", "3.12", "3.13"],
+            [3.9, "3.10", "3.11", "3.12", "3.13"],
         ),
         (
             "anaconda_cbc_02.yaml",
             "python",
             SelectorQuery(platform=Platform.OSX_64, build_env_vars={"ANACONDA_ROCKET_ENABLE_PY314"}),
-            ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"],
+            [3.9, "3.10", "3.11", "3.12", "3.13", "3.14"],
         ),
         ("anaconda_cbc_02.yaml", "numpy", SelectorQuery(platform=Platform.OSX_64), [2.0, 2.0, 2.0, 2.0, 2.1]),
         (

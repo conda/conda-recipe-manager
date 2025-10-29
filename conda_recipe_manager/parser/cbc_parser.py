@@ -166,7 +166,7 @@ class CbcParser(RecipeReader):
 
         list_of_lists = cast(list[list[str]], value_list)
         for i, inner_list in enumerate(list_of_lists):
-            node_var_list: list[NodeVar] = []
+            node_var_list: list[NodeVar] = []  # type: ignore
             for j, elem in enumerate(inner_list):
                 path = f"/zip_keys/{i}/{j}"
                 node_var_list.append(self._construct_cbc_variable(path, elem, comments_tbl))
