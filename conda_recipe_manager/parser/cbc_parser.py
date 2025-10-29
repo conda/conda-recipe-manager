@@ -137,26 +137,6 @@ class CbcParser(RecipeReader):
             raise ValueError(f"CBC variable does not have a value for the provided selector query: {variable}")
         return default
 
-    def _is_multi_level_list(self, value: JsonType) -> bool:
-        """
-        Checks if the value is a multi-level list.
-        The format is: [{"None": ["python", "numpy"]}, {"None": ["pypy", "pypy3"]}, ...]
-
-        :param value: JSON value to check.
-        :returns: True if the value is a multi-level list. False otherwise.
-        """
-        if not isinstance(value, list) or not all(isinstance(elem, dict) for elem in value):
-            return False
-        for dict_elem in value:
-            dict_elem = cast(dict[str, JsonType], dict_elem)
-            if len(dict_elem) != 1:
-                return False
-            if "None" not in dict_elem:
-                return False
-            if not isinstance(dict_elem["None"], list) or not all(isinstance(elem, str) for elem in dict_elem["None"]):
-                return False
-        return True
-
     def _construct_zip_keys(self, value_list: list[JsonType], comments_tbl: dict[str, str]) -> None:
         """
         Constructs the zip keys from the value list.
@@ -164,15 +144,18 @@ class CbcParser(RecipeReader):
         :param value_list: list of JSON values to construct the zip keys from.
         :param comments_tbl: Table of comments.
         """
-        is_multi_level_list: Final[bool] = self._is_multi_level_list(value_list)
+        is_list_of_lists: Final[bool] = isinstance(value_list, list) and all(
+            isinstance(inner_list, list) and all(isinstance(elem, str) for elem in inner_list)
+            for inner_list in value_list
+        )
         is_list_of_strings: Final[bool] = isinstance(value_list, list) and all(
             isinstance(elem, str) for elem in value_list
         )
-        if not is_multi_level_list and not is_list_of_strings:
+        if not is_list_of_lists and not is_list_of_strings:
             return
 
-        list_of_strings = cast(list[str], value_list)
         if is_list_of_strings:
+            list_of_strings = cast(list[str], value_list)
             node_var_list: list[NodeVar] = []
             for i, elem in enumerate(list_of_strings):
                 path = f"/zip_keys/{i}"
@@ -180,10 +163,9 @@ class CbcParser(RecipeReader):
             self._zip_keys.append(node_var_list)
             return
 
-        multi_level_list = cast(list[dict[str, list[str]]], value_list)
-        for i, inner_dict in enumerate(multi_level_list):
-            inner_list = inner_dict["None"]
-            node_var_list: list[NodeVar] = []  # type: ignore
+        list_of_lists = cast(list[list[str]], value_list)
+        for i, inner_list in enumerate(list_of_lists):
+            node_var_list: list[NodeVar] = []
             for j, elem in enumerate(inner_list):
                 path = f"/zip_keys/{i}/{j}"
                 node_var_list.append(self._construct_cbc_variable(path, elem, comments_tbl))
