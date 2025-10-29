@@ -74,6 +74,21 @@ class SentinelTypeEvaluationException(BaseParserException):
         )
 
 
+class ZipKeysException(BaseParserException):
+    """
+    Exception raised when invalid zip keys are encountered.
+    """
+
+    def __init__(self, zip_keys: list[set[str]], message: str = "Invalid zip keys were encountered"):
+        """
+        Constructs a zip keys exception.
+
+        :param zip_keys: List of zip keys that were encountered.
+        :param message: String description of the issue encountered.
+        """
+        super().__init__(f"{message}: {zip_keys}")
+
+
 class ParsingException(BaseParserException):
     """
     Exception raised when a recipe file cannot be correctly parsed. This can occur on construction of a parser class.
