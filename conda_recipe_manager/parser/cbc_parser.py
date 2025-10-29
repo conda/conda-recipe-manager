@@ -9,13 +9,16 @@ from typing import Final, cast
 from conda_recipe_manager.parser._node_var import NodeVar
 from conda_recipe_manager.parser.recipe_reader import RecipeReader
 from conda_recipe_manager.parser.selector_query import SelectorQuery
-from conda_recipe_manager.types import JsonType, SentinelType
+from conda_recipe_manager.types import JsonType, Primitives, SentinelType
 
 # Internal variable table type
 _CbcTable = dict[str, list[NodeVar]]
 
 # Type that attempts to represent the contents of a CBC file
 _CbcType = dict[str, list[JsonType] | dict[str, dict[str, str]]]
+
+# Type that represents the values and zip_keys of a CBC file as a tuple.
+CbcOutputType = tuple[dict[str, list[Primitives]], list[set[str]]]
 
 
 class CbcParser(RecipeReader):
@@ -40,16 +43,6 @@ class CbcParser(RecipeReader):
         super().__init__(content)
         self._cbc_vars_tbl: _CbcTable = {}
         self._zip_keys: list[list[NodeVar]] = []
-
-        # TODO Handle special cases:
-        #   - pin_run_as_build
-        #   - zip_keys
-        #     - python (versions)
-        #     - numpy
-        #     - The CBC file matches the python version and numpy version by list index
-        #   - r_implementation
-        # From Charles: "Compared to meta.yaml, no jinja is allowed in the cbc. Also I believe only the base subset of
-        #                selectors is available (so py>=38 and py<=310 wouldn't work). To be confirmed though."
 
         parsed_contents: Final[_CbcType] = cast(_CbcType, self.get_value("/"))
         # NOTE: The comments table does not include selectors.
@@ -99,6 +92,40 @@ class CbcParser(RecipeReader):
         combined_comment = f"{selector_str} {comment_str}"
         return NodeVar(value, f"# {combined_comment}" if combined_comment.strip() else None)
 
+    def _construct_zip_keys(self, value_list: list[JsonType], comments_tbl: dict[str, str]) -> None:
+        """
+        Constructs the zip keys from the value list.
+
+        :param value_list: list of JSON values to construct the zip keys from.
+        :param comments_tbl: Table of comments.
+        """
+        is_list_of_lists: Final[bool] = isinstance(value_list, list) and all(
+            isinstance(inner_list, list) and all(isinstance(elem, str) for elem in inner_list)
+            for inner_list in value_list
+        )
+        is_list_of_strings: Final[bool] = isinstance(value_list, list) and all(
+            isinstance(elem, str) for elem in value_list
+        )
+        if not is_list_of_lists and not is_list_of_strings:
+            return
+
+        if is_list_of_strings:
+            list_of_strings = cast(list[str], value_list)
+            node_var_list: list[NodeVar] = []
+            for i, elem in enumerate(list_of_strings):
+                path = f"/zip_keys/{i}"
+                node_var_list.append(self._construct_cbc_variable(path, elem, comments_tbl))
+            self._zip_keys.append(node_var_list)
+            return
+
+        list_of_lists = cast(list[list[str]], value_list)
+        for i, inner_list in enumerate(list_of_lists):
+            node_var_list: list[NodeVar] = []  # type: ignore
+            for j, elem in enumerate(inner_list):
+                path = f"/zip_keys/{i}/{j}"
+                node_var_list.append(self._construct_cbc_variable(path, elem, comments_tbl))
+            self._zip_keys.append(node_var_list)
+
     def list_cbc_variables(self) -> list[str]:
         """
         Get a list of all the available CBC variable names.
@@ -138,40 +165,6 @@ class CbcParser(RecipeReader):
             raise ValueError(f"CBC variable does not have a value for the provided selector query: {variable}")
         return default
 
-    def _construct_zip_keys(self, value_list: list[JsonType], comments_tbl: dict[str, str]) -> None:
-        """
-        Constructs the zip keys from the value list.
-
-        :param value_list: list of JSON values to construct the zip keys from.
-        :param comments_tbl: Table of comments.
-        """
-        is_list_of_lists: Final[bool] = isinstance(value_list, list) and all(
-            isinstance(inner_list, list) and all(isinstance(elem, str) for elem in inner_list)
-            for inner_list in value_list
-        )
-        is_list_of_strings: Final[bool] = isinstance(value_list, list) and all(
-            isinstance(elem, str) for elem in value_list
-        )
-        if not is_list_of_lists and not is_list_of_strings:
-            return
-
-        if is_list_of_strings:
-            list_of_strings = cast(list[str], value_list)
-            node_var_list: list[NodeVar] = []
-            for i, elem in enumerate(list_of_strings):
-                path = f"/zip_keys/{i}"
-                node_var_list.append(self._construct_cbc_variable(path, elem, comments_tbl))
-            self._zip_keys.append(node_var_list)
-            return
-
-        list_of_lists = cast(list[list[str]], value_list)
-        for i, inner_list in enumerate(list_of_lists):
-            node_var_list: list[NodeVar] = []  # type: ignore
-            for j, elem in enumerate(inner_list):
-                path = f"/zip_keys/{i}/{j}"
-                node_var_list.append(self._construct_cbc_variable(path, elem, comments_tbl))
-            self._zip_keys.append(node_var_list)
-
     def get_zip_keys(self, query: SelectorQuery) -> list[set[str]]:
         """
         Returns the zip keys from the CBC file.
@@ -179,6 +172,10 @@ class CbcParser(RecipeReader):
         :param query: Query that represents the state of the target build environment.
         :returns: List of zip keys.
         """
+
+        if not self._zip_keys:
+            raise KeyError("No zip keys found in the CBC file")
+
         zip_keys: list[set[str]] = []
         for list_of_keys in self._zip_keys:
             potential_keys: set[str] = set()
@@ -188,4 +185,35 @@ class CbcParser(RecipeReader):
                     potential_keys.add(key.get_value())  # type: ignore
             if potential_keys:
                 zip_keys.append(potential_keys)
+
+        if not zip_keys:
+            raise ValueError("No zip keys found for the provided selector query")
+
         return zip_keys
+
+    @staticmethod
+    def generate_cbc_values(cbc_files: list[CbcParser], selector_query: SelectorQuery) -> CbcOutputType:
+        """
+        Generates a dictionary of CBC variable values from a list of CBC files.
+        The values are generated for the given selector query.
+        The values are clobbered if the same variable is defined in multiple CBC files, from first to last in the list.
+
+        :param cbc_files: List of CBC files to generate the values from.
+        :param selector_query: Selector query to generate the values for.
+        :returns: Dictionary of CBC variable values.
+        """
+        cbc_values: dict[str, list[Primitives]] = {}
+        zip_keys: list[set[str]] = []
+        for cbc_file in cbc_files:
+            try:
+                zip_keys = cbc_file.get_zip_keys(selector_query)
+            except (KeyError, ValueError):
+                pass
+            for variable in cbc_file.list_cbc_variables():
+                try:
+                    cbc_values[variable] = cast(
+                        list[Primitives], cbc_file.get_cbc_variable_values(variable, selector_query)
+                    )
+                except ValueError:
+                    continue
+        return cbc_values, zip_keys

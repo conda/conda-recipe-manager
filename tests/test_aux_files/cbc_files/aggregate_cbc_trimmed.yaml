@@ -1,0 +1,165 @@
+## GLOBAL config
+## Compilers, blas, R, python...
+
+pin_run_as_build:
+  libboost:
+    max_pin: x.x.x
+
+blas_impl:
+  - mkl                        # [(x86 or x86_64) and not osx]
+  - openblas                   # [not win]
+c_compiler:
+  - gcc                        # [linux]
+  - clang                      # [osx]
+  - vs2019                     # [win]
+c_stdlib:
+  - sysroot                    # [linux]
+  - macosx_deployment_target   # [osx]
+  - vs                         # [win]
+cxx_compiler:
+  - gxx                        # [linux]
+  - clangxx                    # [osx]
+  - vs2019                     # [win]
+cuda_compiler:
+  - cuda-nvcc
+fortran_compiler:
+  - gfortran                   # [linux or osx]
+  - intel-fortran              # [win]
+m2w64_c_compiler:              # [win]
+  - m2w64-toolchain            # [win]
+m2w64_cxx_compiler:            # [win]
+  - m2w64-toolchain            # [win]
+m2w64_fortran_compiler:        # [win]
+  - m2w64-toolchain            # [win]
+ucrt64_c_compiler:             # [win]
+  - ucrt64-gcc-toolchain       # [win]
+ucrt64_cxx_compiler:           # [win]
+  - ucrt64-gcc-toolchain       # [win]
+ucrt64_fortran_compiler:       # [win]
+  - ucrt64-gcc-toolchain       # [win]
+rust_compiler:
+  - rust
+rust_nightly_compiler:
+  - rust-nightly
+rust_compiler_version:
+  - 1.89.0
+rust_nightly_compiler_version:
+  - 1.92.0_2025-10-13
+# use {{ compiler('rust-gnu') }} when requiring a build using the m2w64-toolchain
+rust_gnu_compiler:             # [win]
+  - rust-gnu                   # [win]
+rust_gnu_compiler_version:     # [win]
+  - 1.89.0                     # [win]
+VERBOSE_AT:
+  - V=1
+VERBOSE_CM:
+  - VERBOSE=1
+cran_mirror:
+  - https://cran.r-project.org
+c_compiler_version:        # [linux or osx]
+  - 11.2.0                 # [linux]
+  - 20                     # [osx]
+c_stdlib_version:
+  - 2.28                   # [linux]
+  - 10.15                  # [osx and x86_64]
+  - 12.1                   # [osx and arm64]
+  - 2019.11                # [win]
+cxx_compiler_version:      # [linux or osx]
+  - 11.2.0                 # [linux]
+  - 20                     # [osx]
+cuda_compiler_version:
+  - 12.4
+fortran_compiler_version:
+  - 2022.1.0                     # [win]
+  - 11.2.0                       # [osx or linux]
+clang_variant:
+  - clang
+# The basic go-compiler with CGO disabled (CGO_ENABLED=0).
+# It generates fat binaries without libc dependencies.
+go_compiler:
+  - go-nocgo
+go_compiler_version:
+  - 1.21
+# The go compiler build with CGO enabled (CGO_ENABLED=1).
+# It can generate fat binaries that depend on conda's libc.
+# You should use this compiler if the underlying
+# program needs to link against other C libraries, in which
+# case make sure to add 'c,cpp,fortran_compiler' for unix
+# and the m2w64 equivalent for windows.
+cgo_compiler:
+  - go-cgo
+cgo_compiler_version:
+  - 1.21
+python:
+  - 3.9
+  - "3.10"
+  - "3.11"
+  - "3.12"
+  - "3.13"
+  - "3.14"                 # [ANACONDA_ROCKET_ENABLE_PY314]
+# numpy will by default use a compatible ABI for the oldest still-supported numpy versions
+# `{{ pin_compatible("numpy") }}` is no longer needed as builds of numpy from version 2 have run_exports.
+numpy:
+  # python 3.9
+  - 2.0
+  # python 3.10
+  - 2.0
+  # python 3.11
+  - 2.0
+  # python 3.12
+  - 2.0
+  # python 3.13
+  - 2.1
+  # python 3.14            # [ANACONDA_ROCKET_ENABLE_PY314]
+  - 2.3                    # [ANACONDA_ROCKET_ENABLE_PY314]
+zip_keys:
+  -
+    - python
+    - numpy
+python_implementation:
+  - cpython
+python_impl:
+  - cpython
+r_base:
+  - 4.3.1
+r_version:
+  - 4.3.1
+r_implementation:
+  - 'r-base'    # [linux and x86_64]
+# This differs from target_platform in that it determines what subdir the compiler
+#    will target, not what subdir the compiler package will be itself.
+#    For example, we need a win-64 vs2008_win-32 package, so that we compile win-32
+#    code on win-64 miniconda.
+cross_compiler_target_platform:
+  # - win-32                     # [win]
+  - win-64                     # [win]
+target_platform:
+  - win-64                     # [win]
+  # - win-32                     # [win]
+channel_targets:
+  - defaults
+cdt_name:          # [linux]
+  - el8            # [linux]
+
+# https://github.com/conda/conda-build/issues/5733
+BUILD: x86_64-conda_el8-linux-gnu   # [linux and x86_64]
+BUILD: aarch64-conda_el8-linux-gnu  # [linux and aarch64]
+
+OSX_SDK_DIR:                                  # [osx]
+  - /opt                                      # [osx and x86_64]
+  - /Library/Developer/CommandLineTools/SDKs  # [osx and arm64]
+
+# TODO: These are only necessary as we transition to using the stdlib('c') macro. They should be
+# removed once it is safe to do so.
+CONDA_BUILD_SYSROOT:
+  - /opt/MacOSX10.15.sdk                                     # [osx and x86_64]
+  - /Library/Developer/CommandLineTools/SDKs/MacOSX12.1.sdk  # [osx and arm64]
+macos_min_version:
+  - 10.15 # [osx and x86_64]
+  - 12.1  # [osx and arm64]
+macos_machine:
+  - x86_64-apple-darwin13.4.0  # [osx and x86_64]
+  - arm64-apple-darwin20.0.0   # [osx and arm64]
+MACOSX_DEPLOYMENT_TARGET:
+  - 10.15 # [osx and x86_64]
+  - 12.1  # [osx and arm64]

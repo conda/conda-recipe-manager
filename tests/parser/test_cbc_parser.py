@@ -4,6 +4,7 @@
 
 import pytest
 
+from conda_recipe_manager.parser.cbc_parser import CbcOutputType, CbcParser
 from conda_recipe_manager.parser.platform_types import Platform
 from conda_recipe_manager.parser.selector_query import SelectorQuery
 from conda_recipe_manager.types import Primitives
@@ -355,3 +356,63 @@ def test_get_zip_keys(file: str, query: SelectorQuery, expected: list[set[str]])
     """
     parser = load_cbc(file)
     assert parser.get_zip_keys(query) == expected
+
+
+@pytest.mark.parametrize(
+    "files,query,expected",
+    [
+        (
+            [load_cbc("aggregate_cbc_trimmed.yaml"), load_cbc("boost_cbc.yaml")],
+            SelectorQuery(Platform.OSX_64, build_env_vars={"ANACONDA_ROCKET_ENABLE_PY314"}),
+            (
+                {
+                    "blas_impl": ["openblas"],
+                    "c_compiler": ["clang"],
+                    "c_stdlib": ["macosx_deployment_target"],
+                    "cxx_compiler": ["clangxx"],
+                    "cuda_compiler": ["cuda-nvcc"],
+                    "fortran_compiler": ["gfortran"],
+                    "rust_compiler": ["rust"],
+                    "rust_nightly_compiler": ["rust-nightly"],
+                    "rust_compiler_version": ["1.89.0"],
+                    "rust_nightly_compiler_version": ["1.92.0_2025-10-13"],
+                    "VERBOSE_AT": ["V=1"],
+                    "VERBOSE_CM": ["VERBOSE=1"],
+                    "cran_mirror": ["https://cran.r-project.org"],
+                    "c_compiler_version": ["17.0.6"],
+                    "c_stdlib_version": [10.15],
+                    "cxx_compiler_version": ["17.0.6"],
+                    "cuda_compiler_version": [12.4],
+                    "fortran_compiler_version": ["11.2.0"],
+                    "clang_variant": ["clang"],
+                    "go_compiler": ["go-nocgo"],
+                    "go_compiler_version": [1.21],
+                    "cgo_compiler": ["go-cgo"],
+                    "cgo_compiler_version": [1.21],
+                    "python": [3.9, "3.10", "3.11", "3.12", "3.13", "3.14"],
+                    "numpy": [2.0, 2.0, 2.0, 2.0, 2.1, 2.3],
+                    "python_implementation": ["cpython"],
+                    "python_impl": ["cpython"],
+                    "r_base": ["4.3.1"],
+                    "r_version": ["4.3.1"],
+                    "channel_targets": ["defaults"],
+                    "OSX_SDK_DIR": ["/opt"],
+                    "CONDA_BUILD_SYSROOT": ["/opt/MacOSX10.15.sdk"],
+                    "macos_min_version": [10.15],
+                    "macos_machine": ["x86_64-apple-darwin13.4.0"],
+                    "MACOSX_DEPLOYMENT_TARGET": [10.15],
+                },
+                [{"python", "numpy"}],
+            ),
+        ),
+    ],
+)
+def test_generate_cbc_values(files: list[CbcParser], query: SelectorQuery, expected: CbcOutputType) -> None:
+    """
+    Validates generating the CBC variable values from a list of CBC files.
+
+    :param files: List of CBC files to generate the values from.
+    :param query: Selector query to generate the values for.
+    :param expected: Expected result of the test.
+    """
+    assert CbcParser.generate_cbc_values(files, query) == expected
