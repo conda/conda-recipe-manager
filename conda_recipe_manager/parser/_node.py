@@ -4,12 +4,15 @@
 
 from __future__ import annotations
 
+import logging
 from enum import Enum, auto
-from typing import Optional
+from typing import Final, Optional
 
 from conda_recipe_manager.parser._types import ROOT_NODE_VALUE
 from conda_recipe_manager.parser.types import MultilineVariant, NodeValue
 from conda_recipe_manager.types import SentinelType
+
+log: Final = logging.getLogger(__name__)
 
 
 class CommentPosition(Enum):
@@ -208,3 +211,26 @@ class Node:
         :returns: True if the node represents an element that is a collection. False otherwise.
         """
         return self.value == Node._sentinel and self.list_member_flag and bool(self.children)
+
+    def contains_list(self) -> bool:
+        """
+        Indicates if the node contains a list.
+
+        :returns: True if the node contains a list. False otherwise.
+        """
+
+        # We track both list members and non-list members to ensure the node tree is consistent.
+        # Either all children must be list members or all children must be non-list members.
+        contains_list_member = False
+        contains_non_list_member = False
+        for child in self.children:
+            if child.is_comment():
+                continue
+            if child.list_member_flag:
+                contains_list_member = True
+            else:
+                contains_non_list_member = True
+            if contains_list_member and contains_non_list_member:
+                log.error("The node tree is inconsistent: a list node contains both list members and non-list members.")
+                return False
+        return contains_list_member

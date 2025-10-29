@@ -16,7 +16,7 @@ from conda_recipe_manager.scanner.dependency.base_dep_scanner import (
     new_project_dependency,
 )
 
-log = logging.getLogger(__name__)
+log: Final = logging.getLogger(__name__)
 
 
 class PyProjectDependencyScanner(BaseDependencyScanner):

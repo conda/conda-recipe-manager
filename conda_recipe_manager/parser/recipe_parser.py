@@ -45,7 +45,7 @@ from conda_recipe_manager.types import PRIMITIVES_TUPLE, JsonPatchType, JsonType
 # Callback that allows the caller to perform custom replacements using `search_and_patch_replace()`.
 ReplacePatchFunc = Callable[[JsonType], JsonType]
 
-log = logging.getLogger(__name__)
+log: Final = logging.getLogger(__name__)
 
 
 class RecipeParser(RecipeReader):
@@ -444,6 +444,7 @@ class RecipeParser(RecipeReader):
 
         :param path_stack: Path that describes a location in the tree, as a list, treated like a stack.
         :param value_from: The "from" value in the JSON payload, i.e. the path the value originates from.
+        :raises SentinelTypeEvaluationException: If a node value with a sentinel type is evaluated.
         :returns: True if the operation was successful. False otherwise.
         """
         # NOTE from the RFC:
@@ -469,6 +470,7 @@ class RecipeParser(RecipeReader):
 
         :param path_stack: Path that describes a location in the tree, as a list, treated like a stack.
         :param value_from: The "from" value in the JSON payload, i.e. the path the value originates from.
+        :raises SentinelTypeEvaluationException: If a node value with a sentinel type is evaluated.
         :returns: True if the operation was successful. False otherwise.
         """
         # NOTE from the RFC:
@@ -489,6 +491,7 @@ class RecipeParser(RecipeReader):
 
         :param path: Path as a string. Useful for invoking public class members.
         :param value: Value to evaluate against.
+        :raises SentinelTypeEvaluationException: If a node value with a sentinel type is evaluated.
         :returns: True if the target value is equal to the provided value. False otherwise.
         """
         try:
@@ -580,6 +583,7 @@ class RecipeParser(RecipeReader):
         :param path: Path to the value to patch.
         :param patch_with: `JsonType` value to replace the matching value with directly or a callback that provides the
             original value as a `JsonType` so the caller can manipulate what is being patched-in.
+        :raises SentinelTypeEvaluationException: If a node value with a sentinel type is evaluated.
         :returns: Value to patch-in.
         """
         if not callable(patch_with):
@@ -722,6 +726,7 @@ class RecipeParser(RecipeReader):
 
         :param package_path: The path to the root or output to update the skip statement for
         :param version: The python version pinning to create the skip statement for
+        :raises SentinelTypeEvaluationException: If a node value with a sentinel type is evaluated.
         :returns: True if the operation was succesfully applied, False otherwise
         """
         # Compute inverse version

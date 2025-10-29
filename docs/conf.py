@@ -16,7 +16,7 @@ from typing import Final
 project = "Conda Recipe Manager"
 author = "various"
 # TODO make this automatic, update README
-release = "0.7.1"
+release = "0.8.0"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

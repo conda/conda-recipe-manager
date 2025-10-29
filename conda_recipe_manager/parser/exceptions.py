@@ -7,6 +7,7 @@ from __future__ import annotations
 import json
 from typing import Optional
 
+from conda_recipe_manager.parser._node import Node
 from conda_recipe_manager.types import JsonPatchType
 
 
@@ -53,6 +54,24 @@ class JsonPatchValidationException(BaseParserException):
         :param op: Operation being encountered.
         """
         super().__init__(f"Invalid patch was attempted:\n{json.dumps(patch, indent=2)}")
+
+
+class SentinelTypeEvaluationException(BaseParserException):
+    """
+    Exception raised when a sentinel type is encountered during node value evaluation.
+    This is related to the parser's internal state.
+    """
+
+    def __init__(self, node: Node):
+        """
+        Constructs a sentinel type evaluation exception.
+
+        :param node: The node that encountered the sentinel type.
+        """
+        super().__init__(
+            f"A sentinel type was encountered during node value evaluation: {node}.\n"
+            "Please report this issue at https://github.com/conda/conda-recipe-manager/issues."
+        )
 
 
 class ParsingException(BaseParserException):

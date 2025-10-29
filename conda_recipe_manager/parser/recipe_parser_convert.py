@@ -155,6 +155,8 @@ class RecipeParserConvert(RecipeParserDeps):
         """
         Upgrades the old proprietary JINJA templating usage to the new YAML-parsable `context` object and `$`-escaped
         JINJA substitutions.
+
+        :raises SentinelTypeEvaluationException: If a node value with a sentinel type is evaluated.
         """
         # Convert the JINJA variable table to a `context` section. Empty tables still add the `context` section for
         # future developers' convenience.
@@ -440,6 +442,7 @@ class RecipeParserConvert(RecipeParserDeps):
         Upgrades/converts the `source` section(s) of a recipe file.
 
         :param base_package_paths: Set of base paths to process that could contain this section.
+        :raises SentinelTypeEvaluationException: If a node value with a sentinel type is evaluated.
         """
         for base_path in base_package_paths:
             source_path = RecipeParser.append_to_path(base_path, "/source")
@@ -489,6 +492,7 @@ class RecipeParserConvert(RecipeParserDeps):
         `Script` object. Simple `script` sections can be left unchanged.
 
         :param build_path: Build section path to upgrade
+        :raises SentinelTypeEvaluationException: If a node value with a sentinel type is evaluated.
         """
         script_env_path: Final[str] = RecipeParser.append_to_path(build_path, "/script_env")
         # The environment list could contain dictionaries if the variables are conditionally included.
@@ -655,6 +659,7 @@ class RecipeParserConvert(RecipeParserDeps):
         For now, this does not call-out to an SPDX database. Instead, we attempt to correct common mistakes.
 
         :param about_path: Path to the `about` section, where the `license` field is located.
+        :raises SentinelTypeEvaluationException: If a node value with a sentinel type is evaluated.
         """
         license_path: Final[str] = RecipeParser.append_to_path(about_path, "/license")
         old_license: Final[Optional[str]] = cast(Optional[str], self._v1_recipe.get_value(license_path, default=None))
@@ -686,6 +691,7 @@ class RecipeParserConvert(RecipeParserDeps):
         Upgrades/converts the `about` section of a recipe file.
 
         :param base_package_paths: Set of base paths to process that could contain this section.
+        :raises SentinelTypeEvaluationException: If a node value with a sentinel type is evaluated.
         """
         about_rename_mapping: Final[list[tuple[str, str]]] = [
             ("home", "homepage"),
@@ -731,6 +737,7 @@ class RecipeParserConvert(RecipeParserDeps):
         Replaces the commonly used `pip check` test-case with the new `python/pip_check` attribute, if applicable.
 
         :param test_path: Test path for the build target to upgrade
+        :raises SentinelTypeEvaluationException: If a node value with a sentinel type is evaluated.
         """
         # Replace `- pip check` in `commands` with the new flag. If not found, set the flag to `False` (as the
         # flag defaults to `True`). DO NOT ADD THIS FLAG IF THE RECIPE IS NOT A "PYTHON RECIPE".
@@ -780,6 +787,7 @@ class RecipeParserConvert(RecipeParserDeps):
         Upgrades/converts the `test` section(s) of a recipe file.
 
         :param base_package_paths: Set of base paths to process that could contain this section.
+        :raises SentinelTypeEvaluationException: If a node value with a sentinel type is evaluated.
         """
         # NOTE: For now, we assume that the existing test section comprises of a single test entity. Developers will
         # have to use their best judgement to manually break-up the test into multiple tests as they see fit.

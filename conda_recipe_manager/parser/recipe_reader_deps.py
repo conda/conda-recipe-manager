@@ -78,6 +78,7 @@ class RecipeReaderDeps(RecipeReader):
 
         :raises KeyError: If a package in the recipe does not have a name
         :raises ValueError: If a recipe contains a package with duplicate names
+        :raises SentinelTypeEvaluationException: If a node value with a sentinel type is evaluated.
         :returns: Mapping of package name to path where that package is found
         """
         # TODO Figure out: Skip top-level packages for multi-output recipe files?
@@ -172,6 +173,7 @@ class RecipeReaderDeps(RecipeReader):
             Defaults to False, which will exclude test dependencies, for backwards compatibility.
         :raises KeyError: If a package in the recipe does not have a name
         :raises ValueError: If a recipe contains a package with duplicate names
+        :raises SentinelTypeEvaluationException: If a node value with a sentinel type is evaluated.
         :returns: A structured representation of the dependencies.
         """
         # TODO Figure out: Skip top-level packages for multi-output recipe files?

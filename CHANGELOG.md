@@ -15,6 +15,25 @@ Note: version releases in the 0.x.y range may introduce breaking changes.
 ### Fixed
 ### Security
 
+## [0.8.0]
+### Added
+- The `conda_recipe_manager.ops.VersionBumper` class. This takes the core logic from `crm bump-recipe` and exposes
+  it as a library that can be easily leveraged by other tooling.
+- Two new context-manageable functions (`from_recipe_fetch()` and `from_recipe_fetch_corrected()`) to the
+  `artifact_fetcher` module. These attempt to provide an easier way of acquiring remote source resources referenced in
+  Conda recipe files.
+- `HttpArtifactFetcher::get_path_to_archive()` which provides access to the source archive file acquired when fetching
+  a remote resource. This is exposed to provide compatibility with existing Conda tooling.
+- A static utility function in `GitArtifactFetcher` that provides some limited ability to match `git` tags to semantic
+  version strings. This functionality was originally created by @msentissi.
+### Changed
+- `artifact_fetcher::from_recipe()` is now context-manageable.
+- The `crm bump-recipe` command now utilizes the new `VersionBumper` class in a backwards-compatible way.
+- The artifact fetching classes derived from `BaseArtifactFetcher` can now be used as context-managed instances. This
+  provides callers with finer control over how long the temporary disk space is available.
+### Fixed
+- A test that was accidentally initializing 2 instances of the fake filesystem.
+
 ## [0.7.1]
 ### Added
 - `--fail-on-unsupported-jinja` flag to `crm convert` at the request of the conda-forge community. When unsupported
@@ -22,10 +41,6 @@ Note: version releases in the 0.x.y range may introduce breaking changes.
   unique exit code.
 ### Changed
 - `make test` now shows verbose `pytest` logs.
-### Deprecated
-### Removed
-### Fixed
-### Security
 
 ## [0.7.0]
 ### Added
@@ -38,17 +53,10 @@ Note: version releases in the 0.x.y range may introduce breaking changes.
 - `crm convert`, if it fails to parse a recipe because of unsupported JINJA, will output a warning, remove the unsupported statements,
 and re-attempt V1 conversion.
 - Book theme for sphinx is used for the project documentation.
-### Deprecated
-### Removed
-### Fixed
-### Security
 
 ## [0.6.4]
-### Added
 ### Changed
 - `RecipeReaderDeps.get_all_dependencies()` now has a flag to include test dependencies.
-### Deprecated
-### Removed
 ### Fixed
 - Various issues with `crm convert` around the new V1 `/build/script` section.
 ### Security
@@ -61,14 +69,10 @@ and re-attempt V1 conversion.
   conditional concatenation.
 - `RecipeParser::update_skip_statement_python()` which provides the ability to upgrade the commonly used `[py>=3*]`
   version selector to a new python version for V0 recipe files.
-### Changed
-### Deprecated
-### Removed
 ### Fixed
 - Some formatting issues in the API docs.
 - Issue #423 by making improvements to the `SpdxUtils` class.
 - An issue with handling empty dependency sections in `RecipeParserDeps::add_dependency()`
-### Security
 
 ## [0.6.2]
 ### Added
@@ -80,11 +84,8 @@ and re-attempt V1 conversion.
 ### Changed
 - De-emphasizes/redacts the `MessageTable` class in favor of the standard Python library logger. It is now only
   used as part of the recipe conversion process in `crm convert`
-### Deprecated
-### Removed
 ### Fixed
 - Improves the V0 format correction algorithm used to increase V0 recipe compatibility.
-### Security
 
 ## [0.6.1]
 ### Added
@@ -202,7 +203,8 @@ and continually changing.
 Migrates parser from [percy](https://github.com/anaconda-distribution/percy/tree/main)
 , ,
 
-[Unreleased]: https://github.com/conda/conda-recipe-manager/compare/v0.7.1...HEAD
+[Unreleased]: https://github.com/conda/conda-recipe-manager/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/conda/conda-recipe-manager/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/conda/conda-recipe-manager/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/conda/conda-recipe-manager/compare/v0.6.4...v0.7.0
 [0.6.4]: https://github.com/conda/conda-recipe-manager/compare/v0.6.3...v0.6.4

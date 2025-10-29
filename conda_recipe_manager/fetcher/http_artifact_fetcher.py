@@ -114,14 +114,23 @@ class HttpArtifactFetcher(BaseArtifactFetcher):
     def get_path_to_source_code(self) -> Path:
         """
         Returns the directory containing the artifact's bundled source code.
-        NOTE: If the target archive compresses top-level folder that contains the source code, this path will point to a
-        directory containing that uncompressed top-level folder.
+        NOTE: If the target archive compresses a top-level folder that contains the source code, this path will point to
+              a directory containing that uncompressed top-level folder.
 
         :raises FetchRequiredError: If `fetch()` has not been successfully invoked.
         """
         self._fetch_guard("Archive has not been downloaded, so the source code is unavailable.")
 
         return self._uncompressed_archive_path
+
+    def get_path_to_archive(self) -> Path:
+        """
+        Provides the location of the compressed archive file in temporary storage. Some Conda Community tooling can
+        only consume compressed source archives.
+        """
+        self._fetch_guard("Archive has not been downloaded, so the archive file is inaccessible.")
+
+        return self._archive_path
 
     def get_archive_sha256(self) -> str:
         """
