@@ -148,27 +148,35 @@ class SelectorParser(IsModifiable):
 
         :param op: Operator to apply
         :param tokens: List of tokens to reduce
+        :raises SelectorSyntaxError: If the selector syntax is invalid
         :returns: List of reduced tokens
         """
-        idx = 1
         new_tokens = []
-        while idx < len(tokens) - 1:
-            if tokens[idx - 1].is_operator() or tokens[idx + 1].is_operator() or not tokens[idx].is_operator():
+        idx = 0
+        cur_operand = tokens[0]
+        while idx < len(tokens):
+            if cur_operand.is_operator():
+                raise SelectorSyntaxError(f"Expected operand, got {cur_operand}: {tokens}")
+            if idx == len(tokens) - 1:
+                new_tokens.append(cur_operand)
+                break
+            operator = tokens[idx + 1]
+            if not operator.is_operator():
+                raise SelectorSyntaxError(f"Expected operator, got {operator}: {tokens}")
+            if operator.value != op:
+                new_tokens.append(cur_operand)
+                new_tokens.append(operator)
+                idx += 2
+                cur_operand = tokens[idx]
+                continue
+            if idx + 2 >= len(tokens) or tokens[idx + 2].is_operator():
                 raise SelectorSyntaxError(
-                    f"Expected operator to be flanked by 2 operands, "
-                    f"got {tokens[idx - 1]} and {tokens[idx + 1]}: {tokens}"
+                    f"Did not find a second operand after the operator {operator} while reducing {op}: {tokens}"
                 )
-            if tokens[idx].value == op:
-                tokens[idx].l_node = tokens[idx - 1]
-                tokens[idx].r_node = tokens[idx + 1]
-                new_tokens.append(tokens[idx])
-            else:
-                new_tokens.append(tokens[idx - 1])
-                new_tokens.append(tokens[idx])
-                if idx + 1 == len(tokens) - 1:
-                    new_tokens.append(tokens[idx + 1])
+            operator.l_node = cur_operand
+            operator.r_node = tokens[idx + 2]
             idx += 2
-
+            cur_operand = operator
         return new_tokens
 
     @staticmethod

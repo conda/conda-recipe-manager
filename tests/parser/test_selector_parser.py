@@ -190,6 +190,16 @@ def test_get_selected_platforms(selector: str, schema: SchemaVersion, expected: 
         ("[not osx]", SchemaVersion.V0, SelectorQuery(platform=Platform.OSX_64), False),
         ("[osx and not unix]", SchemaVersion.V0, SelectorQuery(platform=Platform.LINUX_PPC_64_LE), False),
         ("[osx or not unix]", SchemaVersion.V0, SelectorQuery(platform=Platform.WIN_ARM_64), True),
+        ("[osx and arm64 or win]", SchemaVersion.V0, SelectorQuery(platform=Platform.OSX_ARM_64), True),
+        ("[osx and arm64 or win]", SchemaVersion.V0, SelectorQuery(platform=Platform.WIN_64), True),
+        ("[osx and arm64 or win]", SchemaVersion.V0, SelectorQuery(platform=Platform.OSX_64), False),
+        ("[osx and (arm64 or win)]", SchemaVersion.V0, SelectorQuery(platform=Platform.WIN_64), False),
+        ("[win or linux and armv6l]", SchemaVersion.V0, SelectorQuery(platform=Platform.LINUX_ARM_V6L), True),
+        ("[win or linux and armv6l]", SchemaVersion.V0, SelectorQuery(platform=Platform.WIN_64), True),
+        ("[win or (linux and armv6l)]", SchemaVersion.V0, SelectorQuery(platform=Platform.LINUX_ARM_V6L), True),
+        ("[win or (linux and armv6l)]", SchemaVersion.V0, SelectorQuery(platform=Platform.WIN_64), True),
+        ("[(win or linux) and armv6l]", SchemaVersion.V0, SelectorQuery(platform=Platform.WIN_64), False),
+        ("[(win or linux) and armv6l]", SchemaVersion.V0, SelectorQuery(platform=Platform.LINUX_ARM_V6L), True),
     ],
 )
 def test_does_selector_apply(selector: str, schema: SchemaVersion, query: SelectorQuery, expected: bool) -> None:
