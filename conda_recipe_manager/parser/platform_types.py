@@ -95,7 +95,7 @@ ALL_PLATFORMS: Final[set[Platform]] = set(Platform)
 NO_ARCH: Final[str] = "noarch"
 
 # Type alias for any enumeration that could represent a set of target build platforms
-PlatformQualifiers = Arch | OperatingSystem | Platform
+PlatformQualifiers = Arch | OperatingSystem | PlatformAlias
 
 
 def get_platforms_by_arch(arch: Arch | str) -> set[Platform]:

@@ -89,6 +89,20 @@ class ZipKeysException(BaseParserException):
         super().__init__(f"{message}: {zip_keys}")
 
 
+class SelectorSyntaxError(BaseParserException):
+    """
+    Exception raised when a selector syntax is invalid.
+    """
+
+    def __init__(self, message: str):
+        """
+        Constructs a selector syntax error exception.
+
+        :param message: String description of the issue encountered.
+        """
+        super().__init__(f"Selector syntax error: {message}")
+
+
 class ParsingException(BaseParserException):
     """
     Exception raised when a recipe file cannot be correctly parsed. This can occur on construction of a parser class.

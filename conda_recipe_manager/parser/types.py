@@ -110,6 +110,9 @@ OPPOSITE_OPS: Final[list[tuple[str, str]]] = [
 # Python skip selector regex
 PYTHON_SKIP_PATTERN: Final[re.Pattern[str]] = re.compile(r"py[ \t]*([~!<>=]=|>|<)[ \t]*\d\d+")
 
+# Comparison operator regex (with optional whitespace)
+COMPARISON_OPERATOR_PATTERN: Final[re.Pattern[str]] = re.compile(r"[ \t]*([~!<>=]=|>|<)[ \t]*")
+
 
 class MultilineVariant(StrEnum):
     """
