@@ -7,7 +7,13 @@ from __future__ import annotations
 import re
 from typing import Final
 
-import yaml
+from yaml import Dumper, ScalarNode
+
+# Import guard: Fallback to `SafeLoader` if `CSafeLoader` isn't available
+try:
+    from yaml import CSafeLoader as SafeLoader
+except ImportError:
+    from yaml import SafeLoader  # type: ignore[assignment]
 
 #### Private Types (Not to be used external to the `parser` module) ####
 
@@ -107,7 +113,7 @@ class CanonicalSortOrder:
 # sense to dedicate a file for.
 
 
-class ForceIndentDumper(yaml.Dumper):
+class ForceIndentDumper(Dumper):
     """
     Custom YAML dumper used to include optional indentation for human readability.
     Adapted from: https://stackoverflow.com/questions/25108581/python-yaml-dump-bad-indentation
@@ -279,3 +285,25 @@ class Regex:
     MULTILINE_BACKSLASH_QUOTE_CAPTURE_GROUP_FIRST_VALUE: Final[int] = 2
 
     DETECT_TRAILING_COMMENT: Final[re.Pattern[str]] = re.compile(r"([ \t])+(#)")
+
+
+class StringLoader(SafeLoader):
+    """
+    Custom YAML loader that loads floats as strings, in order to preserve the original precision.
+    """
+
+    pass
+
+
+def string_constructor(loader: SafeLoader, node: ScalarNode) -> str:
+    """
+    Constructor that forces all float values to be strings.
+
+    :param loader: The loader to use
+    :param node: The node to construct
+    :returns: The constructed value
+    """
+    return str(loader.construct_scalar(node))
+
+
+StringLoader.add_constructor("tag:yaml.org,2002:float", string_constructor)

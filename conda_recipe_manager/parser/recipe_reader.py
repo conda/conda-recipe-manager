@@ -26,6 +26,7 @@ from conda_recipe_manager.parser._types import (
     ROOT_NODE_VALUE,
     ForceIndentDumper,
     Regex,
+    StringLoader,
     StrStack,
 )
 from conda_recipe_manager.parser._utils import (
@@ -55,12 +56,6 @@ from conda_recipe_manager.parser.v0_recipe_formatter import V0RecipeFormatter
 from conda_recipe_manager.types import PRIMITIVES_NO_NONE_TUPLE, PRIMITIVES_TUPLE, JsonType, Primitives, SentinelType
 from conda_recipe_manager.utils.cryptography.hashing import hash_str
 from conda_recipe_manager.utils.typing import optional_str
-
-# Import guard: Fallback to `SafeLoader` if `CSafeLoader` isn't available
-try:
-    from yaml import CSafeLoader as SafeLoader
-except ImportError:
-    from yaml import SafeLoader  # type: ignore[assignment]
 
 log: Final = logging.getLogger(__name__)
 
@@ -130,12 +125,12 @@ class RecipeReader(IsModifiable):
         # then we fall back to performing JINJA substitutions.
         try:
             try:
-                output = _sub_jinja(cast(JsonType, yaml.load(s, Loader=SafeLoader)))
+                output = _sub_jinja(cast(JsonType, yaml.load(s, Loader=StringLoader)))
             except yaml.scanner.ScannerError:
                 # We quote-escape here for problematic YAML strings that are non-JINJA, like `**/lib.so`. Parsing
                 # invalid YAML containing V0 JINJA statements should cause an exception and fallback to the other
                 # recovery logic.
-                output = _sub_jinja(cast(JsonType, yaml.load(quote_special_strings(s), Loader=SafeLoader)))
+                output = _sub_jinja(cast(JsonType, yaml.load(quote_special_strings(s), Loader=StringLoader)))
         except Exception:  # pylint: disable=broad-exception-caught
             # If a construction exception is thrown, attempt to re-parse by replacing Jinja macros (substrings in
             # `{{}}`) with friendly string substitution markers, then re-inject the substitutions back in. We classify
@@ -147,7 +142,7 @@ class RecipeReader(IsModifiable):
             # variable substitutions.
             output = _sub_jinja(
                 RecipeReader._parse_yaml_recursive_sub(
-                    cast(JsonType, yaml.load(s, Loader=SafeLoader)), lambda d: substitute_markers(d, sub_list)
+                    cast(JsonType, yaml.load(s, Loader=StringLoader)), lambda d: substitute_markers(d, sub_list)
                 )
             )
         return output
@@ -434,7 +429,7 @@ class RecipeReader(IsModifiable):
         # be clear, should be a string).
         if self._schema_version == SchemaVersion.V0 and s[:2] == "{{":
             return s
-        return cast(JsonType, yaml.load(s, Loader=SafeLoader))
+        return cast(JsonType, yaml.load(s, Loader=StringLoader))
 
     def _init_vars_tbl(self) -> None:
         """
@@ -953,7 +948,7 @@ class RecipeReader(IsModifiable):
             if replace_variables:
                 return self._render_jinja_vars(value)
             if node.multiline_variant != MultilineVariant.NONE:
-                return cast(str, yaml.load(value, Loader=SafeLoader))
+                return cast(str, yaml.load(value, Loader=StringLoader))
         return cast(JsonType, value)
 
     @no_type_check
