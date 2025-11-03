@@ -366,6 +366,11 @@ def test_get_zip_keys(file: str, query: SelectorQuery, expected: list[set[str]])
             SelectorQuery(Platform.OSX_64, build_env_vars={"ANACONDA_ROCKET_ENABLE_PY314"}),
             (
                 {
+                    # --- Default variants ---
+                    "cpu_optimization_target": ["nocona"],
+                    "lua": ["5"],
+                    "perl": ["5.26.2"],
+                    # --- End default variants ---
                     "blas_impl": ["openblas"],
                     "c_compiler": ["clang"],
                     "c_stdlib": ["macosx_deployment_target"],

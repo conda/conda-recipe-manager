@@ -4,10 +4,15 @@
 
 from __future__ import annotations
 
+import sys
 from itertools import product
 from typing import Final, cast, no_type_check
 
+import yaml
+from conda_build.variants import DEFAULT_VARIANTS  # type: ignore[import-untyped]
+
 from conda_recipe_manager.parser._node_var import NodeVar
+from conda_recipe_manager.parser._types import ForceIndentDumper
 from conda_recipe_manager.parser.exceptions import ZipKeysException
 from conda_recipe_manager.parser.recipe_reader import RecipeReader
 from conda_recipe_manager.parser.selector_query import SelectorQuery
@@ -50,6 +55,10 @@ class CbcParser(RecipeReader):
         # NOTE: The comments table does not include selectors.
         comments_tbl: Final = self.get_comments_table()
         for variable, value_list in parsed_contents.items():
+            # TODO: Handle these special keys ?
+            if variable in {"pin_run_as_build", "extend_keys", "ignore_version", "ignore_build_only_deps"}:
+                continue
+
             if not isinstance(value_list, list):
                 continue
 
@@ -231,6 +240,23 @@ class CbcParser(RecipeReader):
                 if key not in cbc_values:
                     raise ZipKeysException(zip_keys, f"Zip key not found in CBC values: {key}")
 
+    @no_type_check
+    @staticmethod
+    def _construct_default_variants_cbc() -> CbcParser:
+        """
+        Constructs the default variants CBC file.
+
+        :returns: The default variants CBC file.
+        """
+        default_variants = {}
+        for key, value in DEFAULT_VARIANTS.items():
+            if isinstance(value, Primitives):
+                default_variants[key] = [value]
+            else:
+                default_variants[key] = value
+        yaml_dump = yaml.dump(default_variants, Dumper=ForceIndentDumper, sort_keys=False, width=sys.maxsize)
+        return CbcParser(yaml_dump)
+
     @staticmethod
     def generate_cbc_values(cbc_files: list[CbcParser], selector_query: SelectorQuery) -> CbcOutputType:
         """
@@ -243,6 +269,11 @@ class CbcParser(RecipeReader):
         :raises ZipKeysException: If a zip keys issue occurs.
         :returns: Tuple containing a dictionary of CBC variable values and a list of zip keys.
         """
+
+        # Insert the default variants as the first CBC file
+        default_variants_cbc = cast(CbcParser, CbcParser._construct_default_variants_cbc())
+        cbc_files.insert(0, default_variants_cbc)
+
         cbc_values: dict[str, list[Primitives]] = {}
         zip_keys: list[set[str]] = []
         # Combine the CBC files into a single output.
