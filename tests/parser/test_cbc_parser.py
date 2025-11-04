@@ -2,13 +2,18 @@
 :Description: Provides unit tests for the CBC Parser module
 """
 
+from pathlib import Path
+from typing import Final
+
 import pytest
 
-from conda_recipe_manager.parser.cbc_parser import CbcOutputType, CbcParser
+from conda_recipe_manager.parser.cbc_parser import _SPECIAL_KEYS, CbcOutputType, CbcParser
 from conda_recipe_manager.parser.platform_types import Platform
 from conda_recipe_manager.parser.selector_query import SelectorQuery
 from conda_recipe_manager.types import Primitives
-from tests.file_loading import load_cbc
+from tests.file_loading import get_test_path, load_cbc, load_json_file
+
+CONDA_BUILD_VARIANTS_PATH: Final[Path] = get_test_path() / "variants"
 
 
 @pytest.mark.parametrize(
@@ -420,3 +425,109 @@ def test_generate_cbc_values(files: list[CbcParser], query: SelectorQuery, expec
     :param expected: Expected result of the test.
     """
     assert CbcParser.generate_cbc_values(files, query) == expected
+
+
+def _remove_special_keys(variant: dict[str, Primitives]) -> dict[str, Primitives]:
+    """
+    Removes the special keys from a variant.
+
+    :param variant: Variant to remove special keys from.
+    :returns: Variant with special keys removed.
+    """
+    for key in _SPECIAL_KEYS:
+        variant.pop(key, None)
+    return variant
+
+
+def _transform_integers_to_strings(variant: dict[str, Primitives]) -> dict[str, Primitives]:
+    """
+    Transforms integers to strings in a variant.
+
+    :param variant: Variant to transform.
+    :returns: Variant with integers transformed to strings.
+    """
+    for key, value in variant.items():
+        if isinstance(value, int):
+            variant[key] = str(value)
+    return variant
+
+
+def _find_matching_variant(var_to_find: dict[str, Primitives], variants: tuple[dict[str, Primitives]]) -> bool:
+    """
+    Finds a matching variant in a tuple of variants.
+
+    :param var_to_find: Variant to find.
+    :param variants: Tuple of variants to search through.
+    :returns: True if a matching variant is found. False otherwise.
+    """
+    for var in variants:
+        for key, value in var_to_find.items():
+            variants_value = var[key]
+            if key == "zip_keys":
+                variants_value = [set(elem) for elem in variants_value]
+                value = [set(elem) for elem in value]
+            if variants_value != value:
+                break
+        else:
+            return True
+    return False
+
+
+@pytest.mark.parametrize(
+    "cbc_files,query,conda_build_variants",
+    [
+        (
+            [load_cbc("aggregate_cbc.yaml"), load_cbc("boost_cbc.yaml")],
+            SelectorQuery(platform=Platform.OSX_ARM_64),
+            load_json_file(CONDA_BUILD_VARIANTS_PATH / "no_env" / "conda_build_variants_osx-arm64.json"),
+        ),
+        (
+            [load_cbc("aggregate_cbc.yaml"), load_cbc("boost_cbc.yaml")],
+            SelectorQuery(platform=Platform.LINUX_AARCH_64),
+            load_json_file(CONDA_BUILD_VARIANTS_PATH / "no_env" / "conda_build_variants_linux-aarch64.json"),
+        ),
+        (
+            [load_cbc("aggregate_cbc.yaml"), load_cbc("boost_cbc.yaml")],
+            SelectorQuery(platform=Platform.LINUX_64),
+            load_json_file(CONDA_BUILD_VARIANTS_PATH / "no_env" / "conda_build_variants_linux-64.json"),
+        ),
+        (
+            [load_cbc("aggregate_cbc.yaml"), load_cbc("boost_cbc.yaml")],
+            SelectorQuery(platform=Platform.WIN_64),
+            load_json_file(CONDA_BUILD_VARIANTS_PATH / "no_env" / "conda_build_variants_win-64.json"),
+        ),
+    ],
+)
+def test_generate_variants(
+    cbc_files: list[CbcParser], query: SelectorQuery, conda_build_variants: tuple[dict[str, Primitives]]
+) -> None:
+    """
+    Validates generating the variants from a list of CBC files.
+
+    :param cbc_files: List of CBC files to generate the variants from.
+    :param query: Selector query to generate the variants for.
+    :param conda_build_variants: Conda build variants to compare against.
+    """
+    # Generate the variants
+    generated_variants = CbcParser.generate_variants(cbc_files, query)
+    # Remove the ignored special keys from the expected variants
+    expected_variants = [_remove_special_keys(variant) for variant in conda_build_variants]
+    # Transform integers into their string representation in the generated variants to match conda_build's output
+    generated_variants = [_transform_integers_to_strings(variant) for variant in generated_variants]
+
+    # Check that the keys are the same
+    generated_var_keys = generated_variants[0].keys()
+    expected_var_keys = expected_variants[0].keys()
+    mismatch_message = f"Generated keys that are not in expected: {generated_var_keys - expected_var_keys}\n"
+    mismatch_message += f"Expected keys that are not in generated: {expected_var_keys - generated_var_keys}"
+    assert generated_var_keys == expected_var_keys, mismatch_message
+    for gen_var in generated_variants:
+        assert gen_var.keys() == generated_var_keys
+    for expected_var in expected_variants:
+        assert expected_var.keys() == expected_var_keys
+
+    # Check that the values are the same
+    for exp_var in expected_variants:
+        assert _find_matching_variant(exp_var, generated_variants)
+    for gen_var in generated_variants:
+        assert _find_matching_variant(gen_var, expected_variants)

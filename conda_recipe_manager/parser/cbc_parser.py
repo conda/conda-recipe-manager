@@ -27,6 +27,14 @@ _CbcType = dict[str, list[JsonType] | dict[str, dict[str, str]]]
 # Type that represents the values and zip_keys of a CBC file as a tuple.
 CbcOutputType = tuple[dict[str, list[Primitives]], list[set[str]]]
 
+# Special keys that are currently ignored by the CBC parser.
+_SPECIAL_KEYS: Final[set[str]] = {
+    "pin_run_as_build",
+    "extend_keys",
+    "ignore_version",
+    "ignore_build_only_deps",
+}
+
 
 class CbcParser(RecipeReader):
     """
@@ -56,8 +64,13 @@ class CbcParser(RecipeReader):
         comments_tbl: Final = self.get_comments_table()
         for variable, value_list in parsed_contents.items():
             # TODO: Handle these special keys ?
-            if variable in {"pin_run_as_build", "extend_keys", "ignore_version", "ignore_build_only_deps"}:
+            if variable in _SPECIAL_KEYS:
                 continue
+
+            # Handle single value variables
+            is_single_value = isinstance(value_list, Primitives)
+            if is_single_value:
+                value_list = [value_list]
 
             if not isinstance(value_list, list):
                 continue
@@ -69,6 +82,8 @@ class CbcParser(RecipeReader):
             # TODO add V1 support for CBC files? Is there a V1 CBC format?
             for i, value in enumerate(value_list):
                 path = f"/{variable}/{i}"
+                if is_single_value:
+                    path = f"/{variable}"
                 entry = self._construct_cbc_variable(path, value, comments_tbl)
 
                 # TODO detect duplicates
@@ -328,6 +343,9 @@ class CbcParser(RecipeReader):
         list_of_variants = []
         for combo in all_combinations:
             new_variant = {}
+            # Initialize with zip_keys and target_platform to match conda_build's format.
+            new_variant["zip_keys"] = [list(zip_key_set) for zip_key_set in zip_keys]
+            new_variant["target_platform"] = selector_query.platform
             for key, value in zip(all_keys, combo):
                 if not isinstance(value, tuple):
                     new_variant[key] = value
