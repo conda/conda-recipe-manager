@@ -3,14 +3,14 @@
 """
 
 from pathlib import Path
-from typing import Final
+from typing import Final, cast
 
 import pytest
 
 from conda_recipe_manager.parser.cbc_parser import _SPECIAL_KEYS, CbcOutputType, CbcParser
 from conda_recipe_manager.parser.platform_types import Platform
 from conda_recipe_manager.parser.selector_query import SelectorQuery
-from conda_recipe_manager.types import Primitives
+from conda_recipe_manager.types import JsonType, Primitives
 from tests.file_loading import get_test_path, load_cbc, load_json_file
 
 CONDA_BUILD_VARIANTS_PATH: Final[Path] = get_test_path() / "variants"
@@ -427,7 +427,7 @@ def test_generate_cbc_values(files: list[CbcParser], query: SelectorQuery, expec
     assert CbcParser.generate_cbc_values(files, query) == expected
 
 
-def _remove_special_keys(variant: dict[str, Primitives]) -> dict[str, Primitives]:
+def _remove_special_keys(variant: dict[str, JsonType]) -> dict[str, JsonType]:
     """
     Removes the special keys from a variant.
 
@@ -439,7 +439,7 @@ def _remove_special_keys(variant: dict[str, Primitives]) -> dict[str, Primitives
     return variant
 
 
-def _transform_integers_to_strings(variant: dict[str, Primitives]) -> dict[str, Primitives]:
+def _transform_integers_to_strings(variant: dict[str, JsonType]) -> dict[str, JsonType]:
     """
     Transforms integers to strings in a variant.
 
@@ -452,20 +452,23 @@ def _transform_integers_to_strings(variant: dict[str, Primitives]) -> dict[str, 
     return variant
 
 
-def _find_matching_variant(var_to_find: dict[str, Primitives], variants: tuple[dict[str, Primitives]]) -> bool:
+def _find_matching_variant(var_to_find: dict[str, JsonType], variants: list[dict[str, JsonType]]) -> bool:
     """
     Finds a matching variant in a tuple of variants.
 
     :param var_to_find: Variant to find.
-    :param variants: Tuple of variants to search through.
+    :param variants: List of variants to search through.
     :returns: True if a matching variant is found. False otherwise.
     """
     for var in variants:
         for key, value in var_to_find.items():
             variants_value = var[key]
             if key == "zip_keys":
-                variants_value = [set(elem) for elem in variants_value]
-                value = [set(elem) for elem in value]
+                variants_value_set = [set(elem) for elem in cast(list[list[str]], variants_value)]
+                value_set = [set(elem) for elem in cast(list[list[str]], value)]
+                if variants_value_set != value_set:
+                    break
+                continue
             if variants_value != value:
                 break
         else:
@@ -519,7 +522,7 @@ def _find_matching_variant(var_to_find: dict[str, Primitives], variants: tuple[d
     ],
 )
 def test_generate_variants(
-    cbc_files: list[CbcParser], query: SelectorQuery, conda_build_variants: tuple[dict[str, Primitives]]
+    cbc_files: list[CbcParser], query: SelectorQuery, conda_build_variants: tuple[dict[str, JsonType]]
 ) -> None:
     """
     Validates generating the variants from a list of CBC files.
@@ -529,11 +532,11 @@ def test_generate_variants(
     :param conda_build_variants: Conda build variants to compare against.
     """
     # Generate the variants
-    generated_variants = CbcParser.generate_variants(cbc_files, query)
+    generated_variants_original = cast(tuple[dict[str, JsonType]], CbcParser.generate_variants(cbc_files, query))
     # Remove the ignored special keys from the expected variants
     expected_variants = [_remove_special_keys(variant) for variant in conda_build_variants]
     # Transform integers into their string representation in the generated variants to match conda_build's output
-    generated_variants = [_transform_integers_to_strings(variant) for variant in generated_variants]
+    generated_variants = [_transform_integers_to_strings(variant) for variant in generated_variants_original]
 
     # Check that the keys are the same
     generated_var_keys = generated_variants[0].keys()
