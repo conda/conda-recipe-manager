@@ -55,7 +55,8 @@ class CbcParser(RecipeReader):
         :param content: conda-build formatted configuration file, as a single text string.
         :raises SentinelTypeEvaluationException: If a node value with a sentinel type is evaluated.
         """
-        super().__init__(content)
+        # We treat floats as strings in CBC files to preserve the original precision of version numbers.
+        super().__init__(content, floats_as_strings=True)
         self._cbc_vars_tbl: _CbcTable = {}
         self._zip_keys: list[list[NodeVar]] = []
 

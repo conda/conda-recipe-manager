@@ -26,6 +26,7 @@ from conda_recipe_manager.parser._types import (
     ROOT_NODE_VALUE,
     ForceIndentDumper,
     Regex,
+    SafeLoader,
     StringLoader,
     StrStack,
 )
@@ -100,7 +101,9 @@ class RecipeReader(IsModifiable):
         return data
 
     @staticmethod
-    def _parse_yaml(s: str, parser: Optional[RecipeReader] = None) -> JsonType:
+    def _parse_yaml(
+        s: str, parser: Optional[RecipeReader] = None, yaml_loader: type[SafeLoader] = SafeLoader
+    ) -> JsonType:
         """
         Parse a line (or multiple) of YAML into a Pythonic data structure
 
@@ -108,6 +111,7 @@ class RecipeReader(IsModifiable):
         :param parser: (Optional) If provided, this will substitute Jinja variables with values specified in in the
             recipe file. Since `_parse_yaml()` is critical to constructing recipe files, this function must remain
             static. Also, during construction, we shouldn't be using a variables until the entire recipe is read/parsed.
+        :param yaml_loader: The YAML loader to use.
         :returns: Pythonic data corresponding to the line of YAML
         """
         output: JsonType = None
@@ -125,12 +129,12 @@ class RecipeReader(IsModifiable):
         # then we fall back to performing JINJA substitutions.
         try:
             try:
-                output = _sub_jinja(cast(JsonType, yaml.load(s, Loader=StringLoader)))
+                output = _sub_jinja(cast(JsonType, yaml.load(s, Loader=yaml_loader)))
             except yaml.scanner.ScannerError:
                 # We quote-escape here for problematic YAML strings that are non-JINJA, like `**/lib.so`. Parsing
                 # invalid YAML containing V0 JINJA statements should cause an exception and fallback to the other
                 # recovery logic.
-                output = _sub_jinja(cast(JsonType, yaml.load(quote_special_strings(s), Loader=StringLoader)))
+                output = _sub_jinja(cast(JsonType, yaml.load(quote_special_strings(s), Loader=yaml_loader)))
         except Exception:  # pylint: disable=broad-exception-caught
             # If a construction exception is thrown, attempt to re-parse by replacing Jinja macros (substrings in
             # `{{}}`) with friendly string substitution markers, then re-inject the substitutions back in. We classify
@@ -142,7 +146,7 @@ class RecipeReader(IsModifiable):
             # variable substitutions.
             output = _sub_jinja(
                 RecipeReader._parse_yaml_recursive_sub(
-                    cast(JsonType, yaml.load(s, Loader=StringLoader)), lambda d: substitute_markers(d, sub_list)
+                    cast(JsonType, yaml.load(s, Loader=yaml_loader)), lambda d: substitute_markers(d, sub_list)
                 )
             )
         return output
@@ -244,7 +248,7 @@ class RecipeReader(IsModifiable):
         return line_idx, new_node
 
     @staticmethod
-    def _parse_line_node(s: str, only_seen_comments: bool) -> Node:
+    def _parse_line_node(s: str, only_seen_comments: bool, yaml_loader: type[SafeLoader] = SafeLoader) -> Node:
         """
         Parses a line of conda-formatted YAML into a Node.
 
@@ -252,10 +256,11 @@ class RecipeReader(IsModifiable):
 
         :param s: Pre-stripped (no leading/trailing spaces), non-Jinja line of a recipe file.
         :param only_seen_comments: Flag indicating if only comments have been seen at the top of the file thus far.
+        :param yaml_loader: The YAML loader to use.
         :returns: A Node representing a line of the conda-formatted YAML.
         """
         # Use PyYaml to safely/easily/correctly parse single lines of YAML.
-        output = RecipeReader._parse_yaml(s)
+        output = RecipeReader._parse_yaml(s, yaml_loader=yaml_loader)
 
         # The full line is a comment
         if s.startswith("#"):
@@ -429,7 +434,7 @@ class RecipeReader(IsModifiable):
         # be clear, should be a string).
         if self._schema_version == SchemaVersion.V0 and s[:2] == "{{":
             return s
-        return cast(JsonType, yaml.load(s, Loader=StringLoader))
+        return cast(JsonType, yaml.load(s, Loader=self._yaml_loader))
 
     def _init_vars_tbl(self) -> None:
         """
@@ -562,7 +567,9 @@ class RecipeReader(IsModifiable):
 
         return str(sanitized_fmt), tof_comment_cntr
 
-    def _private_init(self, content: str, internal_call: bool, force_remove_jinja: bool = False) -> None:
+    def _private_init(
+        self, content: str, internal_call: bool, force_remove_jinja: bool = False, floats_as_strings: bool = False
+    ) -> None:
         """
         Private constructor for internal RecipeReader use. This constructor is called by `__init__()` and
         `_create_private_recipe_reader()`, with internal_call set to False and True, respectively.
@@ -574,6 +581,8 @@ class RecipeReader(IsModifiable):
                 then unsupported JINJA statements will silently be removed from the recipe file.
             If this is set to False,
                 then unsupported JINJA statements will trigger a ParsingJinjaException.
+        :param floats_as_strings: Whether to treat floats as strings. If this is set to True,
+            then floats will be treated as strings during parsing.
         :raises ParsingJinjaException: If unsupported JINJA statements are present
             and force_remove_jinja is set to False.
         """
@@ -582,6 +591,7 @@ class RecipeReader(IsModifiable):
         # Note: _init_content should be Final, but mypy requires Final attributes to be declared in __init__
         # See https://mypy.readthedocs.io/en/stable/final_attrs.html#syntax-variants
         self._init_content: str = content
+        self._yaml_loader: type[SafeLoader] = StringLoader if floats_as_strings else SafeLoader
 
         sanitized_yaml, tof_comment_cntr = self._init_schema_version_and_sanitize_v0_yaml(
             internal_call, force_remove_jinja
@@ -616,7 +626,9 @@ class RecipeReader(IsModifiable):
             # found.
             line_idx, new_node = RecipeReader._parse_multiline_node(clean_line, lines, line_idx, new_indent, None)
             if new_node is None:
-                new_node = RecipeReader._parse_line_node(clean_line, tof_comment_cntr > 0)
+                new_node = RecipeReader._parse_line_node(
+                    clean_line, tof_comment_cntr > 0, yaml_loader=self._yaml_loader
+                )
                 tof_comment_cntr -= 1
                 # In the general case (which does not create a new-node), we ignore the returned `new_node` value and
                 # rely on the object being modified by the reference we pass-in. As a small optimization, we only run
@@ -659,7 +671,9 @@ class RecipeReader(IsModifiable):
         # This table will have to be re-built or modified when the tree is modified with `patch()`.
         self._rebuild_selectors()
 
-    def __init__(self, content: str, force_remove_jinja: bool = False):  # pylint: disable=super-init-not-called
+    def __init__(
+        self, content: str, force_remove_jinja: bool = False, floats_as_strings: bool = False
+    ):  # pylint: disable=super-init-not-called
         """
         Constructs a RecipeReader instance.
 
@@ -669,12 +683,19 @@ class RecipeReader(IsModifiable):
                 then unsupported JINJA statements will silently be removed from the recipe file.
             If this is set to False,
                 then unsupported JINJA statements will trigger a ParsingJinjaException.
+        :param floats_as_strings: Whether to treat floats as strings. If this is set to True,
+            then floats will be treated as strings during parsing.
         :raises ParsingJinjaException: If unsupported JINJA statements are present
             and force_remove_jinja is set to False.
         :raises ParsingException: If the recipe file cannot be parsed for an unknown reason.
         """
         try:
-            self._private_init(content=content, internal_call=False, force_remove_jinja=force_remove_jinja)
+            self._private_init(
+                content=content,
+                internal_call=False,
+                force_remove_jinja=force_remove_jinja,
+                floats_as_strings=floats_as_strings,
+            )
         # If the expected exception is thrown, log then raise it.
         except ParsingException as e:
             log.exception(e)
@@ -948,7 +969,7 @@ class RecipeReader(IsModifiable):
             if replace_variables:
                 return self._render_jinja_vars(value)
             if node.multiline_variant != MultilineVariant.NONE:
-                return cast(str, yaml.load(value, Loader=StringLoader))
+                return cast(str, yaml.load(value, Loader=self._yaml_loader))
         return cast(JsonType, value)
 
     @no_type_check
