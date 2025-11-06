@@ -274,10 +274,7 @@ class CbcParser(RecipeReader):
         """
         default_variants = {}
         for key, value in DEFAULT_VARIANTS.items():
-            if isinstance(value, Primitives):
-                default_variants[key] = [value]
-            else:
-                default_variants[key] = value
+            default_variants[key] = [value] if isinstance(value, Primitives) else value
         yaml_dump = yaml.dump(default_variants, Dumper=ForceIndentDumper, sort_keys=False, width=sys.maxsize)
         return CbcParser(yaml_dump)
 
