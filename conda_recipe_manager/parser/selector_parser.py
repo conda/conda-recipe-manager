@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Final, Optional, cast, no_type_check
+from typing import Final, Optional, Union
 
 from conda_recipe_manager.parser._is_modifiable import IsModifiable
 from conda_recipe_manager.parser._types import Regex
@@ -93,6 +93,10 @@ class _SelectorNode:
         :returns: True if the node represents an operator
         """
         return self.is_logical_op() and self.l_node is None and self.r_node is None
+
+
+# Type alias for a nested list of _SelectorNode objects.
+SelectorNodeNestedList = list[Union[_SelectorNode, "SelectorNodeNestedList"]]
 
 
 class SelectorParser(IsModifiable):
@@ -207,9 +211,8 @@ class SelectorParser(IsModifiable):
             return tokens[0]
         raise SelectorSyntaxError(f"Expected 1 token, got {len(tokens)}: {tokens}")
 
-    @no_type_check
     @staticmethod
-    def _parse_selector_tree(tokens: list) -> Optional[_SelectorNode]:
+    def _parse_selector_tree(tokens: SelectorNodeNestedList) -> _SelectorNode:
         """
         Constructs a selector parse tree
 
@@ -218,7 +221,7 @@ class SelectorParser(IsModifiable):
         :returns: The root of the parse tree
         """
         if not tokens:
-            return None
+            raise SelectorSyntaxError(f"Expected a non-empty list of tokens, got {tokens}")
         list_of_nodes: list[_SelectorNode] = []
         for token in tokens:
             if isinstance(token, list):
@@ -244,9 +247,8 @@ class SelectorParser(IsModifiable):
             idx += 1
         return len(content)
 
-    @no_type_check
     @staticmethod
-    def _pre_process_selector_content(content: str, idx: int = 0) -> tuple[list[_SelectorNode], int]:
+    def _pre_process_selector_content(content: str, idx: int = 0) -> tuple[SelectorNodeNestedList, int]:
         """
         Pre-processes the selector content
 
@@ -256,7 +258,7 @@ class SelectorParser(IsModifiable):
         """
         if not content:
             return [], 0
-        tokens = []
+        tokens: SelectorNodeNestedList = []
         while idx < len(content):
             if content[idx] == ")":
                 return tokens, idx + 1
@@ -302,10 +304,9 @@ class SelectorParser(IsModifiable):
 
         self._content: Final[str] = _init_content()
 
-        pre_processed_content, _ = SelectorParser._pre_process_selector_content(self._content)  # type: ignore
-        self._root = cast(
-            Optional[_SelectorNode],
-            SelectorParser._parse_selector_tree(pre_processed_content),  # type: ignore
+        pre_processed_content, _ = SelectorParser._pre_process_selector_content(self._content)
+        self._root: Optional[_SelectorNode] = (
+            SelectorParser._parse_selector_tree(pre_processed_content) if pre_processed_content else None
         )
 
     def __str__(self) -> str:

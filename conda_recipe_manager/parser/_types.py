@@ -22,6 +22,7 @@ StrStack = list[str]
 # Type alias for a `StrStack` that must be immutable. Useful for some recursive operations.
 StrStackImmutable = tuple[str, ...]
 
+
 #### Private Constants (Not to be used external to the `parser` module) ####
 
 # String that represents a root node in our path.
