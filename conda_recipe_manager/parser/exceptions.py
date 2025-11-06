@@ -8,7 +8,7 @@ import json
 from typing import Optional
 
 from conda_recipe_manager.parser._node import Node
-from conda_recipe_manager.types import JsonPatchType
+from conda_recipe_manager.types import JsonPatchType, JsonType
 
 
 class BaseParserException(Exception):
@@ -79,7 +79,7 @@ class ZipKeysException(BaseParserException):
     Exception raised when invalid zip keys are encountered.
     """
 
-    def __init__(self, zip_keys: list[set[str]], message: str = "Invalid zip keys were encountered"):
+    def __init__(self, zip_keys: list[set[str]] | list[JsonType], message: str = "Invalid zip keys were encountered"):
         """
         Constructs a zip keys exception.
 

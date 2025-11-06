@@ -57,6 +57,7 @@ class CbcParser(RecipeReader):
 
         :param content: conda-build formatted configuration file, as a single text string.
         :raises SentinelTypeEvaluationException: If a node value with a sentinel type is evaluated.
+        :raises ZipKeysException: If a zip keys issue occurs.
         """
         # We treat floats as strings in CBC files to preserve the original precision of version numbers.
         super().__init__(content, floats_as_strings=True)
@@ -130,6 +131,7 @@ class CbcParser(RecipeReader):
 
         :param value_list: list of JSON values to construct the zip keys from.
         :param comments_tbl: Table of comments.
+        :raises ZipKeysException: If a zip keys issue occurs.
         """
         is_list_of_lists: Final[bool] = isinstance(value_list, list) and all(
             isinstance(inner_list, list) and all(isinstance(elem, str) for elem in inner_list)
@@ -139,7 +141,7 @@ class CbcParser(RecipeReader):
             isinstance(elem, str) for elem in value_list
         )
         if not is_list_of_lists and not is_list_of_strings:
-            return
+            raise ZipKeysException(value_list)
 
         if is_list_of_strings:
             list_of_strings = cast(list[str], value_list)
