@@ -199,7 +199,8 @@ class CbcParser(RecipeReader):
             raise ValueError(f"CBC variable does not have a value for the provided selector query: {variable}")
         return default
 
-    def _validate_zip_keys(self, zip_keys: list[set[str]]) -> None:
+    @staticmethod
+    def _validate_zip_keys(zip_keys: list[set[str]]) -> None:
         """
         Validates the zip keys.
 
