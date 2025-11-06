@@ -264,7 +264,6 @@ class CbcParser(RecipeReader):
                 if key not in cbc_values:
                     raise ZipKeysException(zip_keys, f"Zip key not found in CBC values: {key}")
 
-    @no_type_check
     @staticmethod
     def _construct_default_variants_cbc() -> CbcParser:
         """
@@ -274,8 +273,12 @@ class CbcParser(RecipeReader):
         """
         default_variants = {}
         for key, value in DEFAULT_VARIANTS.items():
-            default_variants[key] = [value] if isinstance(value, Primitives) else value
-        return CbcParser(yaml.dump(default_variants, Dumper=ForceIndentDumper, sort_keys=False, width=sys.maxsize))
+            default_variants[key] = [value] if isinstance(value, PRIMITIVES_TUPLE) else value
+        return CbcParser(
+            yaml.dump(
+                default_variants, Dumper=ForceIndentDumper, sort_keys=False, width=sys.maxsize  # type: ignore[misc]
+            )
+        )
 
     @staticmethod
     def generate_cbc_values(cbc_files: list[CbcParser], selector_query: SelectorQuery) -> CbcOutputType:
@@ -291,7 +294,7 @@ class CbcParser(RecipeReader):
         """
 
         # Insert the default variants as the first CBC file
-        default_variants_cbc = cast(CbcParser, CbcParser._construct_default_variants_cbc())
+        default_variants_cbc = CbcParser._construct_default_variants_cbc()
         cbc_files.insert(0, default_variants_cbc)
 
         cbc_values: dict[str, list[Primitives]] = {}

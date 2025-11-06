@@ -139,7 +139,7 @@ class MultilineVariant(StrEnum):
 
 
 # NOTE: This is a copy of the default variants from conda-build.
-DEFAULT_VARIANTS: Final[JsonType] = {
+DEFAULT_VARIANTS: Final[dict[str, JsonType]] = {
     "python": f"{sys.version_info.major}.{sys.version_info.minor}",
     "numpy": {
         # (python): numpy_version,  # range of versions built for given python
