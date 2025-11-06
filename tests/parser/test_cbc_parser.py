@@ -7,7 +7,7 @@ from typing import Final, cast
 
 import pytest
 
-from conda_recipe_manager.parser.cbc_parser import _SPECIAL_KEYS, CbcOutputType, CbcParser
+from conda_recipe_manager.parser.cbc_parser import _SPECIAL_KEYS, CbcOutputType, CbcParser, GeneratedVariantsType
 from conda_recipe_manager.parser.platform_types import Platform
 from conda_recipe_manager.parser.selector_query import SelectorQuery
 from conda_recipe_manager.types import JsonType, Primitives
@@ -522,7 +522,7 @@ def _find_matching_variant(var_to_find: dict[str, JsonType], variants: list[dict
     ],
 )
 def test_generate_variants(
-    cbc_files: list[CbcParser], query: SelectorQuery, conda_build_variants: tuple[dict[str, JsonType]]
+    cbc_files: list[CbcParser], query: SelectorQuery, conda_build_variants: list[dict[str, JsonType]]
 ) -> None:
     """
     Validates generating the variants from a list of CBC files.
@@ -532,7 +532,7 @@ def test_generate_variants(
     :param conda_build_variants: Conda build variants to compare against.
     """
     # Generate the variants
-    generated_variants_original = cast(tuple[dict[str, JsonType]], CbcParser.generate_variants(cbc_files, query))
+    generated_variants_original = cast(GeneratedVariantsType, CbcParser.generate_variants(cbc_files, query))
     # Remove the ignored special keys from the expected variants
     expected_variants = [_remove_special_keys(variant) for variant in conda_build_variants]
     # Transform integers into their string representation in the generated variants to match conda_build's output
