@@ -1,0 +1,34 @@
+[project]
+name = "conda-recipe-manager"
+version = "0.1.0"
+description = "Add a short description here"
+authors = ["Wolf Vollprecht <w.vollprecht@gmail.com>"]
+channels = ["main", "r", "msys2"]
+platforms = ["osx-arm64", "linux-64"]
+
+[tasks]
+install_dev = "pip install ."
+test = "pytest ./tests"
+lint = "pre-commit run --all-files"
+convert = { cmd = "convert", depends_on = ["install_dev"] }
+
+[dependencies]
+black = "*"
+isort = "*"
+make = "*"
+mypy = "*"
+python = ">=3.11"
+pytest = "*"
+pytest-cov = "*"
+pytest-xdist = "*"
+pylint = "*"
+pip = "*"
+click = ">=8.1.7"
+conda = "*"
+jinja2 = "*"
+pyyaml = "*"
+types-pyyaml = "*"
+conda-build = "*"
+jsonschema = "*"
+types-jsonschema = "*"
+pre-commit = "*"
