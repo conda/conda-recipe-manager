@@ -13,6 +13,7 @@ from conda_recipe_manager.grapher.recipe_graph import RecipeGraph
 from conda_recipe_manager.parser.cbc_parser import CbcParser
 from conda_recipe_manager.parser.recipe_reader import RecipeReader
 from conda_recipe_manager.parser.recipe_reader_deps import RecipeReaderDeps
+from conda_recipe_manager.parser.types import RecipeReaderFlags
 from conda_recipe_manager.types import JsonType
 
 # Private string, calculated once, containing the path to the test files.
@@ -66,7 +67,8 @@ def load_recipe(file_name: Path | str, recipe_parser: Type[R], force_remove_jinj
     :returns: RecipeParser instance, based on the file
     """
     recipe: Final[str] = load_file(file_name)
-    return recipe_parser(recipe, force_remove_jinja)
+    flags = RecipeReaderFlags.FORCE_REMOVE_JINJA if force_remove_jinja else RecipeReaderFlags.NONE
+    return recipe_parser(recipe, flags)
 
 
 def load_recipe_graph(recipes: list[str]) -> RecipeGraph:

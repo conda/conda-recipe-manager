@@ -18,7 +18,7 @@ from conda_recipe_manager.parser.dependency import Dependency, DependencyConflic
 from conda_recipe_manager.parser.enums import SchemaVersion, SelectorConflictMode
 from conda_recipe_manager.parser.recipe_parser import RecipeParser
 from conda_recipe_manager.parser.recipe_parser_deps import RecipeParserDeps
-from conda_recipe_manager.parser.types import CURRENT_RECIPE_SCHEMA_FORMAT
+from conda_recipe_manager.parser.types import CURRENT_RECIPE_SCHEMA_FORMAT, RecipeReaderFlags
 from conda_recipe_manager.types import PRIMITIVES_NO_NONE_TUPLE, JsonPatchType, JsonType, PrimitivesNoNone, SentinelType
 
 
@@ -32,27 +32,20 @@ class RecipeParserConvert(RecipeParserDeps):
     # instance allocated for all converter-parsers that are initialized.
     _SPDX_UTILS: Final = SpdxUtils()
 
-    def __init__(self, content: str, force_remove_jinja: bool = False):
+    def __init__(self, content: str, flags: RecipeReaderFlags = RecipeReaderFlags.NONE):
         """
         Constructs a convertible recipe object. This extension of the parser class keeps a modified copy of the original
         recipe to work on and tracks some debugging state.
 
         :param content: conda-build formatted recipe file, as a single text string.
-        :param force_remove_jinja: Whether to force remove unsupported JINJA statements from the recipe file.
-            This flag exists to allow `crm convert` to attempt an upgrade with warnings instead of failing.
-            If this is set to True,
-                then unsupported JINJA statements will silently be removed from the recipe file.
-            If this is set to False,
-                then unsupported JINJA statements will trigger a ParsingJinjaException.
-        :raises ParsingJinjaException: If unsupported JINJA statements are present
-            and force_remove_jinja is set to False.
+        :param flags: Flags to control the behavior of the underlying recipe reader.
         :raises ParsingException: If the recipe file cannot be parsed for an unknown reason.
         """
-        super().__init__(content, force_remove_jinja)
+        super().__init__(content, flags)
         # `copy.deepcopy()` produced some bizarre artifacts, namely single-line comments were being incorrectly rendered
         # as list members. Although inefficient, we have tests that validate round-tripping the parser and there
         # is no development cost in utilizing tools we already must maintain.
-        self._v1_recipe: RecipeParserDeps = RecipeParserDeps(self.render(), force_remove_jinja)
+        self._v1_recipe: RecipeParserDeps = RecipeParserDeps(self.render(), flags)
 
         self._msg_tbl = MessageTable()
 

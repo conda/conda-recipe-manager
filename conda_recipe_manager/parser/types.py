@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import re
 import sys
-from enum import StrEnum
+from enum import Flag, StrEnum, auto
 from typing import Final
 
 from conda_recipe_manager.parser.enums import SchemaVersion
@@ -171,3 +171,22 @@ DEFAULT_VARIANTS: Final[dict[str, JsonType]] = {
     ],
     "cran_mirror": "https://cran.r-project.org",
 }
+
+
+# Flags for the recipe reader
+class RecipeReaderFlags(Flag):
+    """
+    Flags for controlling the behavior of the recipe reader.
+    NONE: No flags are set.
+    FORCE_REMOVE_JINJA: Whether to force remove unsupported JINJA statements from the recipe file.
+        If this is set to True,
+            then unsupported JINJA statements will silently be removed from the recipe file.
+        If this is set to False,
+            then unsupported JINJA statements will trigger a ParsingJinjaException.
+    FLOATS_AS_STRINGS: Whether to treat floats as strings. If this is set to True,
+        then floats will be treated as strings during parsing.
+    """
+
+    NONE = 0
+    FORCE_REMOVE_JINJA = auto()
+    FLOATS_AS_STRINGS = auto()

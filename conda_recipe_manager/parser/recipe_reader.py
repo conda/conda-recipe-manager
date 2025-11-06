@@ -52,7 +52,7 @@ from conda_recipe_manager.parser.exceptions import (
     SentinelTypeEvaluationException,
 )
 from conda_recipe_manager.parser.selector_parser import SelectorParser
-from conda_recipe_manager.parser.types import TAB_AS_SPACES, TAB_SPACE_COUNT, MultilineVariant
+from conda_recipe_manager.parser.types import TAB_AS_SPACES, TAB_SPACE_COUNT, MultilineVariant, RecipeReaderFlags
 from conda_recipe_manager.parser.v0_recipe_formatter import V0RecipeFormatter
 from conda_recipe_manager.types import PRIMITIVES_NO_NONE_TUPLE, PRIMITIVES_TUPLE, JsonType, Primitives, SentinelType
 from conda_recipe_manager.utils.cryptography.hashing import hash_str
@@ -672,23 +672,19 @@ class RecipeReader(IsModifiable):
         self._rebuild_selectors()
 
     def __init__(
-        self, content: str, force_remove_jinja: bool = False, floats_as_strings: bool = False
+        self, content: str, flags: RecipeReaderFlags = RecipeReaderFlags.NONE
     ):  # pylint: disable=super-init-not-called
         """
         Constructs a RecipeReader instance.
 
         :param content: conda-build formatted recipe file, as a single text string.
-        :param force_remove_jinja: Whether to force remove unsupported JINJA statements from the recipe file.
-            If this is set to True,
-                then unsupported JINJA statements will silently be removed from the recipe file.
-            If this is set to False,
-                then unsupported JINJA statements will trigger a ParsingJinjaException.
-        :param floats_as_strings: Whether to treat floats as strings. If this is set to True,
-            then floats will be treated as strings during parsing.
+        :param flags: Flags to control the behavior of the recipe reader.
         :raises ParsingJinjaException: If unsupported JINJA statements are present
-            and force_remove_jinja is set to False.
+            and RecipeReaderFlags.FORCE_REMOVE_JINJA is not set.
         :raises ParsingException: If the recipe file cannot be parsed for an unknown reason.
         """
+        force_remove_jinja: Final[bool] = RecipeReaderFlags.FORCE_REMOVE_JINJA in flags
+        floats_as_strings: Final[bool] = RecipeReaderFlags.FLOATS_AS_STRINGS in flags
         try:
             self._private_init(
                 content=content,
