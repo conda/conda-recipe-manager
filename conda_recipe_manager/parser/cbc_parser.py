@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import logging
 import sys
 from itertools import product
 from typing import Final, cast, no_type_check
@@ -34,6 +35,8 @@ _SPECIAL_KEYS: Final[set[str]] = {
     "ignore_version",
     "ignore_build_only_deps",
 }
+
+log: Final[logging.Logger] = logging.getLogger(__name__)
 
 
 class CbcParser(RecipeReader):
@@ -66,6 +69,7 @@ class CbcParser(RecipeReader):
         for variable, value_list in parsed_contents.items():
             # TODO: Handle these special keys ?
             if variable in _SPECIAL_KEYS:
+                log.info("Skipping special key: %s", variable)
                 continue
 
             # Handle single value variables
