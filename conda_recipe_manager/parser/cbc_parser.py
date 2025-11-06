@@ -51,6 +51,57 @@ class CbcParser(RecipeReader):
     # TODO: Add V1-support for the new CBC equivalent:
     #   https://prefix-dev.github.io/rattler-build/latest/variants/
 
+    def _construct_cbc_variable(self, path: str, value: JsonType, comments_tbl: dict[str, str]) -> NodeVar:
+        """
+        Constructs a CBC variable from the value and comment.
+
+        :param path: Path to the variable.
+        :param value: Value of the variable.
+        :param comments_tbl: Table of comments.
+        :returns: A `NodeVar` instance representing the CBC variable.
+        """
+        # Re-assemble the comment components. If successful, append it to the node.
+        # TODO Improve: This is not very efficient.
+        selector_str = "" if not self.contains_selector_at_path(path) else self.get_selector_at_path(path)
+        comment_str = comments_tbl.get(path, "")
+        combined_comment = f"{selector_str} {comment_str}"
+        return NodeVar(value, f"# {combined_comment}" if combined_comment.strip() else None)
+
+    def _construct_zip_keys(self, value_list: list[JsonType], comments_tbl: dict[str, str]) -> None:
+        """
+        Constructs the zip keys from the value list.
+
+        :param value_list: list of JSON values to construct the zip keys from.
+        :param comments_tbl: Table of comments.
+        :raises ZipKeysException: If a zip keys issue occurs.
+        """
+        is_list_of_lists: Final[bool] = isinstance(value_list, list) and all(
+            isinstance(inner_list, list) and all(isinstance(elem, str) for elem in inner_list)
+            for inner_list in value_list
+        )
+        is_list_of_strings: Final[bool] = isinstance(value_list, list) and all(
+            isinstance(elem, str) for elem in value_list
+        )
+        if not is_list_of_lists and not is_list_of_strings:
+            raise ZipKeysException(value_list)
+
+        if is_list_of_strings:
+            list_of_strings = cast(list[str], value_list)
+            node_var_list: list[NodeVar] = []
+            for i, elem in enumerate(list_of_strings):
+                path = f"/zip_keys/{i}"
+                node_var_list.append(self._construct_cbc_variable(path, elem, comments_tbl))
+            self._zip_keys.append(node_var_list)
+            return
+
+        list_of_lists = cast(list[list[str]], value_list)
+        for i, inner_list in enumerate(list_of_lists):
+            node_var_list: list[NodeVar] = []  # type: ignore
+            for j, elem in enumerate(inner_list):
+                path = f"/zip_keys/{i}/{j}"
+                node_var_list.append(self._construct_cbc_variable(path, elem, comments_tbl))
+            self._zip_keys.append(node_var_list)
+
     def __init__(self, content: str):
         """
         Constructs a CBC Parser instance from the contents of a CBC file.
@@ -108,57 +159,6 @@ class CbcParser(RecipeReader):
         if not isinstance(key, str):
             return False
         return key in self._cbc_vars_tbl
-
-    def _construct_cbc_variable(self, path: str, value: JsonType, comments_tbl: dict[str, str]) -> NodeVar:
-        """
-        Constructs a CBC variable from the value and comment.
-
-        :param path: Path to the variable.
-        :param value: Value of the variable.
-        :param comments_tbl: Table of comments.
-        :returns: A `NodeVar` instance representing the CBC variable.
-        """
-        # Re-assemble the comment components. If successful, append it to the node.
-        # TODO Improve: This is not very efficient.
-        selector_str = "" if not self.contains_selector_at_path(path) else self.get_selector_at_path(path)
-        comment_str = comments_tbl.get(path, "")
-        combined_comment = f"{selector_str} {comment_str}"
-        return NodeVar(value, f"# {combined_comment}" if combined_comment.strip() else None)
-
-    def _construct_zip_keys(self, value_list: list[JsonType], comments_tbl: dict[str, str]) -> None:
-        """
-        Constructs the zip keys from the value list.
-
-        :param value_list: list of JSON values to construct the zip keys from.
-        :param comments_tbl: Table of comments.
-        :raises ZipKeysException: If a zip keys issue occurs.
-        """
-        is_list_of_lists: Final[bool] = isinstance(value_list, list) and all(
-            isinstance(inner_list, list) and all(isinstance(elem, str) for elem in inner_list)
-            for inner_list in value_list
-        )
-        is_list_of_strings: Final[bool] = isinstance(value_list, list) and all(
-            isinstance(elem, str) for elem in value_list
-        )
-        if not is_list_of_lists and not is_list_of_strings:
-            raise ZipKeysException(value_list)
-
-        if is_list_of_strings:
-            list_of_strings = cast(list[str], value_list)
-            node_var_list: list[NodeVar] = []
-            for i, elem in enumerate(list_of_strings):
-                path = f"/zip_keys/{i}"
-                node_var_list.append(self._construct_cbc_variable(path, elem, comments_tbl))
-            self._zip_keys.append(node_var_list)
-            return
-
-        list_of_lists = cast(list[list[str]], value_list)
-        for i, inner_list in enumerate(list_of_lists):
-            node_var_list: list[NodeVar] = []  # type: ignore
-            for j, elem in enumerate(inner_list):
-                path = f"/zip_keys/{i}/{j}"
-                node_var_list.append(self._construct_cbc_variable(path, elem, comments_tbl))
-            self._zip_keys.append(node_var_list)
 
     def list_cbc_variables(self) -> list[str]:
         """
