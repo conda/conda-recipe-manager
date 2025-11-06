@@ -29,7 +29,6 @@ requirements:
     # TODO Future: click 8.2.1 is available on defaults and conda-forge now.
     - click >=8.1.7,<8.2.0
     - conda
-    - conda-build
     - jinja2
     - pyyaml
     - jsonschema

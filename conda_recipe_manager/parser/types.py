@@ -5,11 +5,12 @@
 from __future__ import annotations
 
 import re
+import sys
 from enum import StrEnum
 from typing import Final
 
 from conda_recipe_manager.parser.enums import SchemaVersion
-from conda_recipe_manager.types import Primitives, SchemaType
+from conda_recipe_manager.types import JsonType, Primitives, SchemaType
 
 #### Types ####
 
@@ -135,3 +136,38 @@ class MultilineVariant(StrEnum):
     # This variant works differently. The starting line must begin with a " and end with a \. Every subsequent line
     # then must start with a \ until an unescaped-closing-" is found.
     BACKSLASH_QUOTE = "\\"
+
+
+# NOTE: This is a copy of the default variants from conda-build.
+DEFAULT_VARIANTS: Final[JsonType] = {
+    "python": f"{sys.version_info.major}.{sys.version_info.minor}",
+    "numpy": {
+        # (python): numpy_version,  # range of versions built for given python
+        (3, 8): "1.22",  # 1.19-1.24
+        (3, 9): "1.22",  # 1.19-1.26
+        (3, 10): "1.22",  # 1.21-1.26
+        (3, 11): "1.23",  # 1.23-1.26
+        (3, 12): "1.26",  # 1.26-
+    }.get(
+        sys.version_info[:2], "1.26"  # type: ignore[misc]
+    ),
+    # this one actually needs to be pretty specific.  The reason is that cpan skeleton uses the
+    #    version to say what's in their standard library.
+    "perl": "5.26.2",
+    "lua": "5",
+    "r_base": "3.4" if sys.platform == "win32" else "3.5",
+    "cpu_optimization_target": "nocona",
+    "pin_run_as_build": {
+        "python": {"min_pin": "x.x", "max_pin": "x.x"},
+        "r-base": {"min_pin": "x.x", "max_pin": "x.x"},
+    },
+    "ignore_version": [],
+    "ignore_build_only_deps": ["python", "numpy"],
+    "extend_keys": [
+        "pin_run_as_build",
+        "ignore_version",
+        "ignore_build_only_deps",
+        "extend_keys",
+    ],
+    "cran_mirror": "https://cran.r-project.org",
+}

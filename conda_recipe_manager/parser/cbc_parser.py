@@ -9,13 +9,13 @@ from itertools import product
 from typing import Final, cast, no_type_check
 
 import yaml
-from conda_build.variants import DEFAULT_VARIANTS  # type: ignore[import-untyped]
 
 from conda_recipe_manager.parser._node_var import NodeVar
 from conda_recipe_manager.parser._types import ForceIndentDumper
 from conda_recipe_manager.parser.exceptions import ZipKeysException
 from conda_recipe_manager.parser.recipe_reader import RecipeReader
 from conda_recipe_manager.parser.selector_query import SelectorQuery
+from conda_recipe_manager.parser.types import DEFAULT_VARIANTS
 from conda_recipe_manager.types import PRIMITIVES_TUPLE, JsonType, Primitives, SentinelType
 
 # Internal variable table type
