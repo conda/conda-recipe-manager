@@ -111,6 +111,7 @@ class CbcParser(RecipeReader):
         :param path: Path to the variable.
         :param value: Value of the variable.
         :param comments_tbl: Table of comments.
+        :returns: A `NodeVar` instance representing the CBC variable.
         """
         # Re-assemble the comment components. If successful, append it to the node.
         # TODO Improve: This is not very efficient.
