@@ -532,7 +532,7 @@ def test_generate_variants(
     :param conda_build_variants: Conda build variants to compare against.
     """
     # Generate the variants
-    generated_variants_original = cast(GeneratedVariantsType, CbcParser.generate_variants(cbc_files, query))
+    generated_variants_original: GeneratedVariantsType = CbcParser.generate_variants(cbc_files, query)
     # Remove the ignored special keys from the expected variants
     expected_variants = [_remove_special_keys(variant) for variant in conda_build_variants]
     # Transform integers into their string representation in the generated variants to match conda_build's output

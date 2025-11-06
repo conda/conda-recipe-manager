@@ -7,7 +7,7 @@ from __future__ import annotations
 import logging
 import sys
 from itertools import product
-from typing import Final, cast, no_type_check
+from typing import Final, Iterable, cast
 
 import yaml
 
@@ -29,7 +29,7 @@ _CbcType = dict[str, list[JsonType] | dict[str, dict[str, str]]]
 CbcOutputType = tuple[dict[str, list[Primitives]], list[set[str]]]
 
 # Type that represents generated variants.
-GeneratedVariantsType = tuple[dict[str, JsonType]]
+GeneratedVariantsType = tuple[dict[str, JsonType], ...]
 
 # Special keys that are currently ignored by the CBC parser.
 _SPECIAL_KEYS: Final[set[str]] = {
@@ -321,7 +321,6 @@ class CbcParser(RecipeReader):
         CbcParser._validate_zip_keys_against_cbc_values(zip_keys, cbc_values)
         return cbc_values, zip_keys
 
-    @no_type_check
     @staticmethod
     def generate_variants(cbc_files: list[CbcParser], selector_query: SelectorQuery) -> GeneratedVariantsType:
         """
@@ -343,25 +342,29 @@ class CbcParser(RecipeReader):
         unzipped_keys: list[str] = list(initial_keys)
 
         all_keys: list[str | tuple[str, ...]] = unzipped_keys + zip_keys_tuples
-        all_values: list[list[Primitives | tuple[Primitives]]] = []
+        all_values: list[list[Primitives] | list[tuple[Primitives]]] = []
         for key in unzipped_keys:
             all_values.append(cbc_values[key])
         for key_tuple in zip_keys_tuples:
-            zipped_values = zip(*[cbc_values[key_elem] for key_elem in key_tuple])
+            zipped_values = cast(Iterable[tuple[Primitives]], zip(*[cbc_values[key_elem] for key_elem in key_tuple]))
             all_values.append(list(zipped_values))
 
         all_combinations = product(*all_values)
-        list_of_variants = []
+        list_of_variants: list[dict[str, JsonType]] = []
         for combo in all_combinations:
-            new_variant = {}
+            new_variant: dict[str, JsonType] = {}
             # Initialize with zip_keys and target_platform to match conda_build's format.
             new_variant["zip_keys"] = [list(zip_key_set) for zip_key_set in zip_keys]
             new_variant["target_platform"] = selector_query.platform
-            for key, value in zip(all_keys, combo):
+            zip_iterable = cast(
+                Iterable[tuple[str | tuple[str, ...], Primitives | tuple[Primitives]]], zip(all_keys, combo)
+            )
+            for key_or_tuple, value in zip_iterable:
                 if not isinstance(value, tuple):
-                    new_variant[key] = value
+                    key_str = cast(str, key_or_tuple)
+                    new_variant[key_str] = value
                     continue
-                for key_elem, value_elem in zip(key, value):
+                for key_elem, value_elem in zip(key_or_tuple, value):
                     new_variant[key_elem] = value_elem
             list_of_variants.append(new_variant)
-        return tuple(list_of_variants)
+        return tuple[dict[str, JsonType], ...](list_of_variants)
