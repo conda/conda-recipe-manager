@@ -21,7 +21,6 @@ dependencies:
   - jinja2
   - pyyaml
   - types-pyyaml
-  - conda-build
   - jsonschema
   - types-jsonschema
   - requests

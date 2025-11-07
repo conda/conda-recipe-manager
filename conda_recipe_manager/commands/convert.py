@@ -22,7 +22,7 @@ from conda_recipe_manager.parser._message_table import MessageCategory, MessageT
 from conda_recipe_manager.parser.enums import SchemaVersion
 from conda_recipe_manager.parser.exceptions import ParsingException, ParsingJinjaException
 from conda_recipe_manager.parser.recipe_parser_convert import RecipeParserConvert
-from conda_recipe_manager.parser.types import V0_FORMAT_RECIPE_FILE_NAME, V1_FORMAT_RECIPE_FILE_NAME
+from conda_recipe_manager.parser.types import V0_FORMAT_RECIPE_FILE_NAME, V1_FORMAT_RECIPE_FILE_NAME, RecipeReaderFlags
 
 # When performing a bulk operation, overall "success" is indicated by the % of recipe files that were converted
 # "successfully"
@@ -156,7 +156,7 @@ def convert_file(
             "They will be removed and parsing will be attempted again.",
         )
         try:
-            parser = RecipeParserConvert(recipe_content, force_remove_jinja=True)
+            parser = RecipeParserConvert(recipe_content, flags=RecipeReaderFlags.FORCE_REMOVE_JINJA)
         except ParsingException as e1:
             return _record_unrecoverable_failure(
                 conversion_result,

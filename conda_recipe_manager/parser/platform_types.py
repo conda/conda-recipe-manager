@@ -35,15 +35,30 @@ class Arch(StrEnum):
     SYS_390 = "s390x"
     X_86 = "x86"
     X_86_64 = "x86_64"
+    AARCH_64 = "aarch64"
     ARM_64 = "arm64"
     ARM_V6L = "armv6l"
     ARM_V7L = "armv7l"
-    PPC_64 = "ppc64"
     PPC_64_LE = "ppc64le"
 
 
 # Set of all Architecture options
 ALL_ARCHITECTURES: Final[set[Arch]] = set(Arch)
+
+
+class PlatformAlias(StrEnum):
+    """
+    Platform alias enumeration. These are selectors that can reference a platform directly.
+    """
+
+    LINUX_32 = "linux32"
+    LINUX_64 = "linux64"
+    WIN_32 = "win32"
+    WIN_64 = "win64"
+
+
+# Set of all PlatformAlias options
+ALL_PLATFORM_ALIASES: Final[set[PlatformAlias]] = set(PlatformAlias)
 
 
 class Platform(StrEnum):
@@ -57,9 +72,7 @@ class Platform(StrEnum):
     LINUX_AARCH_64 = "linux-aarch64"
     LINUX_ARM_V6L = "linux-armv6l"
     LINUX_ARM_V7L = "linux-armv7l"
-    LINUX_PPC_64 = "linux-ppc64"
     LINUX_PPC_64_LE = "linux-ppc64le"
-    LINUX_RISC_V64 = "linux-riscv64"
     LINUX_SYS_390 = "linux-s390x"
     # OSX
     OSX_64 = "osx-64"
@@ -82,7 +95,7 @@ ALL_PLATFORMS: Final[set[Platform]] = set(Platform)
 NO_ARCH: Final[str] = "noarch"
 
 # Type alias for any enumeration that could represent a set of target build platforms
-PlatformQualifiers = Arch | OperatingSystem | Platform
+PlatformQualifiers = Arch | OperatingSystem | PlatformAlias
 
 
 def get_platforms_by_arch(arch: Arch | str) -> set[Platform]:
@@ -108,14 +121,14 @@ def get_platforms_by_arch(arch: Arch | str) -> set[Platform]:
             return {Platform.LINUX_32, Platform.WIN_32} | x86_64_set
         case Arch.X_86_64:
             return x86_64_set
+        case Arch.AARCH_64:
+            return {Platform.LINUX_AARCH_64}
         case Arch.ARM_64:
             return {Platform.OSX_ARM_64, Platform.WIN_ARM_64}
         case Arch.ARM_V6L:
             return {Platform.LINUX_ARM_V6L}
         case Arch.ARM_V7L:
             return {Platform.LINUX_ARM_V7L}
-        case Arch.PPC_64:
-            return {Platform.LINUX_PPC_64}
         case Arch.PPC_64_LE:
             return {Platform.LINUX_PPC_64_LE}
 
@@ -143,9 +156,7 @@ def get_platforms_by_os(os: OperatingSystem | str) -> set[Platform]:
         Platform.LINUX_AARCH_64,
         Platform.LINUX_ARM_V6L,
         Platform.LINUX_ARM_V7L,
-        Platform.LINUX_PPC_64,
         Platform.LINUX_PPC_64_LE,
-        Platform.LINUX_RISC_V64,
         Platform.LINUX_SYS_390,
     }
 
@@ -162,3 +173,27 @@ def get_platforms_by_os(os: OperatingSystem | str) -> set[Platform]:
                 Platform.WIN_64,
                 Platform.WIN_ARM_64,
             }
+
+
+def get_platforms_by_alias(alias: PlatformAlias | str) -> set[Platform]:
+    """
+    Given a platform alias, return the list of supported build platforms.
+
+    :param alias: Target platform alias
+    :returns: Set of supported platforms for that alias. An empty set is returned if no matching alias is found.
+    """
+    if isinstance(alias, str):
+        alias_sanitized: Final[str] = alias.strip().lower()
+        if not alias_sanitized in ALL_PLATFORM_ALIASES:
+            return set()
+        alias = PlatformAlias(alias_sanitized)
+
+    match alias:
+        case PlatformAlias.LINUX_32:
+            return {Platform.LINUX_32}
+        case PlatformAlias.LINUX_64:
+            return {Platform.LINUX_64}
+        case PlatformAlias.WIN_32:
+            return {Platform.WIN_32}
+        case PlatformAlias.WIN_64:
+            return {Platform.WIN_64}

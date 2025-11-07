@@ -17,6 +17,7 @@ from conda_recipe_manager.ops.exceptions import VersionBumperInvalidState, Versi
 from conda_recipe_manager.parser.recipe_parser import RecipeParser, ReplacePatchFunc
 from conda_recipe_manager.parser.recipe_parser_deps import RecipeParserDeps
 from conda_recipe_manager.parser.recipe_reader_deps import RecipeReaderDeps
+from conda_recipe_manager.parser.types import RecipeReaderFlags
 from conda_recipe_manager.types import JsonPatchType, JsonType
 
 log: Final = logging.getLogger(__name__)
@@ -210,7 +211,7 @@ class VersionBumper:
 
         recipe_content: Final = self._recipe_path.read_text(encoding="utf-8")
         self._recipe_parser = RecipeParserDeps(
-            VersionBumper._pre_process_cleanup(recipe_content), force_remove_jinja=True
+            VersionBumper._pre_process_cleanup(recipe_content), flags=RecipeReaderFlags.FORCE_REMOVE_JINJA
         )
         self._post_process_cleanup()
 

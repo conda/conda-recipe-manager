@@ -8,7 +8,7 @@ import json
 from typing import Optional
 
 from conda_recipe_manager.parser._node import Node
-from conda_recipe_manager.types import JsonPatchType
+from conda_recipe_manager.types import JsonPatchType, JsonType
 
 
 class BaseParserException(Exception):
@@ -72,6 +72,35 @@ class SentinelTypeEvaluationException(BaseParserException):
             f"A sentinel type was encountered during node value evaluation: {node}.\n"
             "Please report this issue at https://github.com/conda/conda-recipe-manager/issues."
         )
+
+
+class ZipKeysException(BaseParserException):
+    """
+    Exception raised when invalid zip keys are encountered.
+    """
+
+    def __init__(self, zip_keys: list[set[str]] | list[JsonType], message: str = "Invalid zip keys were encountered"):
+        """
+        Constructs a zip keys exception.
+
+        :param zip_keys: List of zip keys that were encountered.
+        :param message: String description of the issue encountered.
+        """
+        super().__init__(f"{message}: {zip_keys}")
+
+
+class SelectorSyntaxError(BaseParserException):
+    """
+    Exception raised when a selector syntax is invalid.
+    """
+
+    def __init__(self, message: str):
+        """
+        Constructs a selector syntax error exception.
+
+        :param message: String description of the issue encountered.
+        """
+        super().__init__(f"Selector syntax error: {message}")
 
 
 class ParsingException(BaseParserException):

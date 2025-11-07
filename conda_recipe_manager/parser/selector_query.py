@@ -13,3 +13,4 @@ class SelectorQuery(NamedTuple):
     """
 
     platform: Optional[Platform] = None
+    build_env_vars: set[str] = set()

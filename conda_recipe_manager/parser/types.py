@@ -5,11 +5,12 @@
 from __future__ import annotations
 
 import re
-from enum import StrEnum
+import sys
+from enum import Flag, StrEnum, auto
 from typing import Final
 
 from conda_recipe_manager.parser.enums import SchemaVersion
-from conda_recipe_manager.types import Primitives, SchemaType
+from conda_recipe_manager.types import JsonType, Primitives, SchemaType
 
 #### Types ####
 
@@ -110,6 +111,9 @@ OPPOSITE_OPS: Final[list[tuple[str, str]]] = [
 # Python skip selector regex
 PYTHON_SKIP_PATTERN: Final[re.Pattern[str]] = re.compile(r"py[ \t]*([~!<>=]=|>|<)[ \t]*\d\d+")
 
+# Comparison operator regex (with optional whitespace)
+COMPARISON_OPERATOR_PATTERN: Final[re.Pattern[str]] = re.compile(r"[ \t]*([~!<>=]=|>|<)[ \t]*")
+
 
 class MultilineVariant(StrEnum):
     """
@@ -132,3 +136,57 @@ class MultilineVariant(StrEnum):
     # This variant works differently. The starting line must begin with a " and end with a \. Every subsequent line
     # then must start with a \ until an unescaped-closing-" is found.
     BACKSLASH_QUOTE = "\\"
+
+
+# NOTE: This is a copy of the default variants from conda-build.
+DEFAULT_VARIANTS: Final[dict[str, JsonType]] = {
+    "python": f"{sys.version_info.major}.{sys.version_info.minor}",
+    "numpy": {
+        # (python): numpy_version,  # range of versions built for given python
+        (3, 8): "1.22",  # 1.19-1.24
+        (3, 9): "1.22",  # 1.19-1.26
+        (3, 10): "1.22",  # 1.21-1.26
+        (3, 11): "1.23",  # 1.23-1.26
+        (3, 12): "1.26",  # 1.26-
+    }.get(
+        sys.version_info[:2], "1.26"  # type: ignore[misc]
+    ),
+    # this one actually needs to be pretty specific.  The reason is that cpan skeleton uses the
+    #    version to say what's in their standard library.
+    "perl": "5.26.2",
+    "lua": "5",
+    "r_base": "3.4" if sys.platform == "win32" else "3.5",
+    "cpu_optimization_target": "nocona",
+    "pin_run_as_build": {
+        "python": {"min_pin": "x.x", "max_pin": "x.x"},
+        "r-base": {"min_pin": "x.x", "max_pin": "x.x"},
+    },
+    "ignore_version": [],
+    "ignore_build_only_deps": ["python", "numpy"],
+    "extend_keys": [
+        "pin_run_as_build",
+        "ignore_version",
+        "ignore_build_only_deps",
+        "extend_keys",
+    ],
+    "cran_mirror": "https://cran.r-project.org",
+}
+
+
+# Flags for the recipe reader
+class RecipeReaderFlags(Flag):
+    """
+    Flags for controlling the behavior of the recipe reader.
+    NONE: No flags are set.
+    FORCE_REMOVE_JINJA: Whether to force remove unsupported JINJA statements from the recipe file.
+        If this is set to True,
+            then unsupported JINJA statements will silently be removed from the recipe file.
+        If this is set to False,
+            then unsupported JINJA statements will trigger a ParsingJinjaException.
+    FLOATS_AS_STRINGS: Whether to treat floats as strings. If this is set to True,
+        then floats will be treated as strings during parsing.
+    """
+
+    NONE = 0
+    FORCE_REMOVE_JINJA = auto()
+    FLOATS_AS_STRINGS = auto()

@@ -5,23 +5,26 @@
 
 from __future__ import annotations
 
-from typing import Final, Optional
+from typing import Final, Optional, Union
 
 from conda_recipe_manager.parser._is_modifiable import IsModifiable
 from conda_recipe_manager.parser._types import Regex
 from conda_recipe_manager.parser.enums import ALL_LOGIC_OPS, LogicOp, SchemaVersion
+from conda_recipe_manager.parser.exceptions import SelectorSyntaxError
 from conda_recipe_manager.parser.platform_types import (
     ALL_ARCHITECTURES,
     ALL_OPERATING_SYSTEMS,
-    ALL_PLATFORMS,
+    ALL_PLATFORM_ALIASES,
     Arch,
     OperatingSystem,
-    Platform,
+    PlatformAlias,
     PlatformQualifiers,
+    get_platforms_by_alias,
     get_platforms_by_arch,
     get_platforms_by_os,
 )
 from conda_recipe_manager.parser.selector_query import SelectorQuery
+from conda_recipe_manager.parser.types import COMPARISON_OPERATOR_PATTERN
 
 # A selector is comprised of known operators and special types, or (in V0 recipes) arbitrary Python strings
 SelectorValue = LogicOp | PlatformQualifiers | str
@@ -42,8 +45,8 @@ class _SelectorNode:
         # Enumerate special/known selector types
         def _init_value() -> SelectorValue:
             lower_val: Final[str] = value.lower()
-            if lower_val in ALL_PLATFORMS:
-                return Platform(lower_val)
+            if lower_val in ALL_PLATFORM_ALIASES:
+                return PlatformAlias(lower_val)
             if lower_val in ALL_OPERATING_SYSTEMS:
                 return OperatingSystem(lower_val)
             if lower_val in ALL_ARCHITECTURES:
@@ -83,6 +86,18 @@ class _SelectorNode:
         """
         return self.value in ALL_LOGIC_OPS
 
+    def is_operator(self) -> bool:
+        """
+        Indicates if the node represents an operator
+
+        :returns: True if the node represents an operator
+        """
+        return self.is_logical_op() and self.l_node is None and self.r_node is None
+
+
+# Type alias for a nested list of _SelectorNode objects.
+SelectorNodeNestedList = list[Union[_SelectorNode, "SelectorNodeNestedList"]]
+
 
 class SelectorParser(IsModifiable):
     """
@@ -105,54 +120,159 @@ class SelectorParser(IsModifiable):
         return match.group(0)
 
     @staticmethod
-    def _process_postfix_stack(stack: list[_SelectorNode]) -> Optional[_SelectorNode]:
+    def _reduce_not_op(tokens: list[_SelectorNode]) -> list[_SelectorNode]:
         """
-        Recursively processes the postfix stack of nodes, building a tree
+        Reduces a list of tokens by applying the NOT operator
 
-        :returns: Current node in the tree
+        :param tokens: List of tokens to reduce
+        :raises SelectorSyntaxError: If the selector syntax is invalid
+        :returns: List of reduced tokens
         """
-        if not stack:
-            return None
-        cur = stack.pop()
-        match cur.value:
-            case LogicOp.NOT:
-                cur.l_node = SelectorParser._process_postfix_stack(stack)
-            case LogicOp.AND | LogicOp.OR:
-                cur.r_node = SelectorParser._process_postfix_stack(stack)
-                cur.l_node = SelectorParser._process_postfix_stack(stack)
-        return cur
+        new_tokens = []
+        idx = 0
+        while idx < len(tokens):
+            token = tokens[idx]
+            if not (token.is_operator() and token.value == LogicOp.NOT):
+                new_tokens.append(token)
+                idx += 1
+                continue
+            if idx + 1 >= len(tokens) or tokens[idx + 1].is_operator():
+                raise SelectorSyntaxError(
+                    f"Expected NOT operator to be followed by a single operand, got {tokens[idx + 1]}: {tokens}"
+                )
+            token.l_node = tokens[idx + 1]
+            new_tokens.append(token)
+            idx += 2
+        return new_tokens
 
     @staticmethod
-    def _parse_selector_tree(tokens: list[str]) -> Optional[_SelectorNode]:
+    def _reduce_op(op: LogicOp, tokens: list[_SelectorNode]) -> list[_SelectorNode]:
+        """
+        Reduces a list of tokens by applying the given operator
+
+        :param op: Operator to apply
+        :param tokens: List of tokens to reduce
+        :raises SelectorSyntaxError: If the selector syntax is invalid
+        :returns: List of reduced tokens
+        """
+        new_tokens = []
+        idx = 0
+        cur_operand = tokens[0]
+        while idx < len(tokens):
+            if cur_operand.is_operator():
+                raise SelectorSyntaxError(f"Expected operand, got {cur_operand}: {tokens}")
+            if idx == len(tokens) - 1:
+                new_tokens.append(cur_operand)
+                break
+            operator = tokens[idx + 1]
+            if not operator.is_operator():
+                raise SelectorSyntaxError(f"Expected operator, got {operator}: {tokens}")
+            if operator.value != op:
+                new_tokens.append(cur_operand)
+                new_tokens.append(operator)
+                idx += 2
+                cur_operand = tokens[idx]
+                continue
+            if idx + 2 >= len(tokens) or tokens[idx + 2].is_operator():
+                raise SelectorSyntaxError(
+                    f"Did not find a second operand after the operator {operator} while reducing {op}: {tokens}"
+                )
+            operator.l_node = cur_operand
+            operator.r_node = tokens[idx + 2]
+            idx += 2
+            cur_operand = operator
+        return new_tokens
+
+    @staticmethod
+    def _parse_selector_subtree(tokens: list[_SelectorNode]) -> _SelectorNode:
+        """
+        Constructs a selector parse subtree
+
+        :param tokens: Selector tokens to process
+        :raises SelectorSyntaxError: If the selector syntax is invalid
+        :returns: The root of the parse subtree
+        """
+        if not isinstance(tokens, list) or not tokens:
+            raise SelectorSyntaxError(f"Expected a non-empty list of tokens, got {tokens}")
+
+        if len(tokens) == 1:
+            return tokens[0]
+        # Handle NOT operators first
+        tokens = SelectorParser._reduce_not_op(tokens)
+        if len(tokens) == 1:
+            return tokens[0]
+        # Handle AND operators second
+        tokens = SelectorParser._reduce_op(LogicOp.AND, tokens)
+        if len(tokens) == 1:
+            return tokens[0]
+        # Handle OR operators third
+        tokens = SelectorParser._reduce_op(LogicOp.OR, tokens)
+        if len(tokens) == 1:
+            return tokens[0]
+        raise SelectorSyntaxError(f"Expected 1 token, got {len(tokens)}: {tokens}")
+
+    @staticmethod
+    def _parse_selector_tree(tokens: SelectorNodeNestedList) -> _SelectorNode:
         """
         Constructs a selector parse tree
 
         :param tokens: Selector tokens to process
+        :raises SelectorSyntaxError: If the selector syntax is invalid
         :returns: The root of the parse tree
         """
+        if not tokens:
+            raise SelectorSyntaxError(f"Expected a non-empty list of tokens, got {tokens}")
+        list_of_nodes: list[_SelectorNode] = []
+        for token in tokens:
+            if isinstance(token, list):
+                subtree_root = SelectorParser._parse_selector_tree(token)
+                list_of_nodes.append(subtree_root)
+            else:
+                list_of_nodes.append(token)
+        tree_root = SelectorParser._parse_selector_subtree(list_of_nodes)
+        return tree_root
 
-        # Shunting yard
-        op_stack: list[_SelectorNode] = []
-        postfix_stack: list[_SelectorNode] = []
-        while tokens:
-            node = _SelectorNode(tokens.pop(0))
-            if node.is_logical_op():
-                # `NOT` has the highest precedence. For example:
-                #   - `not osx and win` is interpreted as `(not osx) and win`
-                #   - In Python, `not True or True` is interpreted as `(not True) or True`, returning `True`
-                if node.value != LogicOp.NOT:
-                    while op_stack and op_stack[-1].value == LogicOp.NOT:
-                        postfix_stack.append(op_stack.pop())
-                op_stack.append(node)
-                continue
-            postfix_stack.append(node)
+    @staticmethod
+    def _find_space_or_parenthesis(content: str, idx: int) -> int:
+        """
+        Finds the next space or parenthesis in the content
 
-        while op_stack:
-            postfix_stack.append(op_stack.pop())
+        :param content: Content to search
+        :param idx: Index to start searching from
+        :returns: Index of the next space or parenthesis, or length of the content if no space or parenthesis is found
+        """
+        while idx < len(content):
+            if content[idx] == " " or content[idx] == ")":
+                return idx
+            idx += 1
+        return len(content)
 
-        root = SelectorParser._process_postfix_stack(postfix_stack)
+    @staticmethod
+    def _pre_process_selector_content(content: str, idx: int = 0) -> tuple[SelectorNodeNestedList, int]:
+        """
+        Pre-processes the selector content
 
-        return root
+        :param content: Selector content to process to be parsed
+        :param idx: Index to start processing from
+        :returns: Tuple containing a list of selector nodes and the index of the next character to process
+        """
+        if not content:
+            return [], 0
+        tokens: SelectorNodeNestedList = []
+        while idx < len(content):
+            if content[idx] == ")":
+                return tokens, idx + 1
+            if content[idx] == "(":
+                sub_tree, idx = SelectorParser._pre_process_selector_content(content, idx + 1)
+                tokens.append(sub_tree)
+            elif content[idx] == " ":
+                idx += 1
+            else:
+                end_idx = SelectorParser._find_space_or_parenthesis(content, idx)
+                node = _SelectorNode(content[idx:end_idx])
+                tokens.append(node)
+                idx = end_idx
+        return tokens, idx
 
     def __init__(self, content: str, schema_version: SchemaVersion):
         """
@@ -161,19 +281,33 @@ class SelectorParser(IsModifiable):
         :param content: Selector string to parse
         :param schema_version: Schema the recipe uses
         """
+
         super().__init__()
         self._schema_version: Final[SchemaVersion] = schema_version
 
         # Sanitizes content string
         def _init_content() -> str:
+            initial_content = content
             # TODO Future: validate with Selector regex for consistency, not string indexing.
-            if self._schema_version == SchemaVersion.V0 and content and content[0] == "[" and content[-1] == "]":
-                return content[1:-1]
-            return content
+            if (
+                self._schema_version == SchemaVersion.V0
+                and initial_content
+                and initial_content[0] == "["
+                and initial_content[-1] == "]"
+            ):
+                initial_content = initial_content[1:-1]
+            # TODO: Handle comparison operators. For now, we'll just remove whitespace around them.
+            # This will cause the parser to treat the whole expression as a single node
+            # (e.g. `py >= 3.10` becomes `py>=3.10`).
+            initial_content = COMPARISON_OPERATOR_PATTERN.sub(r"\1", initial_content)
+            return initial_content
 
         self._content: Final[str] = _init_content()
 
-        self._root = SelectorParser._parse_selector_tree(self._content.split())
+        pre_processed_content, _ = SelectorParser._pre_process_selector_content(self._content)
+        self._root: Optional[_SelectorNode] = (
+            SelectorParser._parse_selector_tree(pre_processed_content) if pre_processed_content else None
+        )
 
     def __str__(self) -> str:
         """
@@ -194,39 +328,6 @@ class SelectorParser(IsModifiable):
         # TODO Improve: This is a short-hand for checking if the two parse trees are the same
         return self._schema_version == other._schema_version and str(self) == str(other)
 
-    def get_selected_platforms(self) -> set[Platform]:
-        """
-        Returns the set of platforms selected by this selector
-
-        :returns: Set of platforms selected for by the target selector.
-        """
-
-        # Recursive helper function that performs a post-order traversal
-        def _eval_node(node: Optional[_SelectorNode]) -> set[Platform]:
-            # Typeguard base-case
-            if node is None:
-                return set()
-
-            match node.value:
-                case Platform():
-                    return {node.value}
-                case Arch():
-                    return get_platforms_by_arch(node.value)
-                case OperatingSystem():
-                    return get_platforms_by_os(node.value)
-                case LogicOp():
-                    match node.value:
-                        case LogicOp.NOT:
-                            return ALL_PLATFORMS - _eval_node(node.l_node)
-                        case LogicOp.AND:
-                            return _eval_node(node.l_node) & _eval_node(node.r_node)
-                        case LogicOp.OR:
-                            return _eval_node(node.l_node) | _eval_node(node.r_node)
-                case _:
-                    return set()
-
-        return _eval_node(self._root)
-
     def does_selector_apply(self, query: SelectorQuery) -> bool:
         """
         Determines if this selector applies to the current target environment.
@@ -234,14 +335,39 @@ class SelectorParser(IsModifiable):
         :param query: Target environment constraints.
         :returns: True if the selector applies to the current situation. False otherwise.
         """
-        # TODO support more than platforms
+        # No selector? No problem!
+        if self._root is None:
+            return True
+        # No platform with a non-empty selector is actually a problem
+        # a platform is required to meaningfully evaluate the selector.
+        if query.platform is None:
+            return False
 
-        platform_set: Final[set[Platform]] = self.get_selected_platforms()
-        if query.platform is not None:
-            return query.platform in platform_set
+        # Recursive helper function that performs a post-order traversal
+        def _eval_node(node: Optional[_SelectorNode]) -> bool:
+            # Typeguard base-case
+            if node is None:
+                return False
 
-        # No constraints? No problem!
-        return True
+            match node.value:
+                case PlatformAlias():
+                    return query.platform in get_platforms_by_alias(node.value)
+                case Arch():
+                    return query.platform in get_platforms_by_arch(node.value)
+                case OperatingSystem():
+                    return query.platform in get_platforms_by_os(node.value)
+                case LogicOp():
+                    match node.value:
+                        case LogicOp.NOT:
+                            return not _eval_node(node.l_node)
+                        case LogicOp.AND:
+                            return _eval_node(node.l_node) and _eval_node(node.r_node)
+                        case LogicOp.OR:
+                            return _eval_node(node.l_node) or _eval_node(node.r_node)
+                case str():
+                    return node.value in query.build_env_vars
+
+        return _eval_node(self._root)
 
     def render(self) -> str:
         """
