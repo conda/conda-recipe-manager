@@ -1,0 +1,59 @@
+{% set name = "trustme" %}
+{% set version = "1.2.1" %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  url: https://pypi.org/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz
+  sha256: 6528ba2bbc7f2db41f33825c8dd13e3e3eb9d334ba0f909713c8c3139f4ae47f
+
+build:
+  number: 1
+  script: {{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
+  skip: true  # [py<39]
+
+requirements:
+  host:
+    - pip
+    - python
+    - hatchling
+  run:
+    - python
+    - cryptography >=3.1
+    - idna >=2.0
+
+test:
+  source_files:
+    - tests
+  imports:
+    - trustme
+  commands:
+    - pip check
+    - python -c "from importlib.metadata import version; assert(version('{{ name }}')=='{{ version }}')"
+    - pytest
+  requires:
+    - pip
+    - pytest
+    - pyopenssl
+    - service_identity
+
+about:
+  home: https://trustme.readthedocs.io
+  # Single quotes are required here to avoid YAML rendering the hash symbol as a comment.
+  summary: '#1 quality TLS certs while you wait, for the discerning tester'
+  license: Apache-2.0 or MIT
+  license_family: MIT
+  license_file:
+    - LICENSE.MIT
+    - LICENSE.APACHE2
+  description: |
+    trustme is a tiny Python package that does one thing: it gives you a fake certificate authority (CA)
+    that you can use to generate fake TLS certs to use in your tests.
+  dev_url: https://github.com/python-trio/trustme
+  doc_url: https://trustme.readthedocs.io
+
+extra:
+  recipe-maintainers:
+    - bollwyvl
