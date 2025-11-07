@@ -568,7 +568,7 @@ class RecipeReader(IsModifiable):
         return str(sanitized_fmt), tof_comment_cntr
 
     def _private_init(
-        self, content: str, internal_call: bool, force_remove_jinja: bool = False, floats_as_strings: bool = False
+        self, content: str, internal_call: bool, flags: RecipeReaderFlags = RecipeReaderFlags.NONE
     ) -> None:
         """
         Private constructor for internal RecipeReader use. This constructor is called by `__init__()` and
@@ -576,21 +576,17 @@ class RecipeReader(IsModifiable):
 
         :param content: conda-build formatted recipe file, as a single text string.
         :param internal_call: Whether this is an internal call. If true, we cannot determine if the recipe is V0 or V1.
-        :param force_remove_jinja: Whether to force remove unsupported JINJA statements from the recipe file.
-            If this is set to True,
-                then unsupported JINJA statements will silently be removed from the recipe file.
-            If this is set to False,
-                then unsupported JINJA statements will trigger a ParsingJinjaException.
-        :param floats_as_strings: Whether to treat floats as strings. If this is set to True,
-            then floats will be treated as strings during parsing.
+        :param flags: Flags to control the behavior of the recipe reader.
         :raises ParsingJinjaException: If unsupported JINJA statements are present
-            and force_remove_jinja is set to False.
+            and RecipeReaderFlags.FORCE_REMOVE_JINJA is not set.
         """
         super().__init__()
         # The initial, raw, text is preserved for diffing and debugging purposes
         # Note: _init_content should be Final, but mypy requires Final attributes to be declared in __init__
         # See https://mypy.readthedocs.io/en/stable/final_attrs.html#syntax-variants
         self._init_content: str = content
+        force_remove_jinja: Final[bool] = RecipeReaderFlags.FORCE_REMOVE_JINJA in flags
+        floats_as_strings: Final[bool] = RecipeReaderFlags.FLOATS_AS_STRINGS in flags
         self._yaml_loader: type[SafeLoader] = StringLoader if floats_as_strings else SafeLoader
 
         sanitized_yaml, tof_comment_cntr = self._init_schema_version_and_sanitize_v0_yaml(
@@ -683,14 +679,11 @@ class RecipeReader(IsModifiable):
             and RecipeReaderFlags.FORCE_REMOVE_JINJA is not set.
         :raises ParsingException: If the recipe file cannot be parsed for an unknown reason.
         """
-        force_remove_jinja: Final[bool] = RecipeReaderFlags.FORCE_REMOVE_JINJA in flags
-        floats_as_strings: Final[bool] = RecipeReaderFlags.FLOATS_AS_STRINGS in flags
         try:
             self._private_init(
                 content=content,
                 internal_call=False,
-                force_remove_jinja=force_remove_jinja,
-                floats_as_strings=floats_as_strings,
+                flags=flags,
             )
         # If the expected exception is thrown, log then raise it.
         except ParsingException as e:
