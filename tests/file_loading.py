@@ -67,7 +67,9 @@ def load_recipe(file_name: Path | str, recipe_parser: Type[R], force_remove_jinj
     :returns: RecipeParser instance, based on the file
     """
     recipe: Final[str] = load_file(file_name)
-    flags = RecipeReaderFlags.FORCE_REMOVE_JINJA if force_remove_jinja else RecipeReaderFlags.NONE
+    flags: Final[RecipeReaderFlags] = (
+        RecipeReaderFlags.FORCE_REMOVE_JINJA if force_remove_jinja else RecipeReaderFlags.NONE
+    )
     return recipe_parser(recipe, flags)
 
 
