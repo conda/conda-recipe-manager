@@ -952,6 +952,13 @@ def test_contains_value(file: str, path: str, expected: bool) -> None:
         # Check that lists of lists are retrieved correctly
         ("cbc_files/anaconda_cbc_01.yaml", "/zip_keys", False, [["python", "numpy"]]),
         ("list_collection.yaml", "/", False, {"zip_keys": [["python", "numpy"]]}),
+        # Regression test, get_value() returned None for about/summary
+        (
+            "parser_regressions/get_value_summary_none.yaml",
+            "/about/summary",
+            False,
+            "#1 quality TLS certs while you wait, for the discerning tester",
+        ),
     ],
 )
 def test_get_value(file: str, path: str, sub_vars: bool, expected: JsonType) -> None:
