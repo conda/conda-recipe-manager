@@ -12,8 +12,10 @@ import pytest
 
 from conda_recipe_manager.parser.enums import SelectorConflictMode
 from conda_recipe_manager.parser.exceptions import JsonPatchValidationException
+from conda_recipe_manager.parser.platform_types import Platform
 from conda_recipe_manager.parser.recipe_parser import RecipeParser, ReplacePatchFunc
 from conda_recipe_manager.parser.selector_parser import SelectorParser
+from conda_recipe_manager.parser.selector_query import SelectorQuery
 from conda_recipe_manager.parser.types import SchemaVersion
 from conda_recipe_manager.types import JsonType
 from tests.constants import SIMPLE_DESCRIPTION
@@ -1278,3 +1280,29 @@ def test_update_skip_statement_python(file: str, python_version: str, expected_s
     assert parser.update_skip_statement_python("/", python_version) == expected_status
     if expected_status:
         assert parser.render() == load_file(f"skip_statement_update/{file}_updated.yaml")
+
+
+## Selector Filtering ##
+
+
+@pytest.mark.parametrize(
+    "file,query,expected_file",
+    [
+        # ("libprotobuf.yaml", SelectorQuery(platform=Platform.WIN_64), "selector_filtering/libprotobuf_win_64.yaml"),
+        # ("libprotobuf.yaml", SelectorQuery(platform=Platform.LINUX_AARCH_64),
+        # "selector_filtering/libprotobuf_linux_aarch64.yaml"),
+        # ("libprotobuf.yaml", SelectorQuery(platform=Platform.OSX_ARM_64),
+        # "selector_filtering/libprotobuf_osx_arm64.yaml"),
+    ],
+)
+def test_filter_by_selectors(file: str, query: SelectorQuery, expected_file: str) -> None:
+    """
+    Tests the ability for the `RecipeParser` to filter the recipe by selectors.
+
+    :param file: The file to load the recipe from.
+    :param query: The query to filter the recipe by.
+    :param expected_file: The file to compare the filtered recipe to.
+    """
+    parser = load_recipe(file, RecipeParser)
+    parser.filter_by_selectors(query)
+    assert parser.render() == load_file(expected_file)

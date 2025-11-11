@@ -39,6 +39,7 @@ from conda_recipe_manager.parser.enums import SelectorConflictMode
 from conda_recipe_manager.parser.exceptions import JsonPatchValidationException
 from conda_recipe_manager.parser.recipe_reader import RecipeReader
 from conda_recipe_manager.parser.selector_parser import SelectorParser
+from conda_recipe_manager.parser.selector_query import SelectorQuery
 from conda_recipe_manager.parser.types import JSON_PATCH_SCHEMA, OPPOSITE_OPS, PYTHON_SKIP_PATTERN
 from conda_recipe_manager.types import PRIMITIVES_TUPLE, JsonPatchType, JsonType
 
@@ -772,3 +773,25 @@ class RecipeParser(RecipeReader):
             return True
         except (KeyError, ValueError):
             return False
+
+    def filter_by_selectors(self, query: SelectorQuery) -> None:
+        """
+        Filters the recipe by the selectors in the query.
+        This operation is destructive and will remove paths that are no longer applicable to the query.
+        It will also remove all selectors.
+
+        :param query: Selector query to filter the recipe by.
+        """
+        for selector in self.list_selectors():
+            selector_parser = SelectorParser(selector, self.get_schema_version())
+            selector_paths = self.get_selector_paths(selector)
+            for path in selector_paths:
+                if selector_parser.does_selector_apply(query):
+                    self.remove_selector(path)
+                else:
+                    self.patch(
+                        {
+                            "op": "remove",
+                            "path": path,
+                        }
+                    )
