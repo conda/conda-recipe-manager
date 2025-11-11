@@ -5,6 +5,7 @@
 from typing import NamedTuple, Optional
 
 from conda_recipe_manager.parser.platform_types import Platform
+from conda_recipe_manager.types import Primitives
 
 
 class SelectorQuery(NamedTuple):
@@ -13,4 +14,4 @@ class SelectorQuery(NamedTuple):
     """
 
     platform: Optional[Platform] = None
-    build_env_vars: set[str] = set()
+    build_env_vars: dict[str, Primitives] = {}

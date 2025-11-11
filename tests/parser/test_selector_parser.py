@@ -157,19 +157,19 @@ def test_get_selected_platforms(selector: str, schema: SchemaVersion, expected: 
         (
             "[ANACONDA_ROCKET_ENABLE_PY314]",
             SchemaVersion.V0,
-            SelectorQuery(platform=Platform.LINUX_64, build_env_vars={"ANACONDA_ROCKET_ENABLE_PY314"}),
+            SelectorQuery(platform=Platform.LINUX_64, build_env_vars={"ANACONDA_ROCKET_ENABLE_PY314": 1}),
             True,
         ),
         (
             "[osx and ANACONDA_ROCKET_ENABLE_PY314]",
             SchemaVersion.V0,
-            SelectorQuery(platform=Platform.OSX_64, build_env_vars={"ANACONDA_ROCKET_ENABLE_PY314"}),
+            SelectorQuery(platform=Platform.OSX_64, build_env_vars={"ANACONDA_ROCKET_ENABLE_PY314": 1}),
             True,
         ),
         (
             "[osx and ANACONDA_ROCKET_ENABLE_PY314]",
             SchemaVersion.V0,
-            SelectorQuery(platform=Platform.OSX_ARM_64, build_env_vars={"ANACONDA_ROCKET_ENABLE_PY314"}),
+            SelectorQuery(platform=Platform.OSX_ARM_64, build_env_vars={"ANACONDA_ROCKET_ENABLE_PY314": 1}),
             True,
         ),
         (
@@ -181,7 +181,7 @@ def test_get_selected_platforms(selector: str, schema: SchemaVersion, expected: 
         (
             "[osx and ANACONDA_ROCKET_ENABLE_PY314]",
             SchemaVersion.V0,
-            SelectorQuery(platform=Platform.WIN_64, build_env_vars={"ANACONDA_ROCKET_ENABLE_PY314"}),
+            SelectorQuery(platform=Platform.WIN_64, build_env_vars={"ANACONDA_ROCKET_ENABLE_PY314": 1}),
             False,
         ),
         ("[osx]", SchemaVersion.V0, SelectorQuery(platform=Platform.OSX_64), True),
