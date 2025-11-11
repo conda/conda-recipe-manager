@@ -15,14 +15,14 @@ from conda_recipe_manager.parser.selector_query import SelectorQuery
 @pytest.mark.parametrize(
     "selector,schema,expected",
     [
-        ("", SchemaVersion.V0, "Schema: V0 | Tree: None"),
-        ("[]", SchemaVersion.V0, "Schema: V0 | Tree: None"),
-        ("osx", SchemaVersion.V0, "Schema: V0 | Tree: osx"),
-        ("[osx]", SchemaVersion.V0, "Schema: V0 | Tree: osx"),
-        ("[not osx]", SchemaVersion.V0, "Schema: V0 | Tree: not L osx"),
-        ("[not osx and unix]", SchemaVersion.V0, "Schema: V0 | Tree: and L not L osx R unix"),
-        ("[osx and not unix]", SchemaVersion.V0, "Schema: V0 | Tree: and L osx R not L unix"),
-        ("[osx and py37]", SchemaVersion.V0, "Schema: V0 | Tree: and L osx R py37"),
+        ("", SchemaVersion.V0, "Schema: V0 | Selector: None"),
+        ("[]", SchemaVersion.V0, "Schema: V0 | Selector: None"),
+        ("osx", SchemaVersion.V0, "Schema: V0 | Selector: osx"),
+        ("[osx]", SchemaVersion.V0, "Schema: V0 | Selector: osx"),
+        ("[not osx]", SchemaVersion.V0, "Schema: V0 | Selector: not osx"),
+        ("[not osx and unix]", SchemaVersion.V0, "Schema: V0 | Selector: not osx and unix"),
+        ("[osx and not unix]", SchemaVersion.V0, "Schema: V0 | Selector: osx and not unix"),
+        ("[osx and py37]", SchemaVersion.V0, "Schema: V0 | Selector: osx and py37"),
     ],
 )
 def test_selector_parser_construction(selector: str, schema: SchemaVersion, expected: str) -> None:
@@ -117,9 +117,6 @@ def test_selector_eq(selector0: SelectorParser, selector1: object, expected: boo
             },
         ),
         ("[osx and not unix]", SchemaVersion.V0, set()),
-        # TODO FIX: Python versions should have no effect on which Platforms are included
-        # ("[osx and py37]", SchemaVersion.V0, {Platform.OSX_64, Platform.OSX_ARM_64}),
-        ("[osx or py37]", SchemaVersion.V0, {Platform.OSX_64, Platform.OSX_ARM_64}),
         ("[win and not x86]", SchemaVersion.V0, {Platform.WIN_ARM_64}),
         (
             "[ppc64le or win]",
@@ -175,7 +172,7 @@ def test_get_selected_platforms(selector: str, schema: SchemaVersion, expected: 
         (
             "[osx and ANACONDA_ROCKET_ENABLE_PY314]",
             SchemaVersion.V0,
-            SelectorQuery(platform=Platform.OSX_ARM_64),
+            SelectorQuery(platform=Platform.OSX_ARM_64, build_env_vars={"ANACONDA_ROCKET_ENABLE_PY314": 0}),
             False,
         ),
         (

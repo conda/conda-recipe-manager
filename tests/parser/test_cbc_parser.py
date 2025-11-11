@@ -178,7 +178,7 @@ def test_list_cbc_variables(file: str, expected: list[str]) -> None:
         (
             "anaconda_cbc_02.yaml",
             "python",
-            SelectorQuery(platform=Platform.OSX_64),
+            SelectorQuery(platform=Platform.OSX_64, build_env_vars={"ANACONDA_ROCKET_ENABLE_PY314": 0}),
             ["3.9", "3.10", "3.11", "3.12", "3.13"],
         ),
         (
@@ -187,7 +187,12 @@ def test_list_cbc_variables(file: str, expected: list[str]) -> None:
             SelectorQuery(platform=Platform.OSX_64, build_env_vars={"ANACONDA_ROCKET_ENABLE_PY314": 1}),
             ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"],
         ),
-        ("anaconda_cbc_02.yaml", "numpy", SelectorQuery(platform=Platform.OSX_64), ["2.0", "2.0", "2.0", "2.0", "2.1"]),
+        (
+            "anaconda_cbc_02.yaml",
+            "numpy",
+            SelectorQuery(platform=Platform.OSX_64, build_env_vars={"ANACONDA_ROCKET_ENABLE_PY314": 0}),
+            ["2.0", "2.0", "2.0", "2.0", "2.1"],
+        ),
         (
             "anaconda_cbc_02.yaml",
             "numpy",
@@ -481,22 +486,22 @@ def _find_matching_variant(var_to_find: dict[str, JsonType], variants: list[dict
     [
         (
             [load_cbc("aggregate_cbc.yaml"), load_cbc("boost_cbc.yaml")],
-            SelectorQuery(platform=Platform.OSX_ARM_64),
+            SelectorQuery(platform=Platform.OSX_ARM_64, build_env_vars={"ANACONDA_ROCKET_ENABLE_PY314": 0}),
             load_json_file(CONDA_BUILD_VARIANTS_PATH / "no_env" / "conda_build_variants_osx-arm64.json"),
         ),
         (
             [load_cbc("aggregate_cbc.yaml"), load_cbc("boost_cbc.yaml")],
-            SelectorQuery(platform=Platform.LINUX_AARCH_64),
+            SelectorQuery(platform=Platform.LINUX_AARCH_64, build_env_vars={"ANACONDA_ROCKET_ENABLE_PY314": 0}),
             load_json_file(CONDA_BUILD_VARIANTS_PATH / "no_env" / "conda_build_variants_linux-aarch64.json"),
         ),
         (
             [load_cbc("aggregate_cbc.yaml"), load_cbc("boost_cbc.yaml")],
-            SelectorQuery(platform=Platform.LINUX_64),
+            SelectorQuery(platform=Platform.LINUX_64, build_env_vars={"ANACONDA_ROCKET_ENABLE_PY314": 0}),
             load_json_file(CONDA_BUILD_VARIANTS_PATH / "no_env" / "conda_build_variants_linux-64.json"),
         ),
         (
             [load_cbc("aggregate_cbc.yaml"), load_cbc("boost_cbc.yaml")],
-            SelectorQuery(platform=Platform.WIN_64),
+            SelectorQuery(platform=Platform.WIN_64, build_env_vars={"ANACONDA_ROCKET_ENABLE_PY314": 0}),
             load_json_file(CONDA_BUILD_VARIANTS_PATH / "no_env" / "conda_build_variants_win-64.json"),
         ),
         (

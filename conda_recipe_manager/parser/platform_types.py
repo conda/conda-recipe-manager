@@ -9,7 +9,10 @@ Resources:
 from __future__ import annotations
 
 from enum import StrEnum
+from functools import cache
 from typing import Final
+
+from conda_recipe_manager.types import Primitives
 
 
 class OperatingSystem(StrEnum):
@@ -197,3 +200,30 @@ def get_platforms_by_alias(alias: PlatformAlias | str) -> set[Platform]:
             return {Platform.WIN_32}
         case PlatformAlias.WIN_64:
             return {Platform.WIN_64}
+
+
+@cache  # type: ignore[misc]
+def get_platform_context(platform: Platform) -> dict[str, Primitives]:
+    """
+    Given a platform, return the context variables for that platform.
+
+    :param platform: Target platform
+    :returns: Context variables for that platform.
+    """
+    context: Final[dict[str, Primitives]] = {}
+    for alias in ALL_PLATFORM_ALIASES:
+        if platform in get_platforms_by_alias(alias):
+            context[alias.value] = True
+        else:
+            context[alias.value] = False
+    for arch in ALL_ARCHITECTURES:
+        if platform in get_platforms_by_arch(arch):
+            context[arch.value] = True
+        else:
+            context[arch.value] = False
+    for os in ALL_OPERATING_SYSTEMS:
+        if platform in get_platforms_by_os(os):
+            context[os.value] = True
+        else:
+            context[os.value] = False
+    return context

@@ -18,6 +18,7 @@ dependencies:
   - pip
   - click >=8.1.7,<8.2.0
   - conda
+  - evalidate >=2.0.3,<3.0.0
   - jinja2
   - pyyaml
   - types-pyyaml
