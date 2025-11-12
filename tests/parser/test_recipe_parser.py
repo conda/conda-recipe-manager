@@ -1288,11 +1288,9 @@ def test_update_skip_statement_python(file: str, python_version: str, expected_s
 @pytest.mark.parametrize(
     "file,query,expected_file",
     [
-        # ("libprotobuf.yaml", SelectorQuery(platform=Platform.WIN_64), "selector_filtering/libprotobuf_win_64.yaml"),
-        # ("libprotobuf.yaml", SelectorQuery(platform=Platform.LINUX_AARCH_64),
-        # "selector_filtering/libprotobuf_linux_aarch64.yaml"),
-        # ("libprotobuf.yaml", SelectorQuery(platform=Platform.OSX_ARM_64),
-        # "selector_filtering/libprotobuf_osx_arm64.yaml"),
+        ("curl.yaml", SelectorQuery(platform=Platform.WIN_64), "selector_filtering/curl_win_64.yaml"),
+        ("curl.yaml", SelectorQuery(platform=Platform.LINUX_AARCH_64), "selector_filtering/curl_linux_aarch_64.yaml"),
+        ("curl.yaml", SelectorQuery(platform=Platform.OSX_ARM_64), "selector_filtering/curl_osx_arm_64.yaml"),
     ],
 )
 def test_filter_by_selectors(file: str, query: SelectorQuery, expected_file: str) -> None:

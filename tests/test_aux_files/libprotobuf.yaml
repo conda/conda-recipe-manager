@@ -37,8 +37,7 @@ requirements:
 
 outputs:
   - name: libprotobuf
-    script: build-shared.sh  # [unix]
-    script: bld-shared.bat  # [win]
+    script: {{ 'build-shared.sh' if unix else 'bld-shared.bat' if win }}  # [unix or win]
     build:
       missing_dso_whitelist:  # [s390x]
         - $RPATH/ld64.so.1    # [s390x]
@@ -74,8 +73,7 @@ outputs:
         - if not exist %PREFIX%\\Library\\lib\\libprotobuf-lite.lib exit 1  # [win]
 
   - name: libprotobuf-static
-    script: build_static.sh  # [unix]
-    script: bld-static.bat  # [win]
+    script: {{ 'build_static.sh' if unix else 'bld-static.bat' if win }}  # [unix or win]
     requirements:
       build:
         - {{ compiler('c') }}

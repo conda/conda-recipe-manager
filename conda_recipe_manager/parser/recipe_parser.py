@@ -782,16 +782,14 @@ class RecipeParser(RecipeReader):
 
         :param query: Selector query to filter the recipe by.
         """
+        # Remove all selectors that do apply, leaving the nodes intact.
         for selector in self.list_selectors():
             selector_parser = SelectorParser(selector, self.get_schema_version())
-            selector_paths = self.get_selector_paths(selector)
-            for path in selector_paths:
-                if selector_parser.does_selector_apply(query):
+            if selector_parser.does_selector_apply(query):
+                selector_paths = self.get_selector_paths(selector)
+                for path in selector_paths:
                     self.remove_selector(path)
-                else:
-                    self.patch(
-                        {
-                            "op": "remove",
-                            "path": path,
-                        }
-                    )
+        # Remove all paths that do not apply to the query.
+        for selector in self.list_selectors():
+            while paths := self.get_selector_paths(selector):
+                self.patch({"op": "remove", "path": paths[0]})

@@ -617,7 +617,6 @@ class RecipeReader(IsModifiable):
                 continue
 
             new_indent = num_tab_spaces(line)
-
             # Special multiline case. This will initialize `new_node` if the special "-backslash multiline pattern is
             # found.
             line_idx, new_node = RecipeReader._parse_multiline_node(clean_line, lines, line_idx, new_indent, None)
@@ -630,7 +629,6 @@ class RecipeReader(IsModifiable):
                 # rely on the object being modified by the reference we pass-in. As a small optimization, we only run
                 # checks on the other multiline variants if the special case fails.
                 line_idx, _ = RecipeReader._parse_multiline_node(clean_line, lines, line_idx, new_indent, new_node)
-
             # Insurance policy: If we miscounted, force-drop the ToF-comment state.
             if tof_comment_cntr > 0 and not new_node.is_comment():
                 tof_comment_cntr = -1
@@ -654,6 +652,10 @@ class RecipeReader(IsModifiable):
             cur_indent = new_indent
             # Look at the stack to determine the parent Node and then append the current node to the new parent.
             parent = node_stack[-1]
+            # Check for duplicate keys and bail if found.
+            if new_node.is_key() and parent.is_collection_element():
+                if new_node.value in [child.value for child in parent.children]:
+                    raise ParsingException(f"Duplicate key found at line {line_idx}: {new_node.value}")
             parent.children.append(new_node)
             # Update the last node for the next line interpretation
             last_node = new_node
