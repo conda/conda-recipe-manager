@@ -1291,6 +1291,21 @@ def test_update_skip_statement_python(file: str, python_version: str, expected_s
         ("curl.yaml", SelectorQuery(platform=Platform.WIN_64), "selector_filtering/curl_win_64.yaml"),
         ("curl.yaml", SelectorQuery(platform=Platform.LINUX_AARCH_64), "selector_filtering/curl_linux_aarch_64.yaml"),
         ("curl.yaml", SelectorQuery(platform=Platform.OSX_ARM_64), "selector_filtering/curl_osx_arm_64.yaml"),
+        (
+            "huggingface_hub.yaml",
+            SelectorQuery(platform=Platform.WIN_64, build_env_vars={"py": 36}),
+            "selector_filtering/huggingface_hub_py36.yaml",
+        ),
+        (
+            "huggingface_hub.yaml",
+            SelectorQuery(platform=Platform.WIN_64, build_env_vars={"py": 37}),
+            "selector_filtering/huggingface_hub_py37.yaml",
+        ),
+        (
+            "huggingface_hub.yaml",
+            SelectorQuery(platform=Platform.WIN_64, build_env_vars={"py": 38}),
+            "selector_filtering/huggingface_hub_py38.yaml",
+        ),
     ],
 )
 def test_filter_by_selectors(file: str, query: SelectorQuery, expected_file: str) -> None:

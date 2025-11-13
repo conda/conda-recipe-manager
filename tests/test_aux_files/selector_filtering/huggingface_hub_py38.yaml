@@ -11,7 +11,6 @@ source:
 
 build:
   number: 0
-  skip: true  # [py<37]
   entry_points:
     - huggingface-cli=huggingface_hub.commands.huggingface_cli:main
   script: {{ PYTHON }} -m pip install . --no-deps --no-build-isolation -vv
@@ -26,7 +25,6 @@ requirements:
     - python
     - filelock
     - fsspec
-    - importlib-metadata  # [py<38]
     - packaging >=20.9
     - pyyaml >=5.1
     - requests
