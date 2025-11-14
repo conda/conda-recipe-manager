@@ -6,10 +6,10 @@ from __future__ import annotations
 
 import pytest
 
+from conda_recipe_manager.parser.build_context import BuildContext
 from conda_recipe_manager.parser.enums import SchemaVersion
 from conda_recipe_manager.parser.platform_types import ALL_PLATFORMS, Platform
 from conda_recipe_manager.parser.selector_parser import SelectorParser
-from conda_recipe_manager.parser.selector_query import SelectorQuery
 
 
 @pytest.mark.parametrize(
@@ -141,75 +141,75 @@ def test_get_selected_platforms(selector: str, schema: SchemaVersion, expected: 
     """
     parser = SelectorParser(selector, schema)
     for platform in expected:
-        assert parser.does_selector_apply(SelectorQuery(platform=platform))
+        assert parser.does_selector_apply(BuildContext(platform=platform))
     for platform in set(Platform) - expected:
-        assert not parser.does_selector_apply(SelectorQuery(platform=platform))
+        assert not parser.does_selector_apply(BuildContext(platform=platform))
     assert not parser.is_modified()
 
 
 @pytest.mark.parametrize(
-    "selector,schema,query,expected",
+    "selector,schema,build_context,expected",
     [
-        ("", SchemaVersion.V0, SelectorQuery(), True),
+        ("", SchemaVersion.V0, BuildContext(platform=Platform.LINUX_64), True),
         (
             "[ANACONDA_ROCKET_ENABLE_PY314]",
             SchemaVersion.V0,
-            SelectorQuery(platform=Platform.LINUX_64, build_env_vars={"ANACONDA_ROCKET_ENABLE_PY314": 1}),
+            BuildContext(platform=Platform.LINUX_64, build_env_vars={"ANACONDA_ROCKET_ENABLE_PY314": 1}),
             True,
         ),
         (
             "[osx and ANACONDA_ROCKET_ENABLE_PY314]",
             SchemaVersion.V0,
-            SelectorQuery(platform=Platform.OSX_64, build_env_vars={"ANACONDA_ROCKET_ENABLE_PY314": 1}),
+            BuildContext(platform=Platform.OSX_64, build_env_vars={"ANACONDA_ROCKET_ENABLE_PY314": 1}),
             True,
         ),
         (
             "[osx and ANACONDA_ROCKET_ENABLE_PY314]",
             SchemaVersion.V0,
-            SelectorQuery(platform=Platform.OSX_ARM_64, build_env_vars={"ANACONDA_ROCKET_ENABLE_PY314": 1}),
+            BuildContext(platform=Platform.OSX_ARM_64, build_env_vars={"ANACONDA_ROCKET_ENABLE_PY314": 1}),
             True,
         ),
         (
             "[osx and ANACONDA_ROCKET_ENABLE_PY314]",
             SchemaVersion.V0,
-            SelectorQuery(platform=Platform.OSX_ARM_64, build_env_vars={"ANACONDA_ROCKET_ENABLE_PY314": 0}),
+            BuildContext(platform=Platform.OSX_ARM_64, build_env_vars={"ANACONDA_ROCKET_ENABLE_PY314": 0}),
             False,
         ),
         (
             "[osx and ANACONDA_ROCKET_ENABLE_PY314]",
             SchemaVersion.V0,
-            SelectorQuery(platform=Platform.WIN_64, build_env_vars={"ANACONDA_ROCKET_ENABLE_PY314": 1}),
+            BuildContext(platform=Platform.WIN_64, build_env_vars={"ANACONDA_ROCKET_ENABLE_PY314": 1}),
             False,
         ),
-        ("[osx]", SchemaVersion.V0, SelectorQuery(platform=Platform.OSX_64), True),
-        ("[osx]", SchemaVersion.V0, SelectorQuery(platform=Platform.WIN_64), False),
-        ("[not osx]", SchemaVersion.V0, SelectorQuery(platform=Platform.WIN_64), True),
-        ("[not osx]", SchemaVersion.V0, SelectorQuery(platform=Platform.OSX_64), False),
-        ("[osx and not unix]", SchemaVersion.V0, SelectorQuery(platform=Platform.LINUX_PPC_64_LE), False),
-        ("[osx or not unix]", SchemaVersion.V0, SelectorQuery(platform=Platform.WIN_ARM_64), True),
-        ("[osx and arm64 or win]", SchemaVersion.V0, SelectorQuery(platform=Platform.OSX_ARM_64), True),
-        ("[osx and arm64 or win]", SchemaVersion.V0, SelectorQuery(platform=Platform.WIN_64), True),
-        ("[osx and arm64 or win]", SchemaVersion.V0, SelectorQuery(platform=Platform.OSX_64), False),
-        ("[osx and (arm64 or win)]", SchemaVersion.V0, SelectorQuery(platform=Platform.WIN_64), False),
-        ("[win or linux and armv6l]", SchemaVersion.V0, SelectorQuery(platform=Platform.LINUX_ARM_V6L), True),
-        ("[win or linux and armv6l]", SchemaVersion.V0, SelectorQuery(platform=Platform.WIN_64), True),
-        ("[win or (linux and armv6l)]", SchemaVersion.V0, SelectorQuery(platform=Platform.LINUX_ARM_V6L), True),
-        ("[win or (linux and armv6l)]", SchemaVersion.V0, SelectorQuery(platform=Platform.WIN_64), True),
-        ("[(win or linux) and armv6l]", SchemaVersion.V0, SelectorQuery(platform=Platform.WIN_64), False),
-        ("[(win or linux) and armv6l]", SchemaVersion.V0, SelectorQuery(platform=Platform.LINUX_ARM_V6L), True),
+        ("[osx]", SchemaVersion.V0, BuildContext(platform=Platform.OSX_64), True),
+        ("[osx]", SchemaVersion.V0, BuildContext(platform=Platform.WIN_64), False),
+        ("[not osx]", SchemaVersion.V0, BuildContext(platform=Platform.WIN_64), True),
+        ("[not osx]", SchemaVersion.V0, BuildContext(platform=Platform.OSX_64), False),
+        ("[osx and not unix]", SchemaVersion.V0, BuildContext(platform=Platform.LINUX_PPC_64_LE), False),
+        ("[osx or not unix]", SchemaVersion.V0, BuildContext(platform=Platform.WIN_ARM_64), True),
+        ("[osx and arm64 or win]", SchemaVersion.V0, BuildContext(platform=Platform.OSX_ARM_64), True),
+        ("[osx and arm64 or win]", SchemaVersion.V0, BuildContext(platform=Platform.WIN_64), True),
+        ("[osx and arm64 or win]", SchemaVersion.V0, BuildContext(platform=Platform.OSX_64), False),
+        ("[osx and (arm64 or win)]", SchemaVersion.V0, BuildContext(platform=Platform.WIN_64), False),
+        ("[win or linux and armv6l]", SchemaVersion.V0, BuildContext(platform=Platform.LINUX_ARM_V6L), True),
+        ("[win or linux and armv6l]", SchemaVersion.V0, BuildContext(platform=Platform.WIN_64), True),
+        ("[win or (linux and armv6l)]", SchemaVersion.V0, BuildContext(platform=Platform.LINUX_ARM_V6L), True),
+        ("[win or (linux and armv6l)]", SchemaVersion.V0, BuildContext(platform=Platform.WIN_64), True),
+        ("[(win or linux) and armv6l]", SchemaVersion.V0, BuildContext(platform=Platform.WIN_64), False),
+        ("[(win or linux) and armv6l]", SchemaVersion.V0, BuildContext(platform=Platform.LINUX_ARM_V6L), True),
     ],
 )
-def test_does_selector_apply(selector: str, schema: SchemaVersion, query: SelectorQuery, expected: bool) -> None:
+def test_does_selector_apply(selector: str, schema: SchemaVersion, build_context: BuildContext, expected: bool) -> None:
     """
     Validates the question: does a selector apply to the current environment query?
 
     :param selector: Selector string to parse
     :param schema: Target schema version
-    :param query: Target selector query
+    :param build_context: Target build context
     :param expected: Expected value to return
     """
     parser = SelectorParser(selector, schema)
-    assert parser.does_selector_apply(query) == expected
+    assert parser.does_selector_apply(build_context) == expected
 
 
 @pytest.mark.parametrize(

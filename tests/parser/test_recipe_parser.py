@@ -10,12 +10,12 @@ from typing import cast
 
 import pytest
 
+from conda_recipe_manager.parser.build_context import BuildContext
 from conda_recipe_manager.parser.enums import SelectorConflictMode
 from conda_recipe_manager.parser.exceptions import JsonPatchValidationException
 from conda_recipe_manager.parser.platform_types import Platform
 from conda_recipe_manager.parser.recipe_parser import RecipeParser, ReplacePatchFunc
 from conda_recipe_manager.parser.selector_parser import SelectorParser
-from conda_recipe_manager.parser.selector_query import SelectorQuery
 from conda_recipe_manager.parser.types import SchemaVersion
 from conda_recipe_manager.types import JsonType
 from tests.constants import SIMPLE_DESCRIPTION
@@ -1286,36 +1286,36 @@ def test_update_skip_statement_python(file: str, python_version: str, expected_s
 
 
 @pytest.mark.parametrize(
-    "file,query,expected_file",
+    "file,build_context,expected_file",
     [
-        ("curl.yaml", SelectorQuery(platform=Platform.WIN_64), "selector_filtering/curl_win_64.yaml"),
-        ("curl.yaml", SelectorQuery(platform=Platform.LINUX_AARCH_64), "selector_filtering/curl_linux_aarch_64.yaml"),
-        ("curl.yaml", SelectorQuery(platform=Platform.OSX_ARM_64), "selector_filtering/curl_osx_arm_64.yaml"),
+        ("curl.yaml", BuildContext(platform=Platform.WIN_64), "selector_filtering/curl_win_64.yaml"),
+        ("curl.yaml", BuildContext(platform=Platform.LINUX_AARCH_64), "selector_filtering/curl_linux_aarch_64.yaml"),
+        ("curl.yaml", BuildContext(platform=Platform.OSX_ARM_64), "selector_filtering/curl_osx_arm_64.yaml"),
         (
             "huggingface_hub.yaml",
-            SelectorQuery(platform=Platform.WIN_64, build_env_vars={"py": 36}),
+            BuildContext(platform=Platform.WIN_64, build_env_vars={"python": "3.6"}),
             "selector_filtering/huggingface_hub_py36.yaml",
         ),
         (
             "huggingface_hub.yaml",
-            SelectorQuery(platform=Platform.WIN_64, build_env_vars={"py": 37}),
+            BuildContext(platform=Platform.WIN_64, build_env_vars={"python": "3.7"}),
             "selector_filtering/huggingface_hub_py37.yaml",
         ),
         (
             "huggingface_hub.yaml",
-            SelectorQuery(platform=Platform.WIN_64, build_env_vars={"py": 38}),
+            BuildContext(platform=Platform.WIN_64, build_env_vars={"python": "3.8"}),
             "selector_filtering/huggingface_hub_py38.yaml",
         ),
     ],
 )
-def test_filter_by_selectors(file: str, query: SelectorQuery, expected_file: str) -> None:
+def test_filter_by_selectors(file: str, build_context: BuildContext, expected_file: str) -> None:
     """
     Tests the ability for the `RecipeParser` to filter the recipe by selectors.
 
     :param file: The file to load the recipe from.
-    :param query: The query to filter the recipe by.
+    :param build_context: The build context to filter the recipe by.
     :param expected_file: The file to compare the filtered recipe to.
     """
     parser = load_recipe(file, RecipeParser)
-    parser.filter_by_selectors(query)
+    parser.filter_by_selectors(build_context)
     assert parser.render() == load_file(expected_file)

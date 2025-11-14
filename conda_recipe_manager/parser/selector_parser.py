@@ -12,10 +12,9 @@ from evalidate import EvalModel, Expr, base_eval_model  # type: ignore[import-un
 
 from conda_recipe_manager.parser._is_modifiable import IsModifiable
 from conda_recipe_manager.parser._types import Regex
+from conda_recipe_manager.parser.build_context import BuildContext
 from conda_recipe_manager.parser.enums import SchemaVersion
 from conda_recipe_manager.parser.exceptions import SelectorSyntaxError
-from conda_recipe_manager.parser.platform_types import get_platform_context
-from conda_recipe_manager.parser.selector_query import SelectorQuery
 from conda_recipe_manager.parser.types import Primitives
 
 
@@ -114,32 +113,25 @@ class SelectorParser(IsModifiable):
         # TODO Improve: This is a short-hand for checking if the two parse trees are the same
         return self._schema_version == other._schema_version and str(self) == str(other)
 
-    def does_selector_apply(self, query: SelectorQuery) -> bool:
+    def does_selector_apply(self, build_context: BuildContext) -> bool:
         """
         Determines if this selector applies to the current target environment.
 
-        :param query: Target environment constraints.
+        :param build_context: Build environment context.
         :raises SelectorSyntaxError: If the selector cannot be evaluated, for example because it is unsafe.
         :returns: True if the selector applies to the current situation. False otherwise.
         """
         # No selector? No problem!
         if not self._content:
             return True
-        # No platform with a non-empty selector is actually a problem
-        # a platform is required to meaningfully evaluate the selector.
-        if query.platform is None:
-            return False
 
-        context: Final[dict[str, Primitives]] = {
-            **query.build_env_vars,
-            **get_platform_context(query.platform),
-        }
+        selector_context: Final[dict[str, Primitives]] = build_context.get_context()
 
         try:
             expr_code = Expr(self._content, model=SelectorParser._get_evalidate_model()).code  # type: ignore[misc]
             # expr_code is already guaranteed to be safe to evaluate
             # so we can use eval directly for a slight performance boost.
-            return eval(expr_code, None, context)  # type: ignore[no-any-return, misc] # pylint: disable=eval-used
+            return eval(expr_code, None, selector_context)  # type: ignore[no-any-return, misc] # pylint: disable=eval-used
         except Exception as e:  # pylint: disable=broad-exception-caught
             raise SelectorSyntaxError(f"Error evaluating selector: {e}") from e
 

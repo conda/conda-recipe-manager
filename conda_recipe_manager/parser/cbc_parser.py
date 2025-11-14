@@ -13,9 +13,9 @@ import yaml
 
 from conda_recipe_manager.parser._node_var import NodeVar
 from conda_recipe_manager.parser._types import ForceIndentDumper
+from conda_recipe_manager.parser.build_context import BuildContext
 from conda_recipe_manager.parser.exceptions import ZipKeysException
 from conda_recipe_manager.parser.recipe_reader import RecipeReader
-from conda_recipe_manager.parser.selector_query import SelectorQuery
 from conda_recipe_manager.parser.types import DEFAULT_VARIANTS, RecipeReaderFlags
 from conda_recipe_manager.types import PRIMITIVES_TUPLE, JsonType, Primitives, SentinelType
 
@@ -172,13 +172,13 @@ class CbcParser(RecipeReader):
         return list(self._cbc_vars_tbl.keys())
 
     def get_cbc_variable_values(
-        self, variable: str, query: SelectorQuery, default: JsonType | SentinelType = RecipeReader._sentinel
+        self, variable: str, build_context: BuildContext, default: JsonType | SentinelType = RecipeReader._sentinel
     ) -> JsonType:
         """
         Determines which value of a CBC variable is applicable to the current environment.
 
         :param variable: Target variable name.
-        :param query: Query that represents the state of the target build environment.
+        :param build_context: Build context that represents the state of the target build environment.
         :param default: (Optional) Value to return if no variable could be found or no value could be determined.
         :raises KeyError: If the key does not exist and no default value is provided.
         :raises ValueError: If the selector query does not match any case and no default value is provided.
@@ -192,7 +192,7 @@ class CbcParser(RecipeReader):
         selected_entries: list[JsonType] = []
         for entry in self._cbc_vars_tbl[variable]:
             selector = entry.get_selector()
-            if selector is None or selector.does_selector_apply(query):
+            if selector is None or selector.does_selector_apply(build_context):
                 selected_entries.append(entry.get_value())
         if selected_entries:
             return selected_entries
@@ -219,13 +219,13 @@ class CbcParser(RecipeReader):
                     raise ZipKeysException(zip_keys, f"Duplicate zip key found: {key}")
                 seen_keys.add(key)
 
-    def get_zip_keys(self, query: SelectorQuery) -> list[set[str]]:
+    def get_zip_keys(self, build_context: BuildContext) -> list[set[str]]:
         """
         Returns the zip keys from the CBC file.
 
-        :param query: Query that represents the state of the target build environment.
+        :param build_context: Build context that represents the state of the target build environment.
         :raises KeyError: If no zip keys are found in the CBC file.
-        :raises ValueError: If no zip keys are found for the provided selector query
+        :raises ValueError: If no zip keys are found for the provided build context
         :raises ZipKeysException: If zip keys are invalid.
         :returns: List of zip keys.
         """
@@ -238,13 +238,13 @@ class CbcParser(RecipeReader):
             potential_keys: set[str] = set()
             for key in list_of_keys:
                 selector = key.get_selector()
-                if selector is None or selector.does_selector_apply(query):
+                if selector is None or selector.does_selector_apply(build_context):
                     potential_keys.add(key.get_value())  # type: ignore
             if potential_keys:
                 zip_keys.append(potential_keys)
 
         if not zip_keys:
-            raise ValueError("No zip keys found for the provided selector query")
+            raise ValueError("No zip keys found for the provided build context")
 
         # Perform sanity check on the zip keys.
         self._validate_zip_keys(zip_keys)
@@ -284,14 +284,14 @@ class CbcParser(RecipeReader):
         )
 
     @staticmethod
-    def generate_cbc_values(cbc_files: list[CbcParser], selector_query: SelectorQuery) -> CbcOutputType:
+    def generate_cbc_values(cbc_files: list[CbcParser], build_context: BuildContext) -> CbcOutputType:
         """
         Generates a dictionary of CBC variable values from a list of CBC files.
         The values are generated for the given selector query.
         The values are clobbered if the same variable is defined in multiple CBC files, from first to last in the list.
 
         :param cbc_files: List of CBC files to generate the values from.
-        :param selector_query: Selector query to generate the values for.
+        :param build_context: Build context to generate the values for.
         :raises ZipKeysException: If a zip keys issue occurs.
         :returns: Tuple containing a dictionary of CBC variable values and a list of zip keys.
         """
@@ -305,7 +305,7 @@ class CbcParser(RecipeReader):
         # Combine the CBC files into a single output.
         for cbc_file in cbc_files:
             try:
-                zip_keys = cbc_file.get_zip_keys(selector_query)
+                zip_keys = cbc_file.get_zip_keys(build_context)
             except (KeyError, ValueError):
                 pass
             except ZipKeysException as e:
@@ -313,7 +313,7 @@ class CbcParser(RecipeReader):
             for variable in cbc_file.list_cbc_variables():
                 try:
                     cbc_values[variable] = cast(
-                        list[Primitives], cbc_file.get_cbc_variable_values(variable, selector_query)
+                        list[Primitives], cbc_file.get_cbc_variable_values(variable, build_context)
                     )
                 except ValueError:
                     continue
@@ -322,17 +322,17 @@ class CbcParser(RecipeReader):
         return cbc_values, zip_keys
 
     @staticmethod
-    def generate_variants(cbc_files: list[CbcParser], selector_query: SelectorQuery) -> GeneratedVariantsType:
+    def generate_variants(cbc_files: list[CbcParser], build_context: BuildContext) -> GeneratedVariantsType:
         """
         Generates a tuple of variants from a list of CBC files.
         The variants are generated by combining the values of the CBC variables.
 
         :param cbc_files: List of CBC files to generate the variants from.
-        :param selector_query: Selector query to generate the variants for.
+        :param build_context: Build context to generate the variants for.
         :raises ZipKeysException: If a zip keys issue occurs.
         :returns: Tuple of variants.
         """
-        cbc_values, zip_keys = CbcParser.generate_cbc_values(cbc_files, selector_query)
+        cbc_values, zip_keys = CbcParser.generate_cbc_values(cbc_files, build_context)
 
         initial_keys: set[str] = set(cbc_values.keys())
         zip_keys_tuples: list[tuple[str, ...]] = []
@@ -355,7 +355,7 @@ class CbcParser(RecipeReader):
             new_variant: dict[str, JsonType] = {}
             # Initialize with zip_keys and target_platform to match conda_build's format.
             new_variant["zip_keys"] = [list(zip_key_set) for zip_key_set in zip_keys]
-            new_variant["target_platform"] = selector_query.platform
+            new_variant["target_platform"] = build_context.get_platform()
             zip_iterable = cast(
                 Iterable[tuple[str | tuple[str, ...], Primitives | tuple[Primitives]]], zip(all_keys, combo)
             )
