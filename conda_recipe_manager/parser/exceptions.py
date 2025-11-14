@@ -8,7 +8,7 @@ import json
 from typing import Optional
 
 from conda_recipe_manager.parser._node import Node
-from conda_recipe_manager.types import JsonPatchType, JsonType
+from conda_recipe_manager.types import JsonPatchType, JsonType, Primitives
 
 
 class BaseParserException(Exception):
@@ -101,6 +101,36 @@ class SelectorSyntaxError(BaseParserException):
         :param message: String description of the issue encountered.
         """
         super().__init__(f"Selector syntax error: {message}")
+
+
+class BuildContextException(BaseParserException):
+    """
+    Exception raised when an issue occurs with the build context.
+    """
+
+    def __init__(self, message: str):
+        """
+        Constructs a build context exception.
+
+        :param message: String description of the issue encountered.
+        """
+        self.message = message if message else "An unknown build context error occurred."
+        super().__init__(self.message)
+
+
+class BuildContextVersionException(BuildContextException):
+    """
+    Exception raised when a build context dependency version is invalid.
+    """
+
+    def __init__(self, dependency: str, version: Primitives):
+        """
+        Constructs a build context dependency version exception.
+
+        :param dependency: The dependency that was encountered.
+        :param version: The dependency version that was encountered.
+        """
+        super().__init__(f"{dependency} version {version} is not a valid version.")
 
 
 class ParsingException(BaseParserException):

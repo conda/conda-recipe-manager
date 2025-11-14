@@ -5,6 +5,7 @@
 from functools import cache
 from typing import Final
 
+from conda_recipe_manager.parser.exceptions import BuildContextVersionException
 from conda_recipe_manager.parser.platform_types import (
     ALL_ARCHITECTURES,
     ALL_OPERATING_SYSTEMS,
@@ -54,16 +55,16 @@ class BuildContext:
         """
         Constructs the context for the Python and NumPy versions.
 
-        :raises ValueError: If the Python or NumPy version is not a valid version.
+        :raises BuildContextVersionException: If the Python or NumPy version is not a valid version.
         :returns: The constructed Python and NumPy context.
         """
         context: Final[dict[str, Primitives]] = {}
         if self._build_env_vars.get("python"):
             if not isinstance(self._build_env_vars["python"], str):
-                raise ValueError(f"Python version {self._build_env_vars["python"]} is not a valid version.")
+                raise BuildContextVersionException("Python", self._build_env_vars["python"])
             python_version_int: Final[str] = self._build_env_vars["python"].replace(".", "")
             if not python_version_int.isdigit():
-                raise ValueError(f"Python version {self._build_env_vars["python"]} is not a valid version.")
+                raise BuildContextVersionException("Python", self._build_env_vars["python"])
             context["py"] = int(python_version_int)
             context["py3k"] = self._build_env_vars["python"].startswith("3.")
             context["py2k"] = self._build_env_vars["python"].startswith("2.")
@@ -73,10 +74,10 @@ class BuildContext:
             context["py36"] = context["py"] == 36
         if self._build_env_vars.get("numpy"):
             if not isinstance(self._build_env_vars["numpy"], str):
-                raise ValueError(f"NumPy version {self._build_env_vars["numpy"]} is not a valid version.")
+                raise BuildContextVersionException("NumPy", self._build_env_vars["numpy"])
             numpy_version_int: Final[str] = self._build_env_vars["numpy"].replace(".", "")
             if not numpy_version_int.isdigit():
-                raise ValueError(f"NumPy version {self._build_env_vars["numpy"]} is not a valid version.")
+                raise BuildContextVersionException("NumPy", self._build_env_vars["numpy"])
             context["np"] = int(numpy_version_int)
         return context
 
