@@ -321,6 +321,9 @@ class CbcParser(RecipeReader):
         CbcParser._validate_zip_keys_against_cbc_values(zip_keys, cbc_values)
         return cbc_values, zip_keys
 
+    # We use this function instead of calling conda-build for 2 reasons:
+    # 1. We observe a moderate performance improvement with this approach.
+    # 2. We would like to avoid potential circular dependencies with conda-build.
     @staticmethod
     def generate_variants(cbc_files: list[CbcParser], build_context: BuildContext) -> GeneratedVariantsType:
         """
