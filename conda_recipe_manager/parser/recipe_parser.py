@@ -31,16 +31,18 @@ from conda_recipe_manager.parser._traverse import (
     INVALID_IDX,
     remap_child_indices_virt_to_phys,
     traverse,
+    traverse_all,
     traverse_with_index,
 )
 from conda_recipe_manager.parser._types import Regex, StrStack
 from conda_recipe_manager.parser._utils import str_to_stack_path
+from conda_recipe_manager.parser.build_context import BuildContext
 from conda_recipe_manager.parser.enums import SelectorConflictMode
 from conda_recipe_manager.parser.exceptions import JsonPatchValidationException
 from conda_recipe_manager.parser.recipe_reader import RecipeReader
 from conda_recipe_manager.parser.selector_parser import SelectorParser
 from conda_recipe_manager.parser.types import JSON_PATCH_SCHEMA, OPPOSITE_OPS, PYTHON_SKIP_PATTERN
-from conda_recipe_manager.types import PRIMITIVES_TUPLE, JsonPatchType, JsonType
+from conda_recipe_manager.types import PRIMITIVES_NO_NONE_TUPLE, PRIMITIVES_TUPLE, JsonPatchType, JsonType
 
 # Callback that allows the caller to perform custom replacements using `search_and_patch_replace()`.
 ReplacePatchFunc = Callable[[JsonType], JsonType]
@@ -772,3 +774,45 @@ class RecipeParser(RecipeReader):
             return True
         except (KeyError, ValueError):
             return False
+
+    def filter_by_selectors(self, build_context: BuildContext) -> None:
+        """
+        Filters the recipe by the selectors in the build context.
+        This operation is destructive and will remove paths that are no longer applicable to the build context.
+        It will also remove all selectors.
+
+        :param build_context: Build context to filter the recipe by.
+        """
+        # Remove all selectors that do apply, leaving the nodes intact.
+        for selector in self.list_selectors():
+            selector_parser = SelectorParser(selector, self.get_schema_version())
+            if selector_parser.does_selector_apply(build_context):
+                selector_paths = self.get_selector_paths(selector)
+                for path in selector_paths:
+                    self.remove_selector(path)
+        # Remove all paths that do not apply to the build context.
+        for selector in self.list_selectors():
+            while paths := self.get_selector_paths(selector):
+                self.patch({"op": "remove", "path": paths[0]})
+
+    def evaluate_jinja_expressions(self, build_context: BuildContext) -> None:
+        """
+        Evaluates Jinja expressions in the recipe given the provided query and the recipe variables.
+        This function is destructive and will modify the recipe in place,
+        removing all Jinja variables and expressions.
+
+        :param build_context: Build context to evaluate the Jinja expressions for.
+        :raises ValueError: If the JINJA expression evaluation result is not a primitive type.
+        """
+
+        def _evaluate_jinja_expression_in_node(node: Node, path: StrStack) -> None:  # pylint: disable=unused-argument
+            if isinstance(node.value, str):
+                rendered_value = self._render_jinja_vars(node.value, build_context)
+                if not isinstance(rendered_value, PRIMITIVES_NO_NONE_TUPLE):
+                    raise ValueError(
+                        f"JINJA expression evaluation result is not a primitive type: {type(rendered_value)}"
+                    )
+                node.value = rendered_value
+
+        traverse_all(self._root, _evaluate_jinja_expression_in_node)
+        self._vars_tbl.clear()

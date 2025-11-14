@@ -159,6 +159,14 @@ class Node:
         """
         return self.is_comment() and self.comment_pos == CommentPosition.TOP_OF_FILE
 
+    def is_key(self) -> bool:
+        """
+        Indicates if a node represents a key.
+
+        :returns: True if the node represents a key. False otherwise.
+        """
+        return self.key_flag
+
     def is_empty_key(self) -> bool:
         """
         Indicates a line that is just a "label" and contains no child nodes. These are effectively leaf nodes that need

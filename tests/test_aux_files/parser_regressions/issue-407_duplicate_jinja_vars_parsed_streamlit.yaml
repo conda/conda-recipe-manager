@@ -42,8 +42,7 @@ requirements:
 
 outputs:
   - name: streamlit
-    script: build-output.sh  # [not win]
-    script: build-output.bat  # [win]
+    script: {{ 'build-output.bat' if win else 'build-output.sh' }}
     build:
       entry_points:
         - streamlit = streamlit.web.cli:main
