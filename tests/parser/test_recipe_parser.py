@@ -1282,7 +1282,7 @@ def test_update_skip_statement_python(file: str, python_version: str, expected_s
         assert parser.render() == load_file(f"skip_statement_update/{file}_updated.yaml")
 
 
-## Selector Filtering ##
+## Build Variant Rendering ##
 
 
 @pytest.mark.parametrize(
@@ -1318,4 +1318,39 @@ def test_filter_by_selectors(file: str, build_context: BuildContext, expected_fi
     """
     parser = load_recipe(file, RecipeParser)
     parser.filter_by_selectors(build_context)
+    assert parser.render() == load_file(expected_file)
+
+
+@pytest.mark.parametrize(
+    "file,build_context,expected_file",
+    [
+        # Check that recipe JINJA variables take precedence over build context variables (openssl).
+        (
+            "jinja2_rendering/curl.yaml",
+            BuildContext(
+                platform=Platform.WIN_64,
+                build_env_vars={"openssl": "7.0.0", "zlib": "1.2.13"},
+            ),
+            "jinja2_rendering/curl_rendered.yaml",
+        ),
+        (
+            "jinja2_rendering/curl.yaml",
+            BuildContext(
+                platform=Platform.WIN_64,
+                build_env_vars={"zlib": "1.2.13"},
+            ),
+            "jinja2_rendering/curl_rendered.yaml",
+        ),
+    ],
+)
+def test_evaluate_jinja_expressions(file: str, build_context: BuildContext, expected_file: str) -> None:
+    """
+    Tests the ability for the `RecipeParser` to replace Jinja expressions in the recipe with their evaluated values.
+
+    :param file: The file to load the recipe from.
+    :param build_context: The build context to evaluate the Jinja expressions for.
+    :param expected_file: The file to compare the evaluated recipe to.
+    """
+    parser = load_recipe(file, RecipeParser)
+    parser.evaluate_jinja_expressions(build_context)
     assert parser.render() == load_file(expected_file)

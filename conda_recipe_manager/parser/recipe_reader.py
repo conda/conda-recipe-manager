@@ -40,6 +40,7 @@ from conda_recipe_manager.parser._utils import (
     stringify_yaml,
     substitute_markers,
 )
+from conda_recipe_manager.parser.build_context import BuildContext
 from conda_recipe_manager.parser.dependency import (
     DependencySection,
     dependency_data_from_str,
@@ -392,26 +393,30 @@ class RecipeReader(IsModifiable):
             case SchemaVersion.V1:
                 return self._vars_tbl[key][0].get_value()
 
-    def _render_jinja_vars(self, s: str) -> JsonType:
-        # pylint: disable=too-complex
-        # TODO Refactor and simplify. We should really consider using a proper parser over REGEX soup.
+    def _render_jinja_vars(self, s: str, build_context: Optional[BuildContext] = None) -> JsonType:
         """
         Helper function that replaces Jinja substitutions with their actual set values.
 
         :param s: String to be re-rendered
+        :param build_context: (Optional) Build context to evaluate the Jinja expressions for.
+            If not provided, the Jinja expression context will be constructed from the recipe variables.
+            If provided, the Jinja expression context will be constructed from the build context,
+            updated with the recipe variables.
         :returns: The original value, augmented with Jinja substitutions. Types are re-rendered to account for multiline
             strings that may have been "normalized" prior to this call.
         """
-        # TODO: Consider tokenizing expressions over using regular expressions. The scope of this function has expanded
-        # drastically.
-
         start_idx, sub_regex = self._set_on_schema_version()
+
+        recipe_vars_context: Final[dict[str, JsonType]] = {k: self.get_variable(k) for k in self._vars_tbl}
+        if build_context is None:
+            context = recipe_vars_context
+        else:
+            context = {**build_context.get_context(), **recipe_vars_context}
 
         # Search the string, replacing all substitutions we can recognize
         for match in cast(list[str], sub_regex.findall(s)):
             # The regex guarantees the string starts and ends with double braces
             expression = match[start_idx:-2].strip()
-            context = {k: self.get_variable(k) for k in self._vars_tbl}
             # If the expression can't be evaluated, skip it.
             try:
                 env = Environment(undefined=StrictUndefined)  # type: ignore[misc]
@@ -567,35 +572,14 @@ class RecipeReader(IsModifiable):
 
         return str(sanitized_fmt), tof_comment_cntr
 
-    def _private_init(
-        self, content: str, internal_call: bool, flags: RecipeReaderFlags = RecipeReaderFlags.NONE
-    ) -> None:
+    def _construct_parse_tree(self, sanitized_yaml: str, tof_comment_cntr: int) -> None:
         """
-        Private constructor for internal RecipeReader use. This constructor is called by `__init__()` and
-        `_create_private_recipe_reader()`, with internal_call set to False and True, respectively.
+        Constructs the parse tree from the sanitized YAML.
 
-        :param content: conda-build formatted recipe file, as a single text string.
-        :param internal_call: Whether this is an internal call. If true, we cannot determine if the recipe is V0 or V1.
-        :param flags: Flags to control the behavior of the recipe reader.
-        :raises ParsingJinjaException: If unsupported JINJA statements are present
-            and RecipeReaderFlags.FORCE_REMOVE_JINJA is not set.
+        :param sanitized_yaml: The sanitized YAML to construct the parse tree from.
+        :param tof_comment_cntr: The number of comment-only lines at the start of the recipe file.
         """
-        super().__init__()
-        # The initial, raw, text is preserved for diffing and debugging purposes
-        # Note: _init_content should be Final, but mypy requires Final attributes to be declared in __init__
-        # See https://mypy.readthedocs.io/en/stable/final_attrs.html#syntax-variants
-        self._init_content: str = content
-        force_remove_jinja: Final[bool] = RecipeReaderFlags.FORCE_REMOVE_JINJA in flags
-        floats_as_strings: Final[bool] = RecipeReaderFlags.FLOATS_AS_STRINGS in flags
-        self._yaml_loader: type[SafeLoader] = StringLoader if floats_as_strings else SafeLoader
-
-        sanitized_yaml, tof_comment_cntr = self._init_schema_version_and_sanitize_v0_yaml(
-            internal_call, force_remove_jinja
-        )
-
-        # Root of the parse tree
-        self._root = Node(value=ROOT_NODE_VALUE)
-
+        # pylint: disable=too-complex
         # Read the YAML line-by-line, maintaining a stack to manage the last owning node in the tree.
         node_stack: list[Node] = [self._root]
         # Relative depth is determined by the increase/decrease of indentation marks (spaces)
@@ -660,6 +644,35 @@ class RecipeReader(IsModifiable):
             # Update the last node for the next line interpretation
             last_node = new_node
 
+    def _private_init(
+        self, content: str, internal_call: bool, flags: RecipeReaderFlags = RecipeReaderFlags.NONE
+    ) -> None:
+        """
+        Private constructor for internal RecipeReader use. This constructor is called by `__init__()` and
+        `_create_private_recipe_reader()`, with internal_call set to False and True, respectively.
+
+        :param content: conda-build formatted recipe file, as a single text string.
+        :param internal_call: Whether this is an internal call. If true, we cannot determine if the recipe is V0 or V1.
+        :param flags: Flags to control the behavior of the recipe reader.
+        :raises ParsingJinjaException: If unsupported JINJA statements are present
+            and RecipeReaderFlags.FORCE_REMOVE_JINJA is not set.
+        """
+        super().__init__()
+        # The initial, raw, text is preserved for diffing and debugging purposes
+        # Note: _init_content should be Final, but mypy requires Final attributes to be declared in __init__
+        # See https://mypy.readthedocs.io/en/stable/final_attrs.html#syntax-variants
+        self._init_content: str = content
+        force_remove_jinja: Final[bool] = RecipeReaderFlags.FORCE_REMOVE_JINJA in flags
+        floats_as_strings: Final[bool] = RecipeReaderFlags.FLOATS_AS_STRINGS in flags
+        self._yaml_loader: type[SafeLoader] = StringLoader if floats_as_strings else SafeLoader
+
+        sanitized_yaml, tof_comment_cntr = self._init_schema_version_and_sanitize_v0_yaml(
+            internal_call, force_remove_jinja
+        )
+
+        # Construct the parse tree from the sanitized YAML.
+        self._root = Node(value=ROOT_NODE_VALUE)
+        self._construct_parse_tree(sanitized_yaml, tof_comment_cntr)
         # Initialize the variables table. This behavior changes per `schema_version`
         self._init_vars_tbl()
 
