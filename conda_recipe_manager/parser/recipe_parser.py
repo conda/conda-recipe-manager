@@ -175,7 +175,7 @@ class RecipeParser(RecipeReader):
         node.comment = comment
         # Some lines of YAML correspond to multiple nodes. For consistency, we need to ensure that comments are
         # duplicate across all nodes on a line.
-        if node.is_single_key():
+        if node.is_single_key() and not node.children[0].list_member_flag:
             node.children[0].comment = comment
 
         self._rebuild_selectors()
@@ -212,7 +212,7 @@ class RecipeParser(RecipeReader):
         node.comment = comment
         # Some lines of YAML correspond to multiple nodes. For consistency, we need to ensure that comments are
         # duplicate across all nodes on a line.
-        if node.is_single_key():
+        if node.is_single_key() and not node.children[0].list_member_flag:
             node.children[0].comment = comment
 
         self._rebuild_selectors()
@@ -258,7 +258,7 @@ class RecipeParser(RecipeReader):
         node.comment = comment
         # Comments for "single key" nodes apply to both the parent and child. This is because such parent nodes render
         # on the same line as their children.
-        if node.is_single_key():
+        if node.is_single_key() and not node.children[0].list_member_flag:
             node.children[0].comment = comment
         self._is_modified = True
 
@@ -783,6 +783,14 @@ class RecipeParser(RecipeReader):
 
         :param build_context: Build context to filter the recipe by.
         """
+        # Remove all jinja variables that do not apply to the build context
+        for variable, values in self._vars_tbl.items():
+            new_values = []
+            for val in values:
+                if not val.contains_selector() or val.get_selector().does_selector_apply(build_context):
+                    new_values.append(val)
+            self._vars_tbl[variable] = new_values
+        self._vars_tbl = {k: v for k, v in self._vars_tbl.items() if len(v) > 0}
         # Remove all selectors that do apply, leaving the nodes intact.
         for selector in self.list_selectors():
             selector_parser = SelectorParser(selector, self.get_schema_version())

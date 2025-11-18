@@ -144,6 +144,9 @@ class CbcParser(RecipeReader):
                 path = f"/{variable}/{i}"
                 if is_single_value:
                     path = f"/{variable}"
+                # Convert strings that are numeric to integers.
+                if isinstance(value, str) and value.isnumeric():
+                    value = int(value)
                 entry = self._construct_cbc_variable(path, value, comments_tbl)
 
                 # TODO detect duplicates

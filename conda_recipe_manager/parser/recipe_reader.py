@@ -388,8 +388,8 @@ class RecipeReader(IsModifiable):
             case SchemaVersion.V0:
                 if len(self._vars_tbl[key]) == 1:
                     return self._vars_tbl[key][0].get_value()
-                # TODO Future: Support recursive concatenation here. Until then, this is just a duplicated line.
-                return self._vars_tbl[key][0].get_value()
+                # TODO Future: Support recursive concatenation here. Until then, return the last value.
+                return self._vars_tbl[key][-1].get_value()
             case SchemaVersion.V1:
                 return self._vars_tbl[key][0].get_value()
 
@@ -637,7 +637,7 @@ class RecipeReader(IsModifiable):
             # Look at the stack to determine the parent Node and then append the current node to the new parent.
             parent = node_stack[-1]
             # Check for duplicate keys and bail if found.
-            if new_node.is_key() and parent.is_collection_element():
+            if new_node.is_key() and not new_node.list_member_flag:
                 if new_node.value in [child.value for child in parent.children]:
                     raise ParsingException(f"Duplicate key found at line {line_idx}: {new_node.value}")
             parent.children.append(new_node)

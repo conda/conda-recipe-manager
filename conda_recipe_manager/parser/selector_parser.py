@@ -129,9 +129,19 @@ class SelectorParser(IsModifiable):
 
         try:
             expr_code = Expr(self._content, model=SelectorParser._get_evalidate_model()).code  # type: ignore[misc]
-            # expr_code is already guaranteed to be safe to evaluate
-            # so we can use eval directly for a slight performance boost.
-            return eval(expr_code, None, selector_context)  # type: ignore[no-any-return, misc] # pylint: disable=eval-used
+            while True:
+                try:
+                    # expr_code is already guaranteed to be safe to evaluate
+                    # so we can use eval directly for a slight performance boost.
+                    return bool(eval(expr_code, None, selector_context))  # pylint: disable=eval-used
+                # If the selector references a variable that is not in the build context, we add it to the context as None.
+                except NameError as e:
+                    if e.name:
+                        selector_context[e.name] = None
+                    else:
+                        raise SelectorSyntaxError(
+                            f"Error evaluating selector, could not determine the name of the variable: {e}"
+                        ) from e
         except Exception as e:  # pylint: disable=broad-exception-caught
             raise SelectorSyntaxError(f"Error evaluating selector: {e}") from e
 
