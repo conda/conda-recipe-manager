@@ -787,7 +787,9 @@ class RecipeParser(RecipeReader):
         for variable, values in self._vars_tbl.items():
             new_values = []
             for val in values:
-                if not val.contains_selector() or val.get_selector().does_selector_apply(build_context):
+                if not val.contains_selector() or cast(SelectorParser, val.get_selector()).does_selector_apply(
+                    build_context
+                ):
                     new_values.append(val)
             self._vars_tbl[variable] = new_values
         self._vars_tbl = {k: v for k, v in self._vars_tbl.items() if len(v) > 0}

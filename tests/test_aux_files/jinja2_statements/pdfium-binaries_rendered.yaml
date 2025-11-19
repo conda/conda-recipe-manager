@@ -31,21 +31,21 @@ package:
   version: {{ version }}
 
 source:
-  url: https://github.com/bblanchon/{{ name }}/releases/download/chromium%2F{{ patch }}/{{ name.split('-')[0] }}-mac-arm64.tgz  # [osx and arm64]
-  sha256: e7b6e394544adaeb1ec4d1aaeffebf81b90199829c905c2d3668e05203f4eaa9  # [osx and arm64]
-  fn: {{ name }}-{{ version }}-osx-arm64.tgz  # [osx and arm64]
-  url: https://github.com/bblanchon/{{ name }}/releases/download/chromium%2F{{ patch }}/{{ name.split('-')[0] }}-mac-x64.tgz  # [osx and x86_64]
-  sha256: c3639b236f1a6f1a0db4d30abab63f6acb167eb5067701846e1c3dbe15aea2c1  # [osx and x86_64]
-  fn: {{ name }}-{{ version }}-osx-64.tgz  # [osx and x86_64]
-  url: https://github.com/bblanchon/{{ name }}/releases/download/chromium%2F{{ patch }}/{{ name.split('-')[0] }}-linux-x64.tgz  # [linux and x86_64]
-  sha256: 5faa540e7ec91a2cb4509fd113ad40807f6b8e3b8da758089040b77f024e8246  # [linux and x86_64]
-  fn: {{ name }}-{{ version }}-linux-64.tgz  # [linux and x86_64]
-  url: https://github.com/bblanchon/{{ name }}/releases/download/chromium%2F{{ patch }}/{{ name.split('-')[0] }}-linux-arm64.tgz  # [linux and aarch64]
-  sha256: 70fbd9b99e7655680606ac42bf2320d4291e6fabfba11c75f51c17d08844a247  # [linux and aarch64]
-  fn: {{ name }}-{{ version }}-linux-aarch64.tgz  # [linux and aarch64]
-  url: https://github.com/bblanchon/{{ name }}/releases/download/chromium%2F{{ patch }}/{{ name.split('-')[0] }}-win-x64.tgz  # [win]
-  sha256: 6801ce35274aafefb64ce92efefc8f3f514e2430889a5c47880eee555c9b540e  # [win]
-  fn: {{ name }}-{{ version }}-win-64.tgz  # [win]
+  - url: https://github.com/bblanchon/{{ name }}/releases/download/chromium%2F{{ patch }}/{{ name.split('-')[0] }}-mac-arm64.tgz  # [osx and arm64]
+    sha256: e7b6e394544adaeb1ec4d1aaeffebf81b90199829c905c2d3668e05203f4eaa9  # [osx and arm64]
+    fn: {{ name }}-{{ version }}-osx-arm64.tgz  # [osx and arm64]
+  - url: https://github.com/bblanchon/{{ name }}/releases/download/chromium%2F{{ patch }}/{{ name.split('-')[0] }}-mac-x64.tgz  # [osx and x86_64]
+    sha256: c3639b236f1a6f1a0db4d30abab63f6acb167eb5067701846e1c3dbe15aea2c1  # [osx and x86_64]
+    fn: {{ name }}-{{ version }}-osx-64.tgz  # [osx and x86_64]
+  - url: https://github.com/bblanchon/{{ name }}/releases/download/chromium%2F{{ patch }}/{{ name.split('-')[0] }}-linux-x64.tgz  # [linux and x86_64]
+    sha256: 5faa540e7ec91a2cb4509fd113ad40807f6b8e3b8da758089040b77f024e8246  # [linux and x86_64]
+    fn: {{ name }}-{{ version }}-linux-64.tgz  # [linux and x86_64]
+  - url: https://github.com/bblanchon/{{ name }}/releases/download/chromium%2F{{ patch }}/{{ name.split('-')[0] }}-linux-arm64.tgz  # [linux and aarch64]
+    sha256: 70fbd9b99e7655680606ac42bf2320d4291e6fabfba11c75f51c17d08844a247  # [linux and aarch64]
+    fn: {{ name }}-{{ version }}-linux-aarch64.tgz  # [linux and aarch64]
+  - url: https://github.com/bblanchon/{{ name }}/releases/download/chromium%2F{{ patch }}/{{ name.split('-')[0] }}-win-x64.tgz  # [win]
+    sha256: 6801ce35274aafefb64ce92efefc8f3f514e2430889a5c47880eee555c9b540e  # [win]
+    fn: {{ name }}-{{ version }}-win-64.tgz  # [win]
 
 build:
   number: 1
