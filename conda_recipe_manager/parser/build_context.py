@@ -3,7 +3,9 @@
 """
 
 from functools import cache
-from typing import Final
+from typing import Final, cast
+
+import yaml
 
 from conda_recipe_manager.parser.exceptions import BuildContextVersionException
 from conda_recipe_manager.parser.platform_types import (
@@ -113,6 +115,20 @@ class BuildContext:
         :returns: The build context.
         """
         return self._context
+
+    def get_selector_context(self) -> dict[str, Primitives]:
+        """
+        Returns the selector context. Selectors use type coercion to convert strings
+        to their appropriate types.
+
+        :returns: The selector context.
+        """
+        selector_context: Final[dict[str, Primitives]] = {}
+        for key, value in self._context.items():
+            if isinstance(value, str):
+                value = yaml.safe_load(value)
+            selector_context[key] = cast(Primitives, value)
+        return selector_context
 
     def get_platform(self) -> Platform:
         """

@@ -144,10 +144,9 @@ class CbcParser(RecipeReader):
                 path = f"/{variable}/{i}"
                 if is_single_value:
                     path = f"/{variable}"
-                # Convert strings that are numeric to integers.
-                if isinstance(value, str) and value.isnumeric():
-                    value = int(value)
-                entry = self._construct_cbc_variable(path, value, comments_tbl)
+                # This is necessary to ensure closeness with conda-build's format.
+                str_value = str(value)
+                entry = self._construct_cbc_variable(path, str_value, comments_tbl)
 
                 # TODO detect duplicates
                 if variable not in self._cbc_vars_tbl:

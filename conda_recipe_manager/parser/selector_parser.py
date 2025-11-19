@@ -125,7 +125,7 @@ class SelectorParser(IsModifiable):
         if not self._content:
             return True
 
-        selector_context: Final[dict[str, Primitives]] = build_context.get_context()
+        selector_context: Final[dict[str, Primitives]] = build_context.get_selector_context()
 
         try:
             expr_code = Expr(self._content, model=SelectorParser._get_evalidate_model()).code  # type: ignore[misc]

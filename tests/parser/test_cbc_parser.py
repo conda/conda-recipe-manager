@@ -385,7 +385,7 @@ def test_get_zip_keys(file: str, build_context: BuildContext, expected: list[set
                 {
                     # --- Default variants ---
                     "cpu_optimization_target": ["nocona"],
-                    "lua": [5],
+                    "lua": ["5"],
                     "perl": ["5.26.2"],
                     # --- End default variants ---
                     "blas_impl": ["openblas"],
