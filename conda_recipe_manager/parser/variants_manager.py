@@ -43,7 +43,7 @@ class VariantsManager:
             )
             recipe_var.filter_by_selectors(post_cbc_build_context)
             recipe_var.evaluate_jinja_expressions(post_cbc_build_context)
-            if recipe_var.contains_value("/build/skip") and recipe_var.get_value("/build/skip") == True:
+            if recipe_var.contains_value("/build/skip") and recipe_var.get_value("/build/skip") is True:
                 continue
             recipe_var_hash: str = recipe_var.calc_sha256()
             if recipe_var_hash in known_hashes:
