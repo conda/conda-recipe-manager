@@ -1,0 +1,111 @@
+package:
+  name: curl-split
+  version: 8.16.0
+
+source:
+  url: https://curl.se/download/curl-8.16.0.tar.bz2
+  sha256: 9459180ab4933b30d0778ddd71c91fe2911fab731c46e59b3f4c8385b1596c91
+
+build:
+  number: 0
+
+requirements:
+  build:
+    - {{ stdlib('c') }}
+    - {{ compiler('c') }}
+    - libtool
+    - cmake
+    # perl is required to run the tests on UNIX.
+    - perl
+    - pkg-config
+  host:
+    - libkrb5     1.21
+    - libnghttp2  1
+    - libssh2     1
+    - libidn2     2
+    - openssl     3
+    - zlib        1.2
+    - zstd        1.5
+
+outputs:
+  - name: libcurl
+    requirements:
+      build:
+        - {{ stdlib('c') }}
+        - {{ compiler('c') }}
+      host:
+        - libkrb5     1.21
+        - libnghttp2  1
+        - libssh2     1
+        - libidn2     2
+        - openssl     3
+        - zlib        1.2
+        - zstd        1.5
+      run:
+        - libnghttp2  >=1.57.0
+        - libssh2     >=1.11.1
+        # exact pin handled through openssl run_exports
+        - openssl
+    build:
+      run_exports:
+        - {{ pin_subpackage('libcurl') }}
+      ignore_run_exports:
+        - libkrb5
+    files:
+      - include/curl
+      - lib/libcurl*.dylib
+      - lib/pkgconfig/libcurl*
+      - bin/curl-config
+    test:
+      commands:
+        - curl-config --features
+        - curl-config --protocols
+        - test -f ${PREFIX}/lib/libcurl${SHLIB_EXT}
+        - CURL_SSL_BACKENDS=$(curl-config --ssl-backends)
+        - if ! echo $CURL_SSL_BACKENDS | grep -q "OpenSSL"; then exit 1; fi
+  - name: curl
+    files:
+      - bin/curl
+    build:
+      ignore_run_exports:
+        # Ignoring the run export since we use openssl in the host section
+        # as a means to produce the right variants only. We don't need the dependency
+        # since it's already on libcurl.
+        - openssl
+    requirements:
+      build:
+        - {{ stdlib('c') }}
+        - {{ compiler('c') }}
+      host:
+        # Only required to produce all openssl variants.
+        - openssl 3
+        - {{ pin_subpackage('libcurl', exact=True) }}
+        - zlib 1.2
+      run:
+        - {{ pin_subpackage('libcurl', exact=True) }}
+    test:
+      commands:
+        # curl help commands on Windows have non-zero status codes.  Need other test.
+        - curl --help
+        # Try downloading something from https to make sure the certs are used correctly.
+        - curl https://raw.githubusercontent.com/conda-forge/curl-feedstock/master/LICENSE.txt
+
+about:
+  home: https://curl.se
+  license: curl
+  license_url: https://curl.se/docs/copyright.html
+  license_family: MIT
+  summary: tool and library for transferring data with URL syntax
+  description: |
+    Curl is an open source command line tool and library for transferring data
+    with URL syntax. It is used in command lines or scripts to transfer data.
+  doc_url: https://curl.se/docs
+  dev_url: https://github.com/curl/curl
+
+extra:
+  recipe-maintainers:
+    - msarahan
+    - jakirkham
+    - ocefpaf
+    - mingwandroid
+    - xylar

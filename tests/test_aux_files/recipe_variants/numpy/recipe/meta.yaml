@@ -1,0 +1,185 @@
+{% set version = "2.3.4" %}
+# numpy will by default use the ABI feature level for the first numpy version
+# that added support for the oldest currently-supported CPython version; see
+# https://github.com/numpy/numpy/blob/v2.3.4/numpy/_core/include/numpy/numpyconfig.h
+{% set default_abi_level = "1.23" %}
+
+package:
+  name: numpy_and_numpy_base
+  version: {{ version }}
+
+source:
+  - url: https://github.com/numpy/numpy/releases/download/v{{ version }}/numpy-{{ version }}.tar.gz
+    sha256: a7d018bfedb375a8d979ac758b120ba846a7fe764911a64465fd87b8729f4a6a
+    patches:                                                # [blas_impl == "mkl" or osx]
+      - patches/0003-intel_init_mkl.patch                   # [blas_impl == "mkl"]
+
+build:
+  number: 1
+  # numpy 2.3.0 no longer supports Python 3.10: https://numpy.org/devdocs/release/2.3.0-notes.html
+  skip: True  # [(blas_impl == 'openblas' and win) or py<311]
+  force_use_keys:
+    - python
+
+requirements:
+  build:
+    - patch     # [(blas_impl == "mkl") and not win]
+    - msys2-patch  # [(blas_impl == "mkl") and win]
+
+outputs:
+  # this one has all the actual contents
+  - name: numpy-base
+    script: {{ "install_base.sh" if unix else "install_base.bat" }}
+    build:
+      entry_points:
+        - f2py = numpy.f2py.f2py2e:main
+        - numpy-config = numpy._configtool:main
+    requirements:
+      build:
+        - {{ stdlib('c') }}
+        - {{ compiler('c') }}
+        - {{ compiler('cxx') }}
+        - ninja-base
+        - pkg-config
+      host:
+        - python
+        - pip
+        - cython >=3.0.6
+        - meson-python >=0.15.0
+        - python-build
+        # blas
+        - mkl-devel  {{ mkl }}  # [blas_impl == "mkl"]
+        - openblas-devel {{ openblas }}  # [blas_impl == "openblas"]
+      run:
+        - python
+
+  # When building out the initial package set for a new Python version / MKL version the
+  # recommendation is to build numpy-base but not numpy, then build
+  # mkl_fft and mkl_random, and then numpy.
+  # If only_build_numpy_base: "yes build numpy-base only; otherwise build all the outputs.
+  # numpy is a metapackage that may include mkl_fft and mkl_random both of
+  # which require numpy-base to build
+  - name: numpy                                 # [only_build_numpy_base != 'yes']
+    build:                                      # [only_build_numpy_base != 'yes']
+      run_exports:                              # [only_build_numpy_base != 'yes']
+        - numpy >={{ default_abi_level }},<3    # [only_build_numpy_base != 'yes']
+    requirements:                               # [only_build_numpy_base != 'yes']
+      build:                                    # [only_build_numpy_base != 'yes']
+        # for runtime alignment
+        - {{ stdlib('c') }}                     # [only_build_numpy_base != 'yes']
+        - {{ compiler('c') }}                   # [only_build_numpy_base != 'yes']
+        - {{ compiler('cxx') }}                 # [only_build_numpy_base != 'yes']
+      host:                                     # [only_build_numpy_base != 'yes']
+        - python                                # [only_build_numpy_base != 'yes']
+        # these import blas metapackages to ensure consistency with downstream libs that also use blas
+        - mkl-devel  {{ mkl }}  # [blas_impl == 'mkl' and only_build_numpy_base != 'yes']
+        - openblas-devel {{ openblas }}  # [blas_impl == 'openblas' and only_build_numpy_base != 'yes']
+      run:                                      # [only_build_numpy_base != 'yes']
+        - python                                # [only_build_numpy_base != 'yes']
+        - {{ pin_subpackage('numpy-base', exact=True) }}  # [only_build_numpy_base != 'yes']
+        # openblas or mkl runtime included with run_exports
+        - mkl_fft  # [blas_impl == 'mkl' and only_build_numpy_base != 'yes']
+        - mkl_random # [blas_impl == 'mkl' and (not win or int(vc)>=14) and only_build_numpy_base != 'yes']
+
+    {% set tests_to_skip = "_not_a_real_test" %}
+
+    # path error in pkg-config on osx only for numpy 2.3.0 on CI
+    {% set tests_to_skip = tests_to_skip + " or test_configtool_pkgconfigdir" %}  # [osx]
+    # NumPy's exp2 function is not raising FloatingPointError for overflow/underflow conditions on Windows, likely due to platform-specific floating-point exception handling differences between glibc and MSVCRT.
+    # This test passes on Linux with glibc ≥2.17 but fails on Windows because np.exp2(2000.0) returns inf instead of raising FloatingPointError.
+    {% set tests_to_skip = tests_to_skip + " or test_exp2" %}  # [win]
+
+    test:
+      requires:
+        - pip
+        # restrict setuptools: see https://github.com/numpy/numpy/issues/27405
+        # TODO remove when numpy stop using distutils.msvccompiler from setuptools.
+        - setuptools <74
+        - pytest >=7.4.0
+        - pytest-cov >=4.1.0
+        - pytest-xdist
+        - hypothesis >=6.111.0
+        - pytz >=2023.3.post1
+        - {{ stdlib('c') }}  # [not osx]
+        - {{ compiler('c') }}  # [not osx]
+        - {{ compiler('cxx') }}  # [not osx]
+        - {{ compiler('fortran') }}  # [not osx]
+        - nomkl  # [x86 and blas_impl != 'mkl']
+        - typing-extensions >=4.5.0
+        - mypy >=1.15.0
+        - charset-normalizer
+        - meson >=1.5.2
+      commands:
+        - f2py -h
+        - python -c "import numpy; numpy.show_config()"
+        - export OPENBLAS_NUM_THREADS=1  # [unix]
+        - set OPENBLAS_NUM_THREADS=1  # [win]
+        - export CPU_COUNT=4  # [linux and ppc64le]
+        - pytest -vv --pyargs numpy -k "not ({{ tests_to_skip }})" --durations=50 --durations-min=1.0
+      imports:
+        - numpy
+        - numpy.core.multiarray
+        - numpy.core.numeric
+        - numpy.core.umath
+        - numpy.linalg.lapack_lite
+        - numpy.random.mtrand
+        # from numpy/tests/test_public_api.py
+        - numpy.ctypeslib
+        - numpy.dtypes
+        - numpy.exceptions
+        - numpy.f2py
+        - numpy.fft
+        - numpy.lib
+        - numpy.lib.array_utils
+        - numpy.lib.format
+        - numpy.lib.introspect
+        - numpy.lib.mixins
+        - numpy.lib.npyio
+        - numpy.lib.recfunctions # note: still needs cleaning, was forgotten for 2.0
+        - numpy.lib.scimath
+        - numpy.lib.stride_tricks
+        - numpy.linalg
+        - numpy.ma
+        - numpy.ma.extras
+        - numpy.ma.mrecords
+        - numpy.polynomial
+        - numpy.polynomial.chebyshev
+        - numpy.polynomial.hermite
+        - numpy.polynomial.hermite_e
+        - numpy.polynomial.laguerre
+        - numpy.polynomial.legendre
+        - numpy.polynomial.polynomial
+        - numpy.random
+        - numpy.strings
+        - numpy.testing
+        - numpy.testing.overrides
+        - numpy.typing
+        - numpy.typing.mypy_plugin
+        - numpy.version
+
+about:
+  home: https://numpy.org
+  license: BSD-3-Clause
+  license_family: BSD
+  license_file:
+    - LICENSE.txt
+    - LICENSES_bundled.txt
+  summary: Array processing for numbers, strings, records, and objects.
+  description: |
+    NumPy is the fundamental package needed for scientific computing with Python.
+  doc_url: https://numpy.org/doc/stable/reference
+  dev_url: https://github.com/numpy/numpy
+
+extra:
+  recipe-maintainers:
+    - jakirkham
+    - msarahan
+    - pelson
+    - rgommers
+    - ocefpaf
+    - chenghlee
+  skip-lints:
+    - missing_imports_or_run_test_py
+    - pip_install_args
+    - patch_unnecessary
+    - missing_tests

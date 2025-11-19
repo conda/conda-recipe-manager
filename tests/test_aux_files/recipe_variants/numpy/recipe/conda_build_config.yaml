@@ -1,0 +1,15 @@
+# When building out the initial package set for a new Python version / MKL version the
+# recommendation is to build numpy-base but not numpy, then build
+# mkl_fft and mkl_random, and then numpy.
+# If only_build_numpy_base: yes, build numpy-base only; otherwise build all the outputs.
+only_build_numpy_base: no
+
+c_compiler:    # [win]
+  - vs2019     # [win]
+cxx_compiler:  # [win]
+  - vs2019     # [win]
+
+c_compiler_version:
+  - 17.0.6            # [osx]
+cxx_compiler_version:
+  - 17.0.6            # [osx]

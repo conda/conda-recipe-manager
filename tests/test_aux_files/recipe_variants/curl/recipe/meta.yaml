@@ -1,0 +1,128 @@
+{% set name = "curl" %}
+{% set version = "8.16.0" %}
+
+package:
+  name: {{ name }}-split
+  version: {{ version }}
+
+source:
+  url: https://{{ name }}.se/download/{{ name }}-{{ version }}.tar.bz2
+  sha256: 9459180ab4933b30d0778ddd71c91fe2911fab731c46e59b3f4c8385b1596c91
+
+build:
+  number: 0
+
+requirements:
+  build:
+    - {{ stdlib('c') }}
+    - {{ compiler('c') }}
+    - libtool        # [unix]
+    - make           # [linux]
+    - cmake
+    - ninja-base     # [win]
+    # perl is required to run the tests on UNIX.
+    - perl           # [unix]
+    - pkg-config     # [unix]
+  host:
+    - libkrb5     {{ krb5 }}
+    - libnghttp2  {{ libnghttp2 }}  # [unix]
+    - libssh2     {{ libssh2 }}
+    - libidn2     {{ libidn2 }}     # [unix]
+    - openssl     {{ openssl }}     # [unix]
+    - zlib        {{ zlib }}
+    - zstd        {{ zstd }}
+
+outputs:
+  - name: libcurl
+    requirements:
+      build:
+        - {{ stdlib('c') }}
+        - {{ compiler('c') }}
+      host:
+        - libkrb5     {{ krb5 }}
+        - libnghttp2  {{ libnghttp2 }}  # [unix]
+        - libssh2     {{ libssh2 }}
+        - libidn2     {{ libidn2 }}     # [unix]
+        - openssl     {{ openssl }}     # [unix]
+        - zlib        {{ zlib }}
+        - zstd        {{ zstd }}
+      run:
+        - libnghttp2  >=1.57.0          # [unix]
+        - libssh2     >=1.11.1
+        # exact pin handled through openssl run_exports
+        - openssl  # [unix]
+    build:
+      run_exports:
+        - {{ pin_subpackage('libcurl') }}
+      ignore_run_exports:
+        - libkrb5
+    files:
+      - include/curl             # [unix]
+      - lib/libcurl.so*          # [linux]
+      - lib/libcurl*.dylib       # [osx]
+      - lib/pkgconfig/libcurl*   # [unix]
+      - bin/curl-config          # [unix]
+      - Library/bin/libcurl.dll  # [win]
+      - Library/include/curl     # [win]
+      - Library/lib/libcurl.lib  # [win]
+      - Library/lib/libcurl.exp  # [win]
+    test:
+      commands:
+        - curl-config --features       # [not win]
+        - curl-config --protocols      # [not win]
+        - test -f ${PREFIX}/lib/libcurl${SHLIB_EXT}  # [not win]
+        - if exist %LIBRARY_BIN%\curl.exe exit 1     # [win]
+        - if not exist %LIBRARY_BIN%\libcurl.dll exit 1   # [win]
+        - if not exist %LIBRARY_LIB%\libcurl.lib exit 1   # [win]
+        - CURL_SSL_BACKENDS=$(curl-config --ssl-backends)                             # [unix]
+        - if ! echo $CURL_SSL_BACKENDS | grep -q "OpenSSL"; then exit 1; fi           # [unix]
+
+  - name: curl
+    files:
+      - bin/curl                # [unix]
+      - Library/bin/curl.exe*   # [win]
+    build:
+      ignore_run_exports:
+        # Ignoring the run export since we use openssl in the host section
+        # as a means to produce the right variants only. We don't need the dependency
+        # since it's already on libcurl.
+        - openssl
+    requirements:
+      build:
+        - {{ stdlib('c') }}
+        - {{ compiler('c') }}
+      host:
+        # Only required to produce all openssl variants.
+        - openssl {{ openssl }}  # [unix]
+        - {{ pin_subpackage('libcurl', exact=True) }}
+        - zlib {{ zlib }}
+      run:
+        - {{ pin_subpackage('libcurl', exact=True) }}
+
+    test:
+      commands:
+        # curl help commands on Windows have non-zero status codes.  Need other test.
+        - curl --help
+        # Try downloading something from https to make sure the certs are used correctly.
+        - curl https://raw.githubusercontent.com/conda-forge/curl-feedstock/master/LICENSE.txt
+        - if not exist %LIBRARY_BIN%\curl.exe exit 1  # [win]
+
+about:
+  home: https://curl.se
+  license: curl
+  license_url: https://curl.se/docs/copyright.html
+  license_family: MIT
+  summary: tool and library for transferring data with URL syntax
+  description: |
+    Curl is an open source command line tool and library for transferring data
+    with URL syntax. It is used in command lines or scripts to transfer data.
+  doc_url: https://curl.se/docs
+  dev_url: https://github.com/curl/curl
+
+extra:
+  recipe-maintainers:
+    - msarahan
+    - jakirkham
+    - ocefpaf
+    - mingwandroid
+    - xylar
