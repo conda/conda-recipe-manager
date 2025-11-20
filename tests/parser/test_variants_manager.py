@@ -44,7 +44,15 @@ from tests.file_loading import get_test_path, load_file
 )
 def test_variants_manager(platform: Platform, feedstock: str) -> None:
     """
-    Tests the VariantsManager class.
+    Tests the VariantsManager class by computing recipe variants for a given feedstock and platform.
+    These variants are compared against the expected variants,
+        which were manually verified against conda-build's output for correctness.
+    We don't perform automated comparison with conda-build's output directly because the rendering performed
+        by CRM is less complete than conda-build's.
+    We do not evaluate all JINJA functions such as {{ pin_subpackage() }} for example.
+
+    :param platform: Platform to test the variants manager for.
+    :param feedstock: Feedstock to test the variants manager for.
     """
     aggregate_cbc_path = get_test_path() / "recipe_variants" / "conda_build_config.yaml"
     recipe_cbc_path = get_test_path() / "recipe_variants" / feedstock / "recipe" / "conda_build_config.yaml"
