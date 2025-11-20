@@ -28,8 +28,17 @@ from tests.file_loading import get_test_path, load_file
     "feedstock",
     [
         "curl",
+        # NOTE: The recipe was modified to avoid a duplicate script key in each output.
         "intel_repack",
+        # NOTE: The recipe was modified to avoid:
+        #   - Duplicate skip keys.
+        #   - Duplicate script keys for numpy-base.
+        #   - JINJA if statements in the recipe.
         "numpy",
+        # NOTE: The recipe and local CBC were modified:
+        #   - To correct the list of lists format for zip keys in the CBC file.
+        #   - To avoid duplicate build/string keys in the recipe.
+        #   - To avoid duplicate summary keys in the recipe.
         "openblas",
     ],
 )

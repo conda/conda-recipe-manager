@@ -79,7 +79,7 @@ outputs:
         - {{ pin_subpackage('numpy-base', exact=True) }}  # [only_build_numpy_base != 'yes']
         # openblas or mkl runtime included with run_exports
         - mkl_fft  # [blas_impl == 'mkl' and only_build_numpy_base != 'yes']
-        - mkl_random # [blas_impl == 'mkl' and (not win or int(vc)>=14) and only_build_numpy_base != 'yes']
+        - mkl_random # [blas_impl == 'mkl' and (not win or vc>=14) and only_build_numpy_base != 'yes']
 
     {% set tests_to_skip = "_not_a_real_test" %}
 
