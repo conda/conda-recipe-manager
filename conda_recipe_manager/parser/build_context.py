@@ -95,6 +95,20 @@ class BuildContext:
             **BuildContext._get_platform_context(self._platform),
         }
 
+    def _construct_selector_context(self) -> dict[str, Primitives]:
+        """
+        Constructs the selector context. Selectors use type coercion to convert strings
+        to their appropriate types.
+
+        :returns: The constructed selector context.
+        """
+        selector_context: Final[dict[str, Primitives]] = {}
+        for key, value in self._context.items():
+            if isinstance(value, str):
+                value = yaml.safe_load(value)
+            selector_context[key] = cast(Primitives, value)
+        return selector_context
+
     def __init__(  # pylint: disable=dangerous-default-value
         self, platform: Platform, build_env_vars: dict[str, Primitives] = {}
     ) -> None:
@@ -107,6 +121,7 @@ class BuildContext:
         self._platform: Final[Platform] = platform
         self._build_env_vars: Final[dict[str, Primitives]] = build_env_vars
         self._context: Final[dict[str, Primitives]] = self._construct_build_context()
+        self._selector_context: Final[dict[str, Primitives]] = self._construct_selector_context()
 
     def get_context(self) -> dict[str, Primitives]:
         """
@@ -118,17 +133,11 @@ class BuildContext:
 
     def get_selector_context(self) -> dict[str, Primitives]:
         """
-        Returns the selector context. Selectors use type coercion to convert strings
-        to their appropriate types.
+        Returns the selector context.
 
         :returns: The selector context.
         """
-        selector_context: Final[dict[str, Primitives]] = {}
-        for key, value in self._context.items():
-            if isinstance(value, str):
-                value = yaml.safe_load(value)
-            selector_context[key] = cast(Primitives, value)
-        return selector_context
+        return self._selector_context
 
     def get_platform(self) -> Platform:
         """

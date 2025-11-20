@@ -40,7 +40,6 @@ from conda_recipe_manager.parser._utils import (
     stringify_yaml,
     substitute_markers,
 )
-from conda_recipe_manager.parser.build_context import BuildContext
 from conda_recipe_manager.parser.dependency import (
     DependencySection,
     dependency_data_from_str,
@@ -393,25 +392,20 @@ class RecipeReader(IsModifiable):
             case SchemaVersion.V1:
                 return self._vars_tbl[key][0].get_value()
 
-    def _render_jinja_vars(self, s: str, build_context: Optional[BuildContext] = None) -> JsonType:
+    def _render_jinja_vars(self, s: str, context: dict[str, JsonType] | None = None) -> JsonType:
         """
         Helper function that replaces Jinja substitutions with their actual set values.
 
         :param s: String to be re-rendered
-        :param build_context: (Optional) Build context to evaluate the Jinja expressions for.
+        :param context: (Optional) Context to evaluate the Jinja expressions for.
             If not provided, the Jinja expression context will be constructed from the recipe variables.
-            If provided, the Jinja expression context will be constructed from the build context,
-            updated with the recipe variables.
         :returns: The original value, augmented with Jinja substitutions. Types are re-rendered to account for multiline
             strings that may have been "normalized" prior to this call.
         """
         start_idx, sub_regex = self._set_on_schema_version()
 
-        recipe_vars_context: Final[dict[str, JsonType]] = {k: self.get_variable(k) for k in self._vars_tbl}
-        if build_context is None:
-            context = recipe_vars_context
-        else:
-            context = {**build_context.get_context(), **recipe_vars_context}
+        if context is None:
+            context = {k: self.get_variable(k) for k in self._vars_tbl}
 
         # Search the string, replacing all substitutions we can recognize
         for match in cast(list[str], sub_regex.findall(s)):

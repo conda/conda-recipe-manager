@@ -31,7 +31,6 @@ from conda_recipe_manager.parser._traverse import (
     INVALID_IDX,
     remap_child_indices_virt_to_phys,
     traverse,
-    traverse_all,
     traverse_with_index,
 )
 from conda_recipe_manager.parser._types import Regex, StrStack
@@ -181,6 +180,29 @@ class RecipeParser(RecipeReader):
         self._rebuild_selectors()
         self._is_modified = True
 
+    @staticmethod
+    def _remove_selector_from_comment(node_comment: str) -> tuple[str, str]:
+        """
+        Removes a selector from a comment. Returns the comment with the selector removed.
+
+        :param node_comment: Comment to remove the selector from.
+        :raises ValueError: If no selector is found in the comment.
+        :returns: Tuple containing the comment with the selector removed and the selector itself.
+        """
+        search_results = Regex.SELECTOR.search(node_comment)
+        if not search_results:
+            raise ValueError(f"No selector found in comment: {node_comment}")
+
+        selector = search_results.group(0)
+        comment = node_comment.replace(selector, "")
+        # Sanitize potential edge-case scenarios after a removal
+        comment = comment.replace("#  ", "# ").replace("# # ", "# ")
+        # Detect and remove empty comments. Other comments should remain intact.
+        if comment.strip() == "#":
+            comment = ""
+
+        return comment, selector
+
     def remove_selector(self, path: str) -> Optional[str]:
         """
         Given a path, remove a selector to the line denoted by path.
@@ -197,23 +219,16 @@ class RecipeParser(RecipeReader):
         if node is None:
             raise KeyError(f"Path not found: {path!r}")
 
-        search_results = Regex.SELECTOR.search(node.comment)
-        if not search_results:
+        try:
+            new_comment, selector = RecipeParser._remove_selector_from_comment(node.comment)
+        except ValueError:
             return None
 
-        selector = search_results.group(0)
-        comment = node.comment.replace(selector, "")
-        # Sanitize potential edge-case scenarios after a removal
-        comment = comment.replace("#  ", "# ").replace("# # ", "# ")
-        # Detect and remove empty comments. Other comments should remain intact.
-        if comment.strip() == "#":
-            comment = ""
-
-        node.comment = comment
+        node.comment = new_comment
         # Some lines of YAML correspond to multiple nodes. For consistency, we need to ensure that comments are
         # duplicate across all nodes on a line.
         if node.is_single_key() and not node.children[0].list_member_flag:
-            node.children[0].comment = comment
+            node.children[0].comment = new_comment
 
         self._rebuild_selectors()
         self._is_modified = True
@@ -793,17 +808,25 @@ class RecipeParser(RecipeReader):
                     new_values.append(val)
             self._vars_tbl[variable] = new_values
         self._vars_tbl = {k: v for k, v in self._vars_tbl.items() if len(v) > 0}
-        # Remove all selectors that do apply, leaving the nodes intact.
-        for selector in self.list_selectors():
-            selector_parser = SelectorParser(selector, self.get_schema_version())
-            if selector_parser.does_selector_apply(build_context):
-                selector_paths = self.get_selector_paths(selector)
-                for path in selector_paths:
-                    self.remove_selector(path)
-        # Remove all paths that do not apply to the build context.
-        for selector in self.list_selectors():
-            while paths := self.get_selector_paths(selector):
-                self.patch({"op": "remove", "path": paths[0]})
+
+        def _filter_selectors_and_paths(node: Node) -> None:
+            new_children = []
+            for child in node.children:
+                child_selector = SelectorParser._v0_extract_selector(child.comment)  # pylint: disable=protected-access
+                if not child_selector:
+                    new_children.append(child)
+                elif SelectorParser(child_selector, self.get_schema_version()).does_selector_apply(build_context):
+                    child.comment, _ = RecipeParser._remove_selector_from_comment(child.comment)
+                    new_children.append(child)
+                else:
+                    continue
+                _filter_selectors_and_paths(child)
+            node.children = new_children
+
+        _filter_selectors_and_paths(self._root)
+
+        self._rebuild_selectors()
+        self._is_modified = True
 
     def evaluate_jinja_expressions(self, build_context: BuildContext) -> None:
         """
@@ -814,15 +837,20 @@ class RecipeParser(RecipeReader):
         :param build_context: Build context to evaluate the Jinja expressions for.
         :raises ValueError: If the JINJA expression evaluation result is not a primitive type.
         """
+        recipe_vars_context: Final[dict[str, JsonType]] = {k: self.get_variable(k) for k in self._vars_tbl}
+        context: Final = {**build_context.get_context(), **recipe_vars_context}
 
-        def _evaluate_jinja_expression_in_node(node: Node, path: StrStack) -> None:  # pylint: disable=unused-argument
+        def _evaluate_jinja_expression_in_node(node: Node) -> None:
             if isinstance(node.value, str):
-                rendered_value = self._render_jinja_vars(node.value, build_context)
+                rendered_value = self._render_jinja_vars(node.value, context)
                 if not isinstance(rendered_value, PRIMITIVES_NO_NONE_TUPLE):
                     raise ValueError(
                         f"JINJA expression evaluation result is not a primitive type: {type(rendered_value)}"
                     )
                 node.value = rendered_value
+            for child in node.children:
+                _evaluate_jinja_expression_in_node(child)
 
-        traverse_all(self._root, _evaluate_jinja_expression_in_node)
+        _evaluate_jinja_expression_in_node(self._root)
         self._vars_tbl.clear()
+        self._is_modified = True
