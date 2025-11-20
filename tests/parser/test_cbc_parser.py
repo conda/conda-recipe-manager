@@ -8,7 +8,7 @@ from typing import Final, cast
 import pytest
 
 from conda_recipe_manager.parser.build_context import BuildContext
-from conda_recipe_manager.parser.cbc_parser import _SPECIAL_KEYS, CbcOutputType, CbcParser, GeneratedVariantsType
+from conda_recipe_manager.parser.cbc_parser import _SPECIAL_KEYS, CbcOutputType, CbcParser
 from conda_recipe_manager.parser.platform_types import Platform
 from conda_recipe_manager.types import JsonType, Primitives
 from tests.file_loading import get_test_path, load_cbc, load_json_file
@@ -545,11 +545,9 @@ def test_generate_variants(
     :param conda_build_variants: Conda build variants to compare against.
     """
     # Generate the variants
-    generated_variants_original: GeneratedVariantsType = CbcParser.generate_variants(cbc_files, build_context)
+    generated_variants: list[dict[str, JsonType]] = list(CbcParser.generate_variants(cbc_files, build_context))
     # Remove the ignored special keys from the expected variants
     expected_variants = [_remove_special_keys(variant) for variant in conda_build_variants]
-    # Transform integers into their string representation in the generated variants to match conda_build's output
-    generated_variants = [_transform_integers_to_strings(variant) for variant in generated_variants_original]
 
     # Check that the keys are the same
     generated_var_keys = generated_variants[0].keys()
