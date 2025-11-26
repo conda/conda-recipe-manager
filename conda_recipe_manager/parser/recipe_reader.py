@@ -402,6 +402,9 @@ class RecipeReader(IsModifiable):
         :returns: The original value, augmented with Jinja substitutions. Types are re-rendered to account for multiline
             strings that may have been "normalized" prior to this call.
         """
+        if not s:
+            return s
+
         start_idx, sub_regex = self._set_on_schema_version()
 
         if context is None:
