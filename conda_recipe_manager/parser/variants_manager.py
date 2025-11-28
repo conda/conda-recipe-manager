@@ -28,8 +28,8 @@ class VariantsManager:
         :param build_context: Build context to generate the variants for.
         """
         self._build_context = build_context
-        cbc_parsers: list[CbcParser] = [CbcParser(cbc_path.read_text()) for cbc_path in cbc_paths]
-        self._variants: Final[GeneratedVariantsType] = CbcParser.generate_variants(cbc_parsers, build_context)
+        self._cbc_parsers: list[CbcParser] = [CbcParser(cbc_path.read_text()) for cbc_path in cbc_paths]
+        self._variants: Final[GeneratedVariantsType] = CbcParser.generate_variants(self._cbc_parsers, build_context)
         self._base_recipe: RecipeParserDeps = RecipeParserDeps(recipe_path.read_text())
         recipe_variants_first_pass: list[RecipeParserDeps] = [
             RecipeParserDeps(recipe_path.read_text()) for _ in self._variants
@@ -62,3 +62,9 @@ class VariantsManager:
         Returns the recipe variants as RecipeReaderDeps objects.
         """
         return cast(list[RecipeReaderDeps], self._recipe_variants)
+
+    def get_cbc_parsers(self) -> list[CbcParser]:
+        """
+        Returns the CBC parsers.
+        """
+        return self._cbc_parsers
