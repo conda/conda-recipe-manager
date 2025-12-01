@@ -103,6 +103,7 @@ class BuildContext:
         selector_context: Final[dict[str, Primitives]] = {}
         for key, value in self._context.items():
             # Mirror conda-build's behavior of coercing strings to their appropriate types.
+            # See https://github.com/conda/conda-build/issues/5852
             if isinstance(value, str):
                 try:
                     value = int(value)
