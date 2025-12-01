@@ -5,8 +5,6 @@
 from functools import cache
 from typing import Final, cast
 
-import yaml
-
 from conda_recipe_manager.parser.exceptions import BuildContextVersionException
 from conda_recipe_manager.parser.platform_types import (
     ALL_ARCHITECTURES,
@@ -104,9 +102,15 @@ class BuildContext:
         """
         selector_context: Final[dict[str, Primitives]] = {}
         for key, value in self._context.items():
+            # Mirror conda-build's behavior of coercing strings to their appropriate types.
             if isinstance(value, str):
-                value = yaml.safe_load(value)
-            selector_context[key] = cast(Primitives, value)
+                try:
+                    value = int(value)
+                except ValueError:
+                    lower_val = cast(str, value).lower()
+                    if lower_val in {"true", "false"}:
+                        value = lower_val == "true"
+            selector_context[key] = value
         return selector_context
 
     def __init__(  # pylint: disable=dangerous-default-value
