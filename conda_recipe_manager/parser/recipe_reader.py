@@ -376,6 +376,27 @@ class RecipeReader(IsModifiable):
             case SchemaVersion.V1:
                 return 3, Regex.JINJA_V1_SUB
 
+    @no_type_check
+    @staticmethod
+    def _render_jinja_expression(expression: str, context: dict[str, JsonType]) -> tuple[bool, JsonType]:
+        """
+        Helper function that renders a Jinja expression.
+
+        :param expression: The Jinja expression to render.
+        :param context: The context to evaluate the Jinja expression with.
+        :returns: A tuple containing a boolean indicating if the expression was rendered successfully and
+            the rendered value, or the original expression if it cannot be rendered.
+        """
+        try:
+            env = Environment(undefined=StrictUndefined)
+            compiled_expression = env.compile_expression(expression, undefined_to_none=False)
+            result = compiled_expression(**context)
+            if isinstance(result, StrictUndefined):
+                return False, expression
+            return True, result
+        except Exception:  # pylint: disable=broad-exception-caught
+            return False, expression
+
     def _eval_var(self, key: str) -> JsonType:
         """
         Evaluates a known variable by name to a V0 JINJA variable or a V1 context variable.
@@ -387,8 +408,20 @@ class RecipeReader(IsModifiable):
             case SchemaVersion.V0:
                 if len(self._vars_tbl[key]) == 1:
                     return self._vars_tbl[key][0].get_value()
-                # TODO Future: Support recursive concatenation here. Until then, return the last value.
-                return self._vars_tbl[key][-1].get_value()
+                # Support recursive concatenation here.
+                context: dict[str, JsonType] = {}
+                for node_var in self._vars_tbl[key]:
+                    success, result = cast(
+                        tuple[bool, JsonType], self._render_jinja_expression(node_var.get_value(), context)
+                    )
+                    if not success:
+                        log.debug(
+                            "The recipe parser was unable to evaluate the " "JINJA expression: %s with context: %s",
+                            node_var.get_value(),
+                            context,
+                        )
+                    context = {key: result}
+                return result
             case SchemaVersion.V1:
                 return self._vars_tbl[key][0].get_value()
 
@@ -415,15 +448,12 @@ class RecipeReader(IsModifiable):
             # The regex guarantees the string starts and ends with double braces
             expression = match[start_idx:-2].strip()
             # If the expression can't be evaluated, skip it.
-            try:
-                env = Environment(undefined=StrictUndefined)  # type: ignore[misc]
-                compiled_expression = env.compile_expression(expression)
-                result = compiled_expression(**context)  # type: ignore[misc]
-            except Exception:  # pylint: disable=broad-exception-caught
+            success, result = cast(tuple[bool, JsonType], self._render_jinja_expression(expression, context))
+            if not success:
                 log.warning("The recipe parser was unable to evaluate the JINJA expression: %s", expression)
                 continue
             # Do not replace the match if the result is not a primitive type. None signals an undefined expression.
-            if not isinstance(result, PRIMITIVES_NO_NONE_TUPLE):  # type: ignore[misc]
+            if not isinstance(result, PRIMITIVES_NO_NONE_TUPLE):
                 log.warning("The recipe parser was unable to evaluate the JINJA expression: %s", expression)
                 continue
             result = str(result)

@@ -98,7 +98,7 @@ outputs:
         - f2py -h
         - python -c "import numpy; numpy.show_config()"
         - set OPENBLAS_NUM_THREADS=1
-        - pytest -vv --pyargs numpy -k "not (tests_to_skip + " or test_exp2")" --durations=50 --durations-min=1.0
+        - pytest -vv --pyargs numpy -k "not (_not_a_real_test or test_exp2)" --durations=50 --durations-min=1.0
       imports:
         - numpy
         - numpy.core.multiarray
