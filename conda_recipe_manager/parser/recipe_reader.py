@@ -47,6 +47,7 @@ from conda_recipe_manager.parser.dependency import (
 )
 from conda_recipe_manager.parser.enums import SchemaVersion
 from conda_recipe_manager.parser.exceptions import (
+    DuplicateKeyException,
     ParsingException,
     ParsingJinjaException,
     SentinelTypeEvaluationException,
@@ -666,7 +667,7 @@ class RecipeReader(IsModifiable):
             # Check for duplicate keys and bail if found.
             if new_node.is_key() and not new_node.list_member_flag:
                 if new_node.value in [child.value for child in parent.children]:
-                    raise ParsingException(f"Duplicate key found at line {line_idx}: {new_node.value}")
+                    raise DuplicateKeyException(line_idx, str(new_node.value))
             parent.children.append(new_node)
             # Update the last node for the next line interpretation
             last_node = new_node

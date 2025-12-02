@@ -172,3 +172,18 @@ class ParsingJinjaException(ParsingException):
             "    - If using {% for %} statements, especially in testing logic, "
             "please consider using a test script instead.\n"
         )
+
+
+class DuplicateKeyException(ParsingException):
+    """
+    Exception raised when a duplicate key is encountered.
+    """
+
+    def __init__(self, line_number: int, key: str):
+        """
+        Constructs a duplicate key exception.
+
+        :param line_number: The line number where the duplicate key was encountered.
+        :param key: The duplicate key that was encountered.
+        """
+        super().__init__(f"Duplicate key found at line {line_number}: {key}")
