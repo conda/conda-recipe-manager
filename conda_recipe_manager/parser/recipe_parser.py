@@ -194,12 +194,11 @@ class RecipeParser(RecipeReader):
             raise ValueError(f"No selector found in comment: {node_comment}")
 
         selector = search_results.group(0)
-        comment = node_comment.replace(selector, "")
         # Sanitize potential edge-case scenarios after a removal
-        comment = comment.replace("#  ", "# ").replace("# # ", "# ")
+        comment: Final[str] = node_comment.replace(selector, "").replace("#  ", "# ").replace("# # ", "# ")
         # Detect and remove empty comments. Other comments should remain intact.
         if comment.strip() == "#":
-            comment = ""
+            return "", selector
 
         return comment, selector
 
