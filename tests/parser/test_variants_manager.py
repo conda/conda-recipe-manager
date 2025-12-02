@@ -4,7 +4,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Final
 
 import pytest
@@ -58,14 +57,12 @@ def test_variants_manager(platform: Platform, feedstock: str) -> None:
     recipe_cbc_path = get_test_path() / "recipe_variants" / feedstock / "recipe" / "conda_build_config.yaml"
     recipe_path = get_test_path() / "recipe_variants" / feedstock / "recipe" / "meta.yaml"
 
-    cbc_paths: Final[list[Path]] = [aggregate_cbc_path]
+    cbc_strs: Final[list[str]] = [aggregate_cbc_path.read_text()]
     if recipe_cbc_path.exists():
-        cbc_paths.append(recipe_cbc_path)
+        cbc_strs.append(recipe_cbc_path.read_text())
 
     manager = VariantsManager(
-        recipe_path=recipe_path,
-        cbc_paths=cbc_paths,
-        build_context=BuildContext(platform=platform),
+        recipe_str=recipe_path.read_text(), cbc_strs=cbc_strs, build_context=BuildContext(platform=platform)
     )
 
     for i, variant in enumerate(manager.get_recipe_variants()):

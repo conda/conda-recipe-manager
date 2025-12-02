@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from pathlib import Path
 from typing import Final, cast
 
 from conda_recipe_manager.parser.build_context import BuildContext
@@ -20,18 +19,17 @@ class VariantsManager:
     Class that manages the variants of a recipe, given a list of CBC files.
     """
 
-    def __init__(self, recipe_path: Path, cbc_paths: list[Path], build_context: BuildContext):
+    def __init__(self, recipe_str: str, cbc_strs: list[str], build_context: BuildContext):
         """
         Initializes the VariantsManager.
 
-        :param recipe_path: Path to the recipe file.
-        :param cbc_paths: List of paths to the CBC files.
+        :param recipe_str: String representation of the recipe.
+        :param cbc_strs: List of string representations of the CBC files.
         :param build_context: Build context to generate the variants for.
         """
         self._build_context = build_context
-        self._cbc_parsers: list[CbcParser] = [CbcParser(cbc_path.read_text()) for cbc_path in cbc_paths]
+        self._cbc_parsers: list[CbcParser] = [CbcParser(cbc_str) for cbc_str in cbc_strs]
         self._variants: Final[GeneratedVariantsType] = CbcParser.generate_variants(self._cbc_parsers, build_context)
-        recipe_str: Final[str] = recipe_path.read_text()
         self._base_recipe: RecipeParserDeps = RecipeParserDeps(recipe_str)
         recipe_variants_first_pass: list[RecipeParserDeps] = [deepcopy(self._base_recipe) for _ in self._variants]
         self._recipe_variants: list[RecipeParserDeps] = []
