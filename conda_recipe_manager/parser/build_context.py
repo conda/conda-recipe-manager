@@ -45,20 +45,11 @@ class BuildContext:
         context["build_platform"] = platform.value
         context["target_platform"] = platform.value
         for alias in ALL_PLATFORM_ALIASES:
-            if platform in get_platforms_by_alias(alias):
-                context[alias.value] = True
-            else:
-                context[alias.value] = False
+            context[alias.value] = platform in get_platforms_by_alias(alias)
         for arch in ALL_ARCHITECTURES:
-            if platform in get_platforms_by_arch(arch):
-                context[arch.value] = True
-            else:
-                context[arch.value] = False
+            context[arch.value] = platform in get_platforms_by_arch(arch)
         for os in ALL_OPERATING_SYSTEMS:
-            if platform in get_platforms_by_os(os):
-                context[os.value] = True
-            else:
-                context[os.value] = False
+            context[os.value] = platform in get_platforms_by_os(os)
         return context
 
     def _check_and_convert_to_int(self, key: BuildContextKey) -> int:
