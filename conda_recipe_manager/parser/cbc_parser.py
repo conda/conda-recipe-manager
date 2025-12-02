@@ -144,7 +144,7 @@ class CbcParser(RecipeReader):
                 path = f"/{variable}/{i}"
                 if is_single_value:
                     path = f"/{variable}"
-                # This is necessary to ensure closeness with conda-build's format.
+                # This is necessary to ensure alignment with conda-build's format.
                 str_value = str(value)
                 entry = self._construct_cbc_variable(path, str_value, comments_tbl)
 
