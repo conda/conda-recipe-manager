@@ -432,7 +432,7 @@ class RecipeReader(IsModifiable):
 
         :param s: String to be re-rendered
         :param context: (Optional) Context to evaluate the Jinja expressions for.
-            If not provided, the Jinja expression context will be constructed from the recipe variables.
+            If not provided, the Jinja expression context will be constructed ONLY from the recipe variables.
         :returns: The original value, augmented with Jinja substitutions. Types are re-rendered to account for multiline
             strings that may have been "normalized" prior to this call.
         """
