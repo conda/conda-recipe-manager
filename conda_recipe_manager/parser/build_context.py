@@ -2,6 +2,7 @@
 :Description: Provides an object that can be configured to perform complex selector queries.
 """
 
+from enum import StrEnum
 from functools import cache
 from typing import Final, cast
 
@@ -16,6 +17,15 @@ from conda_recipe_manager.parser.platform_types import (
     get_platforms_by_os,
 )
 from conda_recipe_manager.types import Primitives
+
+
+class BuildContextKey(StrEnum):
+    """
+    Enumeration of the keys that contain int-convertible version information in the build context.
+    """
+
+    PYTHON = "python"
+    NUMPY = "numpy"
 
 
 class BuildContext:
@@ -51,6 +61,22 @@ class BuildContext:
                 context[os.value] = False
         return context
 
+    def _check_and_convert_to_int(self, key: BuildContextKey) -> int:
+        """
+        Checks if the value for the given key is a string and converts it to an integer.
+
+        :param key: The key to check and convert.
+        :raises BuildContextVersionException: If the value is not a string or is not a valid version.
+        :returns: The converted integer.
+        """
+        val: Final[Primitives] = self._build_env_vars.get(key)
+        if not isinstance(val, str):
+            raise BuildContextVersionException(key, val)
+        version_int: Final[str] = val.replace(".", "")
+        if not version_int.isdigit():
+            raise BuildContextVersionException(key, val)
+        return int(version_int)
+
     def _get_py_np_context(self) -> dict[str, Primitives]:
         """
         Constructs the context for the Python and NumPy versions.
@@ -60,25 +86,17 @@ class BuildContext:
         """
         context: Final[dict[str, Primitives]] = {}
         if self._build_env_vars.get("python"):
-            if not isinstance(self._build_env_vars["python"], str):
-                raise BuildContextVersionException("Python", self._build_env_vars["python"])
-            python_version_int: Final[str] = self._build_env_vars["python"].replace(".", "")
-            if not python_version_int.isdigit():
-                raise BuildContextVersionException("Python", self._build_env_vars["python"])
-            context["py"] = int(python_version_int)
-            context["py3k"] = self._build_env_vars["python"].startswith("3.")
-            context["py2k"] = self._build_env_vars["python"].startswith("2.")
+            python_version_int: Final[int] = self._check_and_convert_to_int(BuildContextKey.PYTHON)
+            context["py"] = python_version_int
+            context["py3k"] = cast(str, self._build_env_vars["python"]).startswith("3.")
+            context["py2k"] = cast(str, self._build_env_vars["python"]).startswith("2.")
             context["py27"] = context["py"] == 27
             context["py34"] = context["py"] == 34
             context["py35"] = context["py"] == 35
             context["py36"] = context["py"] == 36
         if self._build_env_vars.get("numpy"):
-            if not isinstance(self._build_env_vars["numpy"], str):
-                raise BuildContextVersionException("NumPy", self._build_env_vars["numpy"])
-            numpy_version_int: Final[str] = self._build_env_vars["numpy"].replace(".", "")
-            if not numpy_version_int.isdigit():
-                raise BuildContextVersionException("NumPy", self._build_env_vars["numpy"])
-            context["np"] = int(numpy_version_int)
+            numpy_version_int: Final[int] = self._check_and_convert_to_int(BuildContextKey.NUMPY)
+            context["np"] = numpy_version_int
         return context
 
     def _construct_build_context(self) -> dict[str, Primitives]:
