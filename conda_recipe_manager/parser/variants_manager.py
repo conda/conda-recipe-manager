@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+from copy import deepcopy
 from pathlib import Path
 from typing import Final, cast
 
@@ -30,10 +31,9 @@ class VariantsManager:
         self._build_context = build_context
         self._cbc_parsers: list[CbcParser] = [CbcParser(cbc_path.read_text()) for cbc_path in cbc_paths]
         self._variants: Final[GeneratedVariantsType] = CbcParser.generate_variants(self._cbc_parsers, build_context)
-        self._base_recipe: RecipeParserDeps = RecipeParserDeps(recipe_path.read_text())
-        recipe_variants_first_pass: list[RecipeParserDeps] = [
-            RecipeParserDeps(recipe_path.read_text()) for _ in self._variants
-        ]
+        recipe_str: Final[str] = recipe_path.read_text()
+        self._base_recipe: RecipeParserDeps = RecipeParserDeps(recipe_str)
+        recipe_variants_first_pass: list[RecipeParserDeps] = [deepcopy(self._base_recipe) for _ in self._variants]
         self._recipe_variants: list[RecipeParserDeps] = []
         known_hashes: set[str] = set()
         for full_var, recipe_var in zip(self._variants, recipe_variants_first_pass):
