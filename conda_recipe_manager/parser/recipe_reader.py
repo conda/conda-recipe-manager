@@ -665,9 +665,12 @@ class RecipeReader(IsModifiable):
             # Look at the stack to determine the parent Node and then append the current node to the new parent.
             parent = node_stack[-1]
             # Check for duplicate keys and bail if found.
-            if new_node.is_key() and not new_node.list_member_flag:
-                if new_node.value in [child.value for child in parent.children]:
-                    raise DuplicateKeyException(line_idx, str(new_node.value))
+            if (
+                new_node.is_key()
+                and not new_node.list_member_flag
+                and new_node.value in [child.value for child in parent.children]
+            ):
+                raise DuplicateKeyException(line_idx, str(new_node.value))
             parent.children.append(new_node)
             # Update the last node for the next line interpretation
             last_node = new_node
