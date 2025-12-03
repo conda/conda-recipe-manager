@@ -46,6 +46,7 @@ class RecipeVariant(RecipeReaderDeps):
         self._vars_tbl = {k: v for k, v in self._vars_tbl.items() if len(v) > 0}
 
         def _filter_selectors_and_paths(node: Node) -> None:
+            # Filters selectors and paths in the node's children.
             new_children = []
             for child in node.children:
                 child_selector = SelectorParser._v0_extract_selector(child.comment)  # pylint: disable=protected-access
@@ -79,6 +80,7 @@ class RecipeVariant(RecipeReaderDeps):
         context: Final = {**build_context.get_context(), **recipe_vars_context}
 
         def _evaluate_jinja_expression_in_node(node: Node) -> None:
+            # Evaluates JINJA expression in the node value if applicable.
             if isinstance(node.value, str):
                 rendered_value = self._render_jinja_vars(node.value, context)
                 if not isinstance(rendered_value, PRIMITIVES_NO_NONE_TUPLE):
