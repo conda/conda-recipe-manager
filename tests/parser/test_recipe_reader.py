@@ -1648,10 +1648,18 @@ def test_unsupported_jinja2_statements_parsing(
     assert parser.render() == load_file(rendered_file)
 
 
-def test_duplicate_keys() -> None:
+@pytest.mark.parametrize(
+    "file",
+    [
+        "duplicate_keys/google-cloud-cpp.yaml",
+    ],
+)
+def test_duplicate_keys(file: str) -> None:
     """
     Tests that the recipe reader correctly handles duplicate keys.
+
+    :param file: File to run against
     """
     with pytest.raises(DuplicateKeyException) as e:
-        load_recipe("duplicate_keys/google-cloud-cpp.yaml", RecipeReader)
+        load_recipe(file, RecipeReader)
     assert e.value.message == "Duplicate key found at line 36: script"
