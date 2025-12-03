@@ -35,13 +35,12 @@ from conda_recipe_manager.parser._traverse import (
 )
 from conda_recipe_manager.parser._types import Regex, StrStack
 from conda_recipe_manager.parser._utils import str_to_stack_path
-from conda_recipe_manager.parser.build_context import BuildContext
 from conda_recipe_manager.parser.enums import SelectorConflictMode
 from conda_recipe_manager.parser.exceptions import JsonPatchValidationException
 from conda_recipe_manager.parser.recipe_reader import RecipeReader
 from conda_recipe_manager.parser.selector_parser import SelectorParser
 from conda_recipe_manager.parser.types import JSON_PATCH_SCHEMA, OPPOSITE_OPS, PYTHON_SKIP_PATTERN
-from conda_recipe_manager.types import PRIMITIVES_NO_NONE_TUPLE, PRIMITIVES_TUPLE, JsonPatchType, JsonType
+from conda_recipe_manager.types import PRIMITIVES_TUPLE, JsonPatchType, JsonType
 
 # Callback that allows the caller to perform custom replacements using `search_and_patch_replace()`.
 ReplacePatchFunc = Callable[[JsonType], JsonType]
@@ -788,68 +787,3 @@ class RecipeParser(RecipeReader):
             return True
         except (KeyError, ValueError):
             return False
-
-    def filter_by_selectors(self, build_context: BuildContext) -> None:
-        """
-        Filters the recipe by the selectors in the build context.
-        This operation is destructive and will remove paths that are no longer applicable to the build context.
-        It will also remove all selectors.
-
-        :param build_context: Build context to filter the recipe by.
-        """
-        # Remove all jinja variables that do not apply to the build context
-        for variable, values in self._vars_tbl.items():
-            new_values = []
-            for val in values:
-                if not val.contains_selector() or cast(SelectorParser, val.get_selector()).does_selector_apply(
-                    build_context
-                ):
-                    new_values.append(val)
-            self._vars_tbl[variable] = new_values
-        self._vars_tbl = {k: v for k, v in self._vars_tbl.items() if len(v) > 0}
-
-        def _filter_selectors_and_paths(node: Node) -> None:
-            new_children = []
-            for child in node.children:
-                child_selector = SelectorParser._v0_extract_selector(child.comment)  # pylint: disable=protected-access
-                if not child_selector:
-                    new_children.append(child)
-                elif SelectorParser(child_selector, self.get_schema_version()).does_selector_apply(build_context):
-                    child.comment, _ = RecipeParser._remove_selector_from_comment(child.comment)
-                    new_children.append(child)
-                else:
-                    continue
-                _filter_selectors_and_paths(child)
-            node.children = new_children
-
-        _filter_selectors_and_paths(self._root)
-
-        self._rebuild_selectors()
-        self._is_modified = True
-
-    def evaluate_jinja_expressions(self, build_context: BuildContext) -> None:
-        """
-        Evaluates Jinja expressions in the recipe given the provided query and the recipe variables.
-        This function is destructive and will modify the recipe in place,
-        removing all Jinja variables and expressions.
-
-        :param build_context: Build context to evaluate the Jinja expressions for.
-        :raises ValueError: If the JINJA expression evaluation result is not a primitive type.
-        """
-        recipe_vars_context: Final[dict[str, JsonType]] = {k: self.get_variable(k) for k in self._vars_tbl}
-        context: Final = {**build_context.get_context(), **recipe_vars_context}
-
-        def _evaluate_jinja_expression_in_node(node: Node) -> None:
-            if isinstance(node.value, str):
-                rendered_value = self._render_jinja_vars(node.value, context)
-                if not isinstance(rendered_value, PRIMITIVES_NO_NONE_TUPLE):
-                    raise ValueError(
-                        f"JINJA expression evaluation result is not a primitive type: {type(rendered_value)}"
-                    )
-                node.value = rendered_value
-            for child in node.children:
-                _evaluate_jinja_expression_in_node(child)
-
-        _evaluate_jinja_expression_in_node(self._root)
-        self._vars_tbl.clear()
-        self._is_modified = True

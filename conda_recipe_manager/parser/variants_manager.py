@@ -4,13 +4,13 @@
 
 from __future__ import annotations
 
-from copy import deepcopy
 from typing import Final, cast
 
 from conda_recipe_manager.parser.build_context import BuildContext
 from conda_recipe_manager.parser.cbc_parser import CbcParser, GeneratedVariantsType
 from conda_recipe_manager.parser.recipe_parser_deps import RecipeParserDeps
 from conda_recipe_manager.parser.recipe_reader_deps import RecipeReaderDeps
+from conda_recipe_manager.parser.recipe_variant import RecipeVariant
 from conda_recipe_manager.types import PRIMITIVES_TUPLE
 
 
@@ -29,18 +29,16 @@ class VariantsManager:
         """
         self._build_context = build_context
         self._cbc_parsers: list[CbcParser] = [CbcParser(cbc_str) for cbc_str in cbc_strs]
-        self._variants: Final[GeneratedVariantsType] = CbcParser.generate_variants(self._cbc_parsers, build_context)
+        variants: Final[GeneratedVariantsType] = CbcParser.generate_variants(self._cbc_parsers, build_context)
         self._base_recipe: RecipeParserDeps = RecipeParserDeps(recipe_str)
-        recipe_variants_first_pass: list[RecipeParserDeps] = [deepcopy(self._base_recipe) for _ in self._variants]
-        self._recipe_variants: list[RecipeParserDeps] = []
+        self._recipe_variants: list[RecipeVariant] = []
         known_hashes: set[str] = set()
-        for full_var, recipe_var in zip(self._variants, recipe_variants_first_pass):
+        for full_var in variants:
             var = {key: value for key, value in full_var.items() if isinstance(value, PRIMITIVES_TUPLE)}
             post_cbc_build_context: BuildContext = BuildContext(
                 build_context.get_platform(), {**build_context.get_context(), **var}
             )
-            recipe_var.filter_by_selectors(post_cbc_build_context)
-            recipe_var.evaluate_jinja_expressions(post_cbc_build_context)
+            recipe_var = RecipeVariant(recipe_str, post_cbc_build_context)
             if recipe_var.get_value("/build/skip", default=None) is True:
                 continue
             recipe_var_hash: str = recipe_var.calc_sha256()
