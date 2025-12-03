@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import ast
 from functools import cache
 from typing import Final, Optional
 
@@ -113,6 +114,22 @@ class SelectorParser(IsModifiable):
         # TODO Improve: This is a short-hand for checking if the two parse trees are the same
         return self._schema_version == other._schema_version and str(self) == str(other)
 
+    @staticmethod
+    def _get_names_from_expression(expression: str) -> list[str]:
+        """
+        Extracts the names from a selector expression.
+
+        :param expression: The selector expression to extract the names from.
+        :returns: A list of names.
+        """
+        tree = ast.parse(expression, mode="eval")
+        names = set()
+
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Name):
+                names.add(node.id)
+        return list(names)
+
     def does_selector_apply(self, build_context: BuildContext) -> bool:
         """
         Determines if this selector applies to the current target environment.
@@ -128,16 +145,15 @@ class SelectorParser(IsModifiable):
         selector_context: Final[dict[str, Primitives]] = build_context.get_selector_context()
 
         try:
+            # If the selector references a variable that is not in the build context,
+            # we add it to the context as None.
+            names = SelectorParser._get_names_from_expression(self._content)
+            for name in names:
+                selector_context.setdefault(name, None)
             expr_code = Expr(self._content, model=SelectorParser._get_evalidate_model()).code  # type: ignore[misc]
-            while True:
-                try:
-                    # expr_code is already guaranteed to be safe to evaluate
-                    # so we can use eval directly for a slight performance boost.
-                    return bool(eval(expr_code, None, selector_context))  # type: ignore[misc] # pylint: disable=eval-used
-                # If the selector references a variable that is not in the build context,
-                # we add it to the context as None.
-                except NameError as e:
-                    selector_context[e.name] = None
+            # expr_code is already guaranteed to be safe to evaluate
+            # so we can use eval directly for a slight performance boost.
+            return bool(eval(expr_code, None, selector_context))  # type: ignore[misc] # pylint: disable=eval-used
         except Exception as e:  # pylint: disable=broad-exception-caught
             raise SelectorSyntaxError(f"Error evaluating selector: {e}") from e
 
