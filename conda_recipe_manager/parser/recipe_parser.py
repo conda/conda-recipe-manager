@@ -173,7 +173,7 @@ class RecipeParser(RecipeReader):
         node.comment = comment
         # Some lines of YAML correspond to multiple nodes. For consistency, we need to ensure that comments are
         # duplicate across all nodes on a line.
-        if node.is_single_key() and not node.children[0].list_member_flag:
+        if node.is_single_key():
             node.children[0].comment = comment
 
         self._rebuild_selectors()
@@ -225,7 +225,7 @@ class RecipeParser(RecipeReader):
         node.comment = new_comment
         # Some lines of YAML correspond to multiple nodes. For consistency, we need to ensure that comments are
         # duplicate across all nodes on a line.
-        if node.is_single_key() and not node.children[0].list_member_flag:
+        if node.is_single_key():
             node.children[0].comment = new_comment
 
         self._rebuild_selectors()
@@ -271,7 +271,7 @@ class RecipeParser(RecipeReader):
         node.comment = comment
         # Comments for "single key" nodes apply to both the parent and child. This is because such parent nodes render
         # on the same line as their children.
-        if node.is_single_key() and not node.children[0].list_member_flag:
+        if node.is_single_key():
             node.children[0].comment = comment
         self._is_modified = True
 
