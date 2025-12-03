@@ -12,9 +12,14 @@ Note: version releases in the 0.x.y range may introduce breaking changes.
 ### Changed
 ### Deprecated
 ### Removed
-- `SelectorQuery` class, replaced with `BuildContext`.
 ### Fixed
 ### Security
+
+## [0.9.0]
+### Added
+- Recipe build variants generation.
+### Removed
+- `SelectorQuery` class, replaced with `BuildContext`.
 
 ## [0.8.1]
 ### Changed
@@ -209,7 +214,8 @@ and continually changing.
 Migrates parser from [percy](https://github.com/anaconda-distribution/percy/tree/main)
 , ,
 
-[Unreleased]: https://github.com/conda/conda-recipe-manager/compare/v0.8.1...HEAD
+[Unreleased]: https://github.com/conda/conda-recipe-manager/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/conda/conda-recipe-manager/compare/v0.8.1...v0.9.0
 [0.8.1]: https://github.com/conda/conda-recipe-manager/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/conda/conda-recipe-manager/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/conda/conda-recipe-manager/compare/v0.7.0...v0.7.1
