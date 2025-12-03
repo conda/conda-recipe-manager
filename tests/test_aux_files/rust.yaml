@@ -27,8 +27,7 @@ build:
 
 outputs:
   - name: rust
-    script: install-msvc.bat  # [win]
-    script: install-unix.sh  # [not win]
+    script: {{ 'install-unix.sh' if unix else 'install-msvc.bat' if win }}  # [unix or win]
     build:
       run_exports: # [osx and x86_64]
         strong_constrains: # [osx and x86_64]

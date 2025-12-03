@@ -195,16 +195,18 @@ class RecipeParserDeps(RecipeParser, RecipeReaderDeps):
                         patch_path = f"{base_path}/{i}"
                         patch_op = "replace"
                         break
-
         patch_success: Final[bool] = self._patch_add_dep(dep, patch_op, patch_path, sel_mode, is_new_section)
 
         if patch_success and dep.selector is not None:
             sel_path = patch_path
             # `add_selector()`, by nature of how selectors work, does not support "append" mode. If an append operation
             # occurred, we must calculate the position of the last array element. We only add selectors on a successful
-            # patch, so we know we can make assume a dependency list exists.
+            # patch, so we know we can assume a dependency list exists.
+            # If we are adding a new section, we need to add the selector to the first dependency.
             if sel_path.endswith("/-"):
                 sel_path = sel_path[0:-1] + str(len(cast(list[str], self.get_value(base_path))) - 1)
+            elif is_new_section:
+                sel_path = f"{sel_path}/0"
             self.add_selector(sel_path, dep.selector, mode=sel_mode)
         return patch_success
 

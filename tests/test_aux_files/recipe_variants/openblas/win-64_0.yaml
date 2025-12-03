@@ -1,0 +1,82 @@
+package:
+  name: openblas
+  version: 0.3.23
+
+source:
+  url: https://github.com/xianyi/OpenBLAS/archive/v0.3.23.tar.gz
+  sha256: 5d9491d07168a5d00116cdc068a40022c3455bf9293c7cb86a65b1054d7e5114
+
+build:
+  number: 0
+  string: pthreads_h{{ PKG_HASH }}_0
+
+requirements:
+  build:
+    - {{ compiler("c") }}
+    - {{ compiler("fortran") }}
+    - perl
+    - cmake
+    - curl
+    - jom
+    # Following is needed because the Fortran compiler add an rpath to the BUILD_PREFIX
+  host:
+  run:
+
+outputs:
+  - name: libopenblas
+    build:
+      string: pthreads_h{{ PKG_HASH }}_0
+      track_features:
+      run_exports:
+        - {{ pin_subpackage("libopenblas" ~ name_suffix) }}
+    requirements:
+      build:
+        - {{ compiler("c") }}
+        - {{ compiler("fortran") }}
+      run_constrained:
+        - {{ pin_subpackage("openblas" ~ name_suffix, max_pin="x.x.x") }}
+    files:
+      # Include files like
+      #   - libopenblasp-r0.3.5.so
+      #   - libopenblas_vortexp-r0.3.5.so
+      #   - libopenblas.so.0
+      # Avoid files
+      #   - libopenblas.so
+      - Library/bin/openblas.dll
+    test:
+      requires:
+        - python *
+      commands:
+        - if not exist %PREFIX%\\Library\\bin\\openblas.dll exit 1
+  - name: openblas
+    build:
+      string: pthreads_h{{ PKG_HASH }}_0
+      track_features:
+    files:
+      - Library/include/openblas
+      - Library/lib/openblas.lib
+      - Library/lib/pkgconfig/openblas.pc
+      - Library/share/cmake/OpenBLAS
+    requirements:
+      run:
+        - {{ pin_subpackage("libopenblas" ~ name_suffix, exact=True) }}
+    test:
+      commands:
+        - if not exist %PREFIX%\\Library\\lib\\openblas.lib exit 1
+
+about:
+  home: http://www.openblas.net/
+  license: BSD-3-Clause
+  license_file:
+    - LICENSE
+    - lapack-netlib/LICENSE
+  summary: An optimized BLAS library based on GotoBLAS2 1.13 BSD version
+  dev_url: https://github.com/xianyi/openblas
+
+extra:
+  recipe-maintainers:
+    - gillins
+    - groutr
+    - jakirkham
+    - isuruf
+    - h-vetinari

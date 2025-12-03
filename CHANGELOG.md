@@ -12,6 +12,7 @@ Note: version releases in the 0.x.y range may introduce breaking changes.
 ### Changed
 ### Deprecated
 ### Removed
+- `SelectorQuery` class, replaced with `BuildContext`.
 ### Fixed
 ### Security
 

@@ -162,3 +162,5 @@ Don't forget, you can use `crm bump-recipe -t <version> recipe/meta.yaml` to hel
 - @akabanovs for his work and experimentation on package dependency graph building.
 - @JeanChristopheMorinPerso for his PR review contributions when this project was a part of `Percy` and answering questions about the `conda` file formats.
 - @mrbean-bremen for maintaining the `pyfakefs` project and for providing guidance and assistance with `pyfakefs`.
+- Several pieces of test data that are essential to the testing and maintenance of `conda-recipe-manager` are adapted from [AnacondaRecipes](https://github.com/AnacondaRecipes) and [conda-forge](https://github.com/conda-forge),
+ we would like to acknowledge this and thank everyone who has contributed to those recipes and config files.

@@ -8,7 +8,7 @@ import json
 from typing import Optional
 
 from conda_recipe_manager.parser._node import Node
-from conda_recipe_manager.types import JsonPatchType, JsonType
+from conda_recipe_manager.types import JsonPatchType, JsonType, Primitives
 
 
 class BaseParserException(Exception):
@@ -103,6 +103,36 @@ class SelectorSyntaxError(BaseParserException):
         super().__init__(f"Selector syntax error: {message}")
 
 
+class BuildContextException(BaseParserException):
+    """
+    Exception raised when an issue occurs with the build context.
+    """
+
+    def __init__(self, message: str):
+        """
+        Constructs a build context exception.
+
+        :param message: String description of the issue encountered.
+        """
+        self.message = message if message else "An unknown build context error occurred."
+        super().__init__(self.message)
+
+
+class BuildContextVersionException(BuildContextException):
+    """
+    Exception raised when a build context dependency version is invalid.
+    """
+
+    def __init__(self, dependency: str, version: Primitives):
+        """
+        Constructs a build context dependency version exception.
+
+        :param dependency: The dependency that was encountered.
+        :param version: The dependency version that was encountered.
+        """
+        super().__init__(f"{dependency} version {version} is not a valid version.")
+
+
 class ParsingException(BaseParserException):
     """
     Exception raised when a recipe file cannot be correctly parsed. This can occur on construction of a parser class.
@@ -142,3 +172,18 @@ class ParsingJinjaException(ParsingException):
             "    - If using {% for %} statements, especially in testing logic, "
             "please consider using a test script instead.\n"
         )
+
+
+class DuplicateKeyException(ParsingException):
+    """
+    Exception raised when a duplicate key is encountered.
+    """
+
+    def __init__(self, line_number: int, key: str):
+        """
+        Constructs a duplicate key exception.
+
+        :param line_number: The line number where the duplicate key was encountered.
+        :param key: The duplicate key that was encountered.
+        """
+        super().__init__(f"Duplicate key found at line {line_number}: {key}")

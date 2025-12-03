@@ -10,7 +10,7 @@ import pytest
 
 from conda_recipe_manager.parser._node_var import NodeVar
 from conda_recipe_manager.parser.enums import SchemaVersion
-from conda_recipe_manager.parser.exceptions import ParsingJinjaException
+from conda_recipe_manager.parser.exceptions import DuplicateKeyException, ParsingJinjaException
 from conda_recipe_manager.parser.recipe_parser import RecipeReader
 from conda_recipe_manager.types import JsonType, Primitives
 from tests.constants import SIMPLE_DESCRIPTION
@@ -1646,3 +1646,20 @@ def test_unsupported_jinja2_statements_parsing(
     rendered_file: Final[str] = f"jinja2_statements/{package_name}_rendered.yaml"
     parser = load_recipe(file, RecipeReader, force_remove_jinja)
     assert parser.render() == load_file(rendered_file)
+
+
+@pytest.mark.parametrize(
+    "file",
+    [
+        "duplicate_keys/google-cloud-cpp.yaml",
+    ],
+)
+def test_duplicate_keys(file: str) -> None:
+    """
+    Tests that the recipe reader correctly handles duplicate keys.
+
+    :param file: File to run against
+    """
+    with pytest.raises(DuplicateKeyException) as e:
+        load_recipe(file, RecipeReader)
+    assert e.value.message == "Duplicate key found at line 36: script"

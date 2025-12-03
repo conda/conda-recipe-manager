@@ -179,6 +179,28 @@ class RecipeParser(RecipeReader):
         self._rebuild_selectors()
         self._is_modified = True
 
+    @staticmethod
+    def _remove_selector_from_comment(node_comment: str) -> tuple[str, str]:
+        """
+        Removes a selector from a comment. Returns the comment with the selector removed.
+
+        :param node_comment: Comment to remove the selector from.
+        :raises ValueError: If no selector is found in the comment.
+        :returns: Tuple containing the comment with the selector removed and the selector itself.
+        """
+        search_results = Regex.SELECTOR.search(node_comment)
+        if not search_results:
+            raise ValueError(f"No selector found in comment: {node_comment}")
+
+        selector = search_results.group(0)
+        # Sanitize potential edge-case scenarios after a removal
+        comment: Final[str] = node_comment.replace(selector, "").replace("#  ", "# ").replace("# # ", "# ")
+        # Detect and remove empty comments. Other comments should remain intact.
+        if comment.strip() == "#":
+            return "", selector
+
+        return comment, selector
+
     def remove_selector(self, path: str) -> Optional[str]:
         """
         Given a path, remove a selector to the line denoted by path.
@@ -195,23 +217,16 @@ class RecipeParser(RecipeReader):
         if node is None:
             raise KeyError(f"Path not found: {path!r}")
 
-        search_results = Regex.SELECTOR.search(node.comment)
-        if not search_results:
+        try:
+            new_comment, selector = RecipeParser._remove_selector_from_comment(node.comment)
+        except ValueError:
             return None
 
-        selector = search_results.group(0)
-        comment = node.comment.replace(selector, "")
-        # Sanitize potential edge-case scenarios after a removal
-        comment = comment.replace("#  ", "# ").replace("# # ", "# ")
-        # Detect and remove empty comments. Other comments should remain intact.
-        if comment.strip() == "#":
-            comment = ""
-
-        node.comment = comment
+        node.comment = new_comment
         # Some lines of YAML correspond to multiple nodes. For consistency, we need to ensure that comments are
         # duplicate across all nodes on a line.
         if node.is_single_key():
-            node.children[0].comment = comment
+            node.children[0].comment = new_comment
 
         self._rebuild_selectors()
         self._is_modified = True

@@ -47,6 +47,7 @@ from conda_recipe_manager.parser.dependency import (
 )
 from conda_recipe_manager.parser.enums import SchemaVersion
 from conda_recipe_manager.parser.exceptions import (
+    DuplicateKeyException,
     ParsingException,
     ParsingJinjaException,
     SentinelTypeEvaluationException,
@@ -376,6 +377,27 @@ class RecipeReader(IsModifiable):
             case SchemaVersion.V1:
                 return 3, Regex.JINJA_V1_SUB
 
+    @no_type_check
+    @staticmethod
+    def _render_jinja_expression(expression: str, context: dict[str, JsonType]) -> tuple[bool, JsonType]:
+        """
+        Helper function that renders a Jinja expression.
+
+        :param expression: The Jinja expression to render.
+        :param context: The context to evaluate the Jinja expression with.
+        :returns: A tuple containing a boolean indicating if the expression was rendered successfully and
+            the rendered value, or the original expression if it cannot be rendered.
+        """
+        try:
+            env = Environment(undefined=StrictUndefined)
+            compiled_expression = env.compile_expression(expression, undefined_to_none=False)
+            result = compiled_expression(**context)
+            if isinstance(result, StrictUndefined):
+                return False, expression
+            return True, result
+        except Exception:  # pylint: disable=broad-exception-caught
+            return False, expression
+
     def _eval_var(self, key: str) -> JsonType:
         """
         Evaluates a known variable by name to a V0 JINJA variable or a V1 context variable.
@@ -387,41 +409,52 @@ class RecipeReader(IsModifiable):
             case SchemaVersion.V0:
                 if len(self._vars_tbl[key]) == 1:
                     return self._vars_tbl[key][0].get_value()
-                # TODO Future: Support recursive concatenation here. Until then, this is just a duplicated line.
-                return self._vars_tbl[key][0].get_value()
+                # Support recursive concatenation here.
+                context: dict[str, JsonType] = {}
+                for node_var in self._vars_tbl[key]:
+                    success, result = cast(
+                        tuple[bool, JsonType], self._render_jinja_expression(node_var.get_value(), context)
+                    )
+                    if not success:
+                        log.debug(
+                            "The recipe parser was unable to evaluate the " "JINJA expression: %s with context: %s",
+                            node_var.get_value(),
+                            context,
+                        )
+                    context = {key: result}
+                return result
             case SchemaVersion.V1:
                 return self._vars_tbl[key][0].get_value()
 
-    def _render_jinja_vars(self, s: str) -> JsonType:
-        # pylint: disable=too-complex
-        # TODO Refactor and simplify. We should really consider using a proper parser over REGEX soup.
+    def _render_jinja_vars(self, s: str, context: dict[str, JsonType] | None = None) -> JsonType:
         """
         Helper function that replaces Jinja substitutions with their actual set values.
 
         :param s: String to be re-rendered
+        :param context: (Optional) Context to evaluate the Jinja expressions for.
+            If not provided, the Jinja expression context will be constructed ONLY from the recipe variables.
         :returns: The original value, augmented with Jinja substitutions. Types are re-rendered to account for multiline
             strings that may have been "normalized" prior to this call.
         """
-        # TODO: Consider tokenizing expressions over using regular expressions. The scope of this function has expanded
-        # drastically.
+        if not s:
+            return s
 
         start_idx, sub_regex = self._set_on_schema_version()
+
+        if context is None:
+            context = {k: self.get_variable(k) for k in self._vars_tbl}
 
         # Search the string, replacing all substitutions we can recognize
         for match in cast(list[str], sub_regex.findall(s)):
             # The regex guarantees the string starts and ends with double braces
             expression = match[start_idx:-2].strip()
-            context = {k: self.get_variable(k) for k in self._vars_tbl}
             # If the expression can't be evaluated, skip it.
-            try:
-                env = Environment(undefined=StrictUndefined)  # type: ignore[misc]
-                compiled_expression = env.compile_expression(expression)
-                result = compiled_expression(**context)  # type: ignore[misc]
-            except Exception:  # pylint: disable=broad-exception-caught
+            success, result = cast(tuple[bool, JsonType], self._render_jinja_expression(expression, context))
+            if not success:
                 log.warning("The recipe parser was unable to evaluate the JINJA expression: %s", expression)
                 continue
             # Do not replace the match if the result is not a primitive type. None signals an undefined expression.
-            if not isinstance(result, PRIMITIVES_NO_NONE_TUPLE):  # type: ignore[misc]
+            if not isinstance(result, PRIMITIVES_NO_NONE_TUPLE):
                 log.warning("The recipe parser was unable to evaluate the JINJA expression: %s", expression)
                 continue
             result = str(result)
@@ -567,6 +600,81 @@ class RecipeReader(IsModifiable):
 
         return str(sanitized_fmt), tof_comment_cntr
 
+    def _construct_parse_tree(self, sanitized_yaml: str, tof_comment_cntr: int) -> None:
+        """
+        Constructs the parse tree from the sanitized YAML.
+
+        :param sanitized_yaml: The sanitized YAML to construct the parse tree from.
+        :param tof_comment_cntr: The number of comment-only lines at the start of the recipe file.
+        """
+        # pylint: disable=too-complex
+        # Read the YAML line-by-line, maintaining a stack to manage the last owning node in the tree.
+        node_stack: list[Node] = [self._root]
+        # Relative depth is determined by the increase/decrease of indentation marks (spaces)
+        cur_indent = 0
+        last_node = node_stack[-1]
+
+        # Iterate with an index variable, so we can handle multiline values
+        line_idx = 0
+        lines: Final = sanitized_yaml.splitlines()
+        num_lines: Final = len(lines)
+        while line_idx < num_lines:
+            line = lines[line_idx]
+            # Increment here, so that the inner multiline processing loop doesn't cause a skip of the line following the
+            # multiline value.
+            line_idx += 1
+            # Ignore empty lines
+            clean_line = line.strip()
+            if clean_line == "":
+                continue
+
+            new_indent = num_tab_spaces(line)
+            # Special multiline case. This will initialize `new_node` if the special "-backslash multiline pattern is
+            # found.
+            line_idx, new_node = RecipeReader._parse_multiline_node(clean_line, lines, line_idx, new_indent, None)
+            if new_node is None:
+                new_node = RecipeReader._parse_line_node(
+                    clean_line, tof_comment_cntr > 0, yaml_loader=self._yaml_loader
+                )
+                tof_comment_cntr -= 1
+                # In the general case (which does not create a new-node), we ignore the returned `new_node` value and
+                # rely on the object being modified by the reference we pass-in. As a small optimization, we only run
+                # checks on the other multiline variants if the special case fails.
+                line_idx, _ = RecipeReader._parse_multiline_node(clean_line, lines, line_idx, new_indent, new_node)
+            # Insurance policy: If we miscounted, force-drop the ToF-comment state.
+            if tof_comment_cntr > 0 and not new_node.is_comment():
+                tof_comment_cntr = -1
+
+            if new_indent > cur_indent:
+                node_stack.append(last_node)
+                # Edge case: The first element of a list of objects that is NOT a 1-line key-value pair needs
+                # to be added to the stack to maintain composition
+                if last_node.is_collection_element() and not last_node.children[0].is_single_key():
+                    node_stack.append(last_node.children[0])
+            elif new_indent < cur_indent:
+                # Multiple levels of depth can change from line to line, so multiple stack nodes must be pop'd. Example:
+                # foo:
+                #   bar:
+                #     fizz: buzz
+                # baz: blah
+                # Tab-depth is guaranteed because of fix_excessive_indentation() above.
+                depth_to_pop = (cur_indent - new_indent) // TAB_SPACE_COUNT
+                for _ in range(depth_to_pop):
+                    node_stack.pop()
+            cur_indent = new_indent
+            # Look at the stack to determine the parent Node and then append the current node to the new parent.
+            parent = node_stack[-1]
+            # Check for duplicate keys and bail if found.
+            if (
+                new_node.is_key()
+                and not new_node.list_member_flag
+                and new_node.value in [child.value for child in parent.children]
+            ):
+                raise DuplicateKeyException(line_idx, str(new_node.value))
+            parent.children.append(new_node)
+            # Update the last node for the next line interpretation
+            last_node = new_node
+
     def _private_init(
         self, content: str, internal_call: bool, flags: RecipeReaderFlags = RecipeReaderFlags.NONE
     ) -> None:
@@ -593,71 +701,9 @@ class RecipeReader(IsModifiable):
             internal_call, force_remove_jinja
         )
 
-        # Root of the parse tree
+        # Construct the parse tree from the sanitized YAML.
         self._root = Node(value=ROOT_NODE_VALUE)
-
-        # Read the YAML line-by-line, maintaining a stack to manage the last owning node in the tree.
-        node_stack: list[Node] = [self._root]
-        # Relative depth is determined by the increase/decrease of indentation marks (spaces)
-        cur_indent = 0
-        last_node = node_stack[-1]
-
-        # Iterate with an index variable, so we can handle multiline values
-        line_idx = 0
-        lines: Final = sanitized_yaml.splitlines()
-        num_lines: Final = len(lines)
-        while line_idx < num_lines:
-            line = lines[line_idx]
-            # Increment here, so that the inner multiline processing loop doesn't cause a skip of the line following the
-            # multiline value.
-            line_idx += 1
-            # Ignore empty lines
-            clean_line = line.strip()
-            if clean_line == "":
-                continue
-
-            new_indent = num_tab_spaces(line)
-
-            # Special multiline case. This will initialize `new_node` if the special "-backslash multiline pattern is
-            # found.
-            line_idx, new_node = RecipeReader._parse_multiline_node(clean_line, lines, line_idx, new_indent, None)
-            if new_node is None:
-                new_node = RecipeReader._parse_line_node(
-                    clean_line, tof_comment_cntr > 0, yaml_loader=self._yaml_loader
-                )
-                tof_comment_cntr -= 1
-                # In the general case (which does not create a new-node), we ignore the returned `new_node` value and
-                # rely on the object being modified by the reference we pass-in. As a small optimization, we only run
-                # checks on the other multiline variants if the special case fails.
-                line_idx, _ = RecipeReader._parse_multiline_node(clean_line, lines, line_idx, new_indent, new_node)
-
-            # Insurance policy: If we miscounted, force-drop the ToF-comment state.
-            if tof_comment_cntr > 0 and not new_node.is_comment():
-                tof_comment_cntr = -1
-
-            if new_indent > cur_indent:
-                node_stack.append(last_node)
-                # Edge case: The first element of a list of objects that is NOT a 1-line key-value pair needs
-                # to be added to the stack to maintain composition
-                if last_node.is_collection_element() and not last_node.children[0].is_single_key():
-                    node_stack.append(last_node.children[0])
-            elif new_indent < cur_indent:
-                # Multiple levels of depth can change from line to line, so multiple stack nodes must be pop'd. Example:
-                # foo:
-                #   bar:
-                #     fizz: buzz
-                # baz: blah
-                # Tab-depth is guaranteed because of fix_excessive_indentation() above.
-                depth_to_pop = (cur_indent - new_indent) // TAB_SPACE_COUNT
-                for _ in range(depth_to_pop):
-                    node_stack.pop()
-            cur_indent = new_indent
-            # Look at the stack to determine the parent Node and then append the current node to the new parent.
-            parent = node_stack[-1]
-            parent.children.append(new_node)
-            # Update the last node for the next line interpretation
-            last_node = new_node
-
+        self._construct_parse_tree(sanitized_yaml, tof_comment_cntr)
         # Initialize the variables table. This behavior changes per `schema_version`
         self._init_vars_tbl()
 

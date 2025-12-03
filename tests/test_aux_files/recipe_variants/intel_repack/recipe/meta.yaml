@@ -1,0 +1,288 @@
+# use this if our build script changes and we need to increment beyond intel's version
+{% set dstbuildnum = '2' %}
+
+# this variable defines oneMKL specific version
+{% set mkl_version = "2025.0.0" %}
+# this variable defines oneMKL specific buildnum
+{% set mkl_buildnum = "" %}
+{% set mkl_buildnum = "939" %}  # [linux]
+{% set mkl_buildnum = "928" %}  # [win]
+
+# this variable defines openmp specific version
+{% set openmp_version = "2025.0.0" %}
+# this variable defines openmp specific buildnum
+{% set openmp_buildnum = "" %}
+{% set openmp_buildnum = "1169" %}  # [linux]
+{% set openmp_buildnum = "1162" %}  # [win]
+
+
+{% set mkl_hash = "08018b7b73b8f1ceb2286d0fbf443bcf22ffd5fdff2010265f3cedbd0c3075d6" %}           # [linux]
+{% set mkl_devel_hash = "89fc99f696ee10291b39bd60f6104966ba07f750e4291830d3ed142e651ef0c3" %}     # [linux]
+{% set mkl_include_hash = "e3c02344b0405d90c7b992493a081f1f763fa96493626a5da1fe7693040a486f" %}   # [linux]
+{% set intel_openmp_hash = "bd2ef2fdac3e013bfdf71921e0c7d3e831b9f498d6303852539b2c447bd42790" %}  # [linux]
+
+{% set mkl_hash = "5ccf2e45eb1f90ae0f2af66e7d16d360c6bcde5b12f31becda1d823f850c8ce1" %}           # [win]
+{% set mkl_devel_hash = "5efaab53881ac918a03707d187a45f636aa8f94ef8d5eef42e0e3a4ad795a9b1" %}     # [win]
+{% set mkl_include_hash = "49c9e263a3a3cb2a6929900bfa66a19449cdaeee2da8a821aa8aa7e2fbaf9240" %}   # [win]
+{% set intel_openmp_hash = "06700819892363d36e7b44856f14aa78c718b500c9df8e8bb0d230ced2cd67a0" %}  # [win]
+
+
+{% set intel_ch = "https://software.repos.intel.com/python/conda" %}
+
+package:
+  name: intel_repack
+  version: {{ mkl_version }}
+
+source:
+  - url: {{ intel_ch }}/{{ target_platform }}/mkl-{{ mkl_version }}-intel_{{ mkl_buildnum }}.tar.bz2
+    folder: mkl
+    sha256: {{ mkl_hash }}
+  - url: {{ intel_ch }}/{{ target_platform }}/mkl-devel-{{ mkl_version }}-intel_{{ mkl_buildnum }}.tar.bz2
+    folder: mkl-devel
+    sha256: {{ mkl_devel_hash }}
+  - url: {{ intel_ch }}/{{ target_platform }}/mkl-include-{{ mkl_version }}-intel_{{ mkl_buildnum }}.tar.bz2
+    folder: mkl-include
+    sha256: {{ mkl_include_hash }}
+  - url: {{ intel_ch }}/{{ target_platform }}/intel-openmp-{{ openmp_version }}-intel_{{ openmp_buildnum }}.tar.bz2
+    folder: intel-openmp
+    sha256: {{ intel_openmp_hash }}
+build:
+  number: {{ mkl_buildnum|int + dstbuildnum|int }}
+  binary_relocation: false
+  detect_binary_files_with_prefix: false
+  skip: True                                  # [not (linux64 or win)]
+
+outputs:
+  - name: mkl
+    version: {{ mkl_version }}
+    script: {{"repack.sh" if linux else "repack.bat"}}
+    build:
+      number: {{ mkl_buildnum|int + dstbuildnum|int }}
+      ignore_run_exports:
+        - vs2015_runtime                  # [win]
+      missing_dso_whitelist:
+        # tbb
+        - "$RPATH/libtbb.so.12"           # [linux]
+        - "$RPATH/libtbb.12.dylib"        # [osx]
+        - "$RPATH/tbb12.dll"              # [win]
+        # oneAPI ?
+        - "$RPATH/impi.dll"               # [win]
+        - "$RPATH/msmpi.dll"              # [win]
+        - "$RPATH/libiomp5md.dll"         # [win]
+        # PGI tools?
+        - "$RPATH/pgc.dll"                # [win]
+        - "$RPATH/pgf90.dll"              # [win]
+        - "$RPATH/pgmath.dll"             # [win]
+    requirements:
+      build:
+        - {{ compiler('c') }}
+        - {{ compiler('cxx') }}
+      run:
+        - intel-openmp {{ openmp_version.split('.')[0] }}.*
+        - tbb-devel 2022.*
+    about:
+      home: https://www.intel.com/content/www/us/en/developer/tools/oneapi/onemkl.html
+      license: LicenseRef-IntelSimplifiedSoftwareOct2022
+      license_family: Proprietary
+      license_file:
+         - mkl/info/licenses/license.txt
+         - mkl/info/licenses/tpp.txt
+      summary: Intel® oneAPI Math Kernel Library runtime libraries
+      description: |
+        Intel® oneAPI Math Kernel Library is Intel®-Optimized Math Library for Numerical Computing on CPUs & GPUs
+        This package is a repackaged set of binaries obtained directly from Intel\'s anaconda.org channel.
+      doc_url: https://www.intel.com/content/www/us/en/developer/tools/oneapi/onemkl.html
+    test:
+      commands:
+        - ls -A $PREFIX/lib/*                                   # [unix]
+        - test -f $PREFIX/lib/libmkl_core${SHLIB_EXT}           # [unix]
+        - test -f $PREFIX/lib/libmkl_rt${SHLIB_EXT}             # [unix]
+        - IF NOT EXIST %PREFIX%\Library\bin\mkl*.dll EXIT /B 1  # [win]
+
+  - name: mkl-include
+    version: {{ mkl_version }}
+    script: {{ "repack.sh" if linux else "repack.bat"}}
+    number: {{ mkl_buildnum|int + dstbuildnum|int }}
+    # An empty requirements/build to satisfy anaconda-linter.
+    requirements:
+      build:
+    about:
+      home: https://www.intel.com/content/www/us/en/developer/tools/oneapi/onemkl.html
+      license: LicenseRef-IntelSimplifiedSoftwareOct2022
+      license_family: Proprietary
+      license_file:
+         - mkl-include/info/licenses/license.txt
+         - mkl-include/info/licenses/tpp.txt
+      summary: Headers for building against Intel® oneMKL libraries
+      description: |
+        Intel® oneAPI Math Kernel Library headers for developing software that uses oneMKL
+        This package is a repackaged set of binaries obtained directly from Intel\'s anaconda.org channel.
+      doc_url: https://www.intel.com/content/www/us/en/developer/tools/oneapi/onemkl.html
+    test:
+      commands:
+        - ls -A $PREFIX/include/*                   # [unix]
+        - test -f $PREFIX/include/mkl.h             # [unix]
+        - test -f $PREFIX/include/mkl_blas.h        # [unix]
+        - test -f $PREFIX/include/mkl_cblas.h       # [unix]
+        - test -f $PREFIX/include/mkl_df.h          # [unix]
+        - test -f $PREFIX/include/mkl_lapack.h      # [unix]
+        - test -f $PREFIX/include/mkl_service.h     # [unix]
+        - test -f $PREFIX/include/mkl_solvers_ee.h  # [unix]
+        - test -f $PREFIX/include/mkl_trans.h       # [unix]
+        - test -f $PREFIX/include/mkl_types.h       # [unix]
+        - test -f $PREFIX/include/mkl_version.h     # [unix]
+        - if not exist %LIBRARY_INC%\\mkl.h exit 1  # [win]
+
+  - name: mkl-devel
+    version: {{ mkl_version }}
+    script: {{ "install-devel.sh" if linux else "install-devel.bat"}}
+    number: {{ mkl_buildnum|int + dstbuildnum|int }}
+    build:
+      run_exports:
+        - {{ pin_subpackage('mkl') }}
+        - blas=*=mkl
+        # this was added to prior mkl-devel releases but not in the feedstock. This is used by
+        # various downstreams (mkl_fft, mkl_random) to include the mkl-service wrapper as a dependency.
+        - mkl-service >=2.3.0,<3.0a0
+    requirements:
+      run:
+        - {{ pin_subpackage('mkl', exact=True) }}
+        - {{ pin_subpackage('mkl-include', exact=True) }}
+        - blas * mkl
+    about:
+      home: https://www.intel.com/content/www/us/en/developer/tools/oneapi/onemkl.html
+      summary: Devel package for building against Intel® oneMKL libraries
+      description: |
+        Intel® oneAPI Math Kernel Library headers and libraries for developing software that uses oneMKL
+        This package is a repackaged set of binaries obtained directly from Intel\'s anaconda.org channel.
+      license: LicenseRef-IntelSimplifiedSoftwareOct2022
+      license_family: Proprietary
+      license_file:
+         - mkl-devel/info/licenses/license.txt
+         - mkl-devel/info/licenses/tpp.txt
+    test:
+      requires:
+        - {{ compiler('c') }}
+        - cmake
+        - ninja
+        - pkg-config
+      files:
+        - tests
+      commands:
+        - test -f $PREFIX/lib/pkgconfig/mkl-sdl.pc                  # [unix]
+        - if not exist %LIBRARY_LIB%\\pkgconfig\\mkl-sdl.pc exit 1  # [win]
+        # Verify that the mkl library can be located through pkg-config
+        - test -f `pkg-config --variable=libdir --dont-define-prefix mkl-sdl`/libmkl_rt${SHLIB_EXT}  # [unix]
+        - for /f "usebackq tokens=*" %%a in (`pkg-config --variable=libdir --dont-define-prefix mkl-sdl`) do if not exist "%%a/mkl_rt.lib" exit 1  # [win]
+        - cmake -S tests/mkl-devel -B build -G Ninja -DCMAKE_VERBOSE_MAKEFILE=ON
+        - cmake --build build -v
+        - ./build/myapp  # [unix]
+        - build\myapp    # [win]
+
+  - name: intel-openmp
+    script: {{ "repack.sh" if linux else "repack.bat"}}
+    version: {{ openmp_version }}
+    build:
+      number: {{ openmp_buildnum|int + dstbuildnum|int }}
+      missing_dso_whitelist:
+        # OS specific:
+        - "/lib64/libelf.so.1"            # [linux] - OS file.
+        - "/lib64/libgcc_s.so.1"          # [linux]
+        - "/lib64/libc.so.6"              # [linux]
+        - "/lib64/libstdc++.so.6"         # [linux]
+        - "/lib64/ld-linux-x86-64.so.2"   # [linux]
+        - "/lib64/libdl.so.2"             # [linux]
+        - "/lib64/librt.so.1"             # [linux]
+        - "/lib64/libm.so.6"              # [linux]
+        - "/lib64/libz.so.1"              # [linux]
+        - "/lib64/libpthread.so.0"        # [linux]
+        - "$RPATH/libffi.so"              # [linux]
+        # Optional intel-cmplr-lib-rt
+        - "$RPATH/libimf.so"              # [linux] - intel-cmplr-lib-rt.
+        - "$RPATH/libintlc.so.5"          # [linux] - intel-cmplr-lib-rt.
+        - "$RPATH/libirng.so"             # [linux] - intel-cmplr-lib-rt.
+        - "$RPATH/libsvml.so"             # [linux] - intel-cmplr-lib-rt.
+        # Optional `intel-opencl-rt`:
+        - "$RPATH/libOpenCL.so.1"         # [linux] - optional `intel-opencl-rt`.
+        - "$RPATH/OpenCL.dll"             # [win]   - optional `intel-opencl-rt`.
+        # Optional oneAPI loaders:
+        - "$RPATH/libur_loader.so.0"      # [linux] - optional oneAPI Unified Runtime loader.
+        - "$RPATH/libze_loader.so.1"      # [linux] - optional oneAPI Level Zero loader.
+        - "$RPATH/UR_LOADER.dll"          # [win]   - optional oneAPI Unified Runtime loader.
+        - "$RPATH/ze_loader.dll"          # [win]   - optional oneAPI Level Zero loader.
+        # Optional dpcpp_cpp_rt
+        - "$RPATH/libsycl.so.8"           # [linux]
+        - "$RPATH/sycl8.dll"              # [win]
+      host:
+        - intel-cmplr-lib-ur {{ openmp_version.split('.')[0] }}.*
+      run_constrained:
+        # prevent clobbering if user tries to install llvm's implementation
+        # TODO: use intel mutex or build windows torch in conda-froge
+        # https://github.com/conda-forge/intel-graphics-compiler-feedstock/pull/59
+        - llvm-openmp <0a0
+        - __glibc >=2.26   # [linux] - intel-openmp 2025.0.0 and newer is built with a newer GLIBC
+    # An empty requirements/build to satisfy anaconda-linter.
+    requirements:
+      build:
+    about:
+      home: https://www.intel.com/content/www/us/en/developer/tools/overview.html
+      license: LicenseRef-IntelSimplifiedSoftwareOct2022
+      license_family: Proprietary
+      license_file:
+         - intel-openmp/info/licenses/license.txt
+         - intel-openmp/info/licenses/tpp.txt
+      summary: Intel® oneAPI Compiler OpenMP runtime
+      description: |
+        Intel® oneAPI Compiler OpenMP runtime implementation
+        This package is a repackaged set of binaries obtained directly from Intel\'s anaconda.org channel.
+      doc_url: https://www.intel.com/content/www/us/en/developer/tools/overview.html
+    test:
+      commands:
+        - ls -A $PREFIX/lib/*                                  # [unix]
+        - test -f $PREFIX/lib/libiomp5${SHLIB_EXT}             # [unix]
+        - test -f $PREFIX/lib/libomptarget${SHLIB_EXT}         # [unix]
+        - IF NOT EXIST %LIBRARY_BIN%\\libiomp*.dll EXIT /B 1   # [win]
+        - IF NOT EXIST %LIBRARY_BIN%\\omptarget.dll EXIT /B 1  # [win]
+        - IF NOT EXIST %LIBRARY_LIB%\\libiomp5md.lib echo "%LIBRARY_LIB%\\libiomp5md.lib is missing" & EXIT /B 1  # [win]
+
+  # mutex package to keep only one blas implementation in a given env
+  # Since this package has a non-unique name, blas-1.0-mkl.conda, it is omitted from future updates as they cause issues
+  # with overwrites on the PBP. If an update to this package is needed in the future, the name should have a hash added
+  # so that it becomes unique per publish.
+#  - name: blas
+#    version: 1.0
+#    build:
+#      string: mkl
+#    # An empty requirements/build to satisfy anaconda-linter.
+#    requirements:
+#      build:
+#    test:
+#      commands:
+#        - echo 'works!'
+#    about:
+#      home: https://github.com/conda-forge/intel_repack-feedstock
+#      license: BSD-3-Clause
+#      license_file: ANACONDA_LICENSE
+#      summary: 'BLAS mutex for MKL'
+
+# please the linter
+about:
+  home: https://github.com/conda-forge/intel_repack-feedstock
+  license: LicenseRef-IntelSimplifiedSoftwareOct2022
+  license_url: https://www.intel.com/content/www/us/en/content-details/749362/intel-simplified-software-license-version-october-2022.html
+  license_family: Proprietary
+  summary: 'Repackaged Intel libraries'
+  description: Repackaging of Intel's MKL packages for usage in Anaconda
+  doc_url: https://github.com/AnacondaRecipes/intel_repack-feedstock/blob/master/README.md
+  dev_url: https://github.com/AnacondaRecipes/intel_repack-feedstock
+
+extra:
+  skip-lints:
+    - cbc_dep_in_run_missing_from_host
+  recipe-maintainers:
+    - isuruf
+    - beckermr
+    - napetrov
+    - oleksandr-pavlyk 
+    - alexsandruss
+    - ZzEeKkAa

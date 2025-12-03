@@ -38,7 +38,7 @@ outputs:
       name: libgoogle-cloud-all
     build:
       script:
-        file: ${{ 'install-libgoogle-cloud.bat' if win else 'install-libgoogle-cloud.sh' if unix else '' }}
+        file: ${{ 'install-libgoogle-cloud.sh' if unix else 'install-libgoogle-cloud.bat' if win else '' }}
     requirements:
       build:
         - ${{ compiler('c') }}
@@ -101,7 +101,7 @@ outputs:
       name: libgoogle-cloud-all-devel
     build:
       script:
-        file: ${{ 'install-libgoogle-cloud.bat' if win else 'install-libgoogle-cloud.sh' if unix else '' }}
+        file: ${{ 'install-libgoogle-cloud.sh' if unix else 'install-libgoogle-cloud.bat' if win else '' }}
     requirements:
       build:
         - ${{ compiler('c') }}
