@@ -594,9 +594,9 @@ class RecipeParser(RecipeReader):
             if match := Regex.OUTPUT_SECTION_PATH.match(path):
                 # If the path is an output section, sort the keys of the output section.
                 self._sort_subtree_keys(match.group(0), CanonicalSortOrder.TOP_LEVEL_KEY_SORT_ORDER)
-            else:
-                # If the path is not an output section, sort the keys of the root node to be safe.
-                self._sort_subtree_keys(ROOT_NODE_VALUE, CanonicalSortOrder.TOP_LEVEL_KEY_SORT_ORDER)
+                return True
+            # If the path is not an output section, sort the keys of the root node to be safe.
+            self._sort_subtree_keys(ROOT_NODE_VALUE, CanonicalSortOrder.TOP_LEVEL_KEY_SORT_ORDER)
 
         return is_successful
 
