@@ -761,26 +761,24 @@ class RecipeParser(RecipeReader):
         selector_py_skip_expr: Final[str] = f"[{py_skip_expr}]"
         # If no build section is present, create one
         build_path: Final = self.append_to_path(package_path, "/build")
-        if not self.contains_value(build_path):
-            if not self.patch(
-                {
-                    "op": "add",
-                    "path": build_path,
-                    "value": None,
-                }
-            ):
-                return False
+        if not self.contains_value(build_path) and not self.patch(
+            {
+                "op": "add",
+                "path": build_path,
+                "value": None,
+            }
+        ):
+            return False
         # If no skip statement is present, create one
         skip_path: Final = self.append_to_path(package_path, "/build/skip")
-        if not self.contains_value(skip_path):
-            if not self.patch(
-                {
-                    "op": "add",
-                    "path": skip_path,
-                    "value": True,
-                }
-            ):
-                return False
+        if not self.contains_value(skip_path) and not self.patch(
+            {
+                "op": "add",
+                "path": skip_path,
+                "value": True,
+            }
+        ):
+            return False
         # A skip statement is now present, perform checks
         skip_val: Final = bool(self.get_value(skip_path, None))
         if not skip_val:
