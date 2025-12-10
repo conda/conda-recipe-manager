@@ -2,6 +2,7 @@
 {% set name = "types-toml" %}
 {% set version = "0.10.8.6" %}  # bar
 
+# Comment above a top-level structure
 package:
   name: {{ name|lower }}  # [unix]
   is_cool_name: true
@@ -12,7 +13,6 @@ build:
   is_true: true
   meaning_of_life: 42
 
-# Comment above a top-level structure
 requirements:
   empty_field1:
   host:

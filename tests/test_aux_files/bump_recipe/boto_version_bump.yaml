@@ -10,15 +10,15 @@ source:
   url: https://pypi.org/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz
   sha256: e594f5bc141acabe4b0298d05234e80195116667edad3d6a9cd610cab36bc4e1
 
+build:
+  number: 0
+  script: python setup.py install
+
 requirements:
   host:
     - python
   run:
     - python
-
-build:
-  number: 0
-  script: python setup.py install
 
 test:
   commands:

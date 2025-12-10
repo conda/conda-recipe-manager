@@ -43,15 +43,16 @@ class CanonicalSortOrder:
         "context": 10,
         "package": 20,
         "recipe": 30,  # Used in the v1 recipe format
-        "source": 40,
-        "files": 50,
-        "build": 60,
-        "requirements": 70,
-        "outputs": 80,
-        "test": 90,
-        "tests": 100,  # Used in the v1 recipe format
-        "about": 110,
-        "extra": 120,
+        "name": 40,  # Appears in the v0 outputs section
+        "source": 50,
+        "files": 60,
+        "build": 70,
+        "requirements": 80,
+        "outputs": 90,
+        "test": 100,
+        "tests": 110,  # Used in the v1 recipe format
+        "about": 120,
+        "extra": 130,
     }
 
     # Canonical sort order for the new "v1" recipe format's `build` block
@@ -286,6 +287,9 @@ class Regex:
     MULTILINE_BACKSLASH_QUOTE_CAPTURE_GROUP_FIRST_VALUE: Final[int] = 2
 
     DETECT_TRAILING_COMMENT: Final[re.Pattern[str]] = re.compile(r"([ \t])+(#)")
+
+    # Regex to detect output section paths
+    OUTPUT_SECTION_PATH: Final[re.Pattern[str]] = re.compile(r"^/outputs/\d+")
 
 
 class StringLoader(SafeLoader):
