@@ -15,6 +15,12 @@ Note: version releases in the 0.x.y range may introduce breaking changes.
 ### Fixed
 ### Security
 
+## [0.9.1]
+### Added
+- Canonical recipe section sorting at the root and outputs level after each patch add operation
+### Fixed
+- RecipeParser.update_skip_statement_python() works in the event that a build section is entirely absent
+
 ## [0.9.0]
 ### Added
 - Recipe build variants generation.
@@ -214,7 +220,8 @@ and continually changing.
 Migrates parser from [percy](https://github.com/anaconda-distribution/percy/tree/main)
 , ,
 
-[Unreleased]: https://github.com/conda/conda-recipe-manager/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/conda/conda-recipe-manager/compare/v0.9.1...HEAD
+[0.9.1]: https://github.com/conda/conda-recipe-manager/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/conda/conda-recipe-manager/compare/v0.8.1...v0.9.0
 [0.8.1]: https://github.com/conda/conda-recipe-manager/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/conda/conda-recipe-manager/compare/v0.7.1...v0.8.0
