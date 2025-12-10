@@ -33,7 +33,7 @@ from conda_recipe_manager.parser._traverse import (
     traverse,
     traverse_with_index,
 )
-from conda_recipe_manager.parser._types import Regex, StrStack
+from conda_recipe_manager.parser._types import ROOT_NODE_VALUE, CanonicalSortOrder, Regex, StrStack
 from conda_recipe_manager.parser._utils import str_to_stack_path
 from conda_recipe_manager.parser.enums import SelectorConflictMode
 from conda_recipe_manager.parser.exceptions import JsonPatchValidationException
@@ -589,6 +589,15 @@ class RecipeParser(RecipeReader):
             # TODO technically this doesn't handle a no-op.
             self._is_modified = True
 
+        if is_successful and op == "add":
+            # Re-sort the subtree keys if the operation was successful to keep the recipe in a "canonical" order.
+            if match := Regex.OUTPUT_SECTION_PATH.match(path):
+                # If the path is an output section, sort the keys of the output section.
+                self._sort_subtree_keys(match.group(0), CanonicalSortOrder.TOP_LEVEL_KEY_SORT_ORDER)
+            else:
+                # If the path is not an output section, sort the keys of the root node to be safe.
+                self._sort_subtree_keys(ROOT_NODE_VALUE, CanonicalSortOrder.TOP_LEVEL_KEY_SORT_ORDER)
+
         return is_successful
 
     def _render_patch_value(self, path: str, patch_with: JsonType | ReplacePatchFunc) -> JsonType:
@@ -750,18 +759,27 @@ class RecipeParser(RecipeReader):
             return False
         py_skip_expr: Final[str] = f"py{inverse_version}"
         selector_py_skip_expr: Final[str] = f"[{py_skip_expr}]"
-        # If no skip statement is present: create one
+        # If no build section is present, create one
+        build_path: Final = self.append_to_path(package_path, "/build")
+        if not self.contains_value(build_path):
+            if not self.patch(
+                {
+                    "op": "add",
+                    "path": build_path,
+                    "value": None,
+                }
+            ):
+                return False
+        # If no skip statement is present, create one
         skip_path: Final = self.append_to_path(package_path, "/build/skip")
-        skip_val_pre_add: Final = self.get_value(skip_path, None)
-        if skip_val_pre_add is None:
-            add_success = self.patch(
+        if not self.contains_value(skip_path):
+            if not self.patch(
                 {
                     "op": "add",
                     "path": skip_path,
                     "value": True,
                 }
-            )
-            if not add_success:
+            ):
                 return False
         # A skip statement is now present, perform checks
         skip_val: Final = bool(self.get_value(skip_path, None))
