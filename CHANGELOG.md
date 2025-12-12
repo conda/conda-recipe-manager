@@ -17,9 +17,9 @@ Note: version releases in the 0.x.y range may introduce breaking changes.
 
 ## [0.9.1]
 ### Added
-- Canonical recipe section sorting at the root and outputs level after each patch add operation
+- Canonical recipe section sorting at the root and outputs level after each `patch add` operation in `RecipeParser`.
 ### Fixed
-- RecipeParser.update_skip_statement_python() works in the event that a build section is entirely absent
+- `RecipeParser.update_skip_statement_python()` works in the event that a build section is entirely absent.
 
 ## [0.9.0]
 ### Added
