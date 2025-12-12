@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import re
-from typing import Final, cast
+from typing import Final
 
 from yaml import Dumper, ScalarNode
 
@@ -308,7 +308,7 @@ def string_constructor(loader: SafeLoader, node: ScalarNode) -> str:
     :param node: The node to construct
     :returns: The constructed value
     """
-    return cast(str, loader.construct_scalar(node))
+    return loader.construct_scalar(node)
 
 
 StringLoader.add_constructor("tag:yaml.org,2002:float", string_constructor)
