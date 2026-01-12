@@ -35,6 +35,12 @@ from tests.file_loading import load_file
             BuildContext(platform=Platform.WIN_64, build_env_vars={"python": "3.8"}),
             "selector_filtering/huggingface_hub_py38.yaml",
         ),
+        # Regression to check that comments are ignored when filtering by selectors.
+        (
+            "gluonts.yaml",
+            BuildContext(platform=Platform.LINUX_AARCH_64, build_env_vars={"python": "3.7"}),
+            "selector_filtering/gluonts_linux_aarch_64.yaml",
+        ),
     ],
 )
 def test_filter_by_selectors(file: str, build_context: BuildContext, expected_file: str) -> None:
