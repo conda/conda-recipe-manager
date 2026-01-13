@@ -1,0 +1,127 @@
+{% set name = "gluonts" %}
+{% set version = "0.16.2" %}
+
+package:
+  name: {{ name }}
+  version: {{ version }}
+
+source:
+  url: https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz
+  sha256: 1fef7fff186b567edf9db7cd052c10ee82fb74bb4b4914b925340ba33d494548
+  patches:
+    # remove test cases that rely on cpflows extra
+    - patches/0001-remove-mqf2-cpflows-tests-in-torch.patch
+
+build:
+  number: 0
+  # skipping s390x because lightning is not available
+  skip: true  # [py<37 or s390x]
+  script: {{ PYTHON }} -m pip install . --no-deps --no-build-isolation --ignore-installed --no-cache-dir -vv
+
+requirements:
+  host:
+    - python
+    - pip
+    - setuptools
+    - wheel
+  run:
+    - python
+    - numpy >=1.16,<2.2
+    - pandas >=1.0,<3
+    - pydantic >=1.7,<3
+    - tqdm >=4.23,<5.0.0.dev0
+    - toolz >=0.10,<1.0.0.dev0
+    - typing-extensions >=4.0,<5.0.0.dev0  # [py<38]
+    # Optional dependencies that are part of the "torch" extra, 
+    # but the gluonts package we have on defaults right now includes 
+    # the "torch" extra by default in the runtime requirements. So we
+    # can't remove that dependency without breaking all our users.
+    - pytorch >=1.9,<3
+    # Tighten upperbound to match autogluon.timeseries 1.1.1
+    - lightning >=2.2.2,<2.5
+    # Capping `lightning` does not cap `pytorch_lightning`, so we cap manually
+    # Tighten upperbound to match autogluon.timeseries 1.1.1
+    - pytorch-lightning >=2.2.2,<2.5
+    - scipy <1.16.0   # [py>37]
+  run_constrained:
+    # https://github.com/awslabs/gluonts/blob/v0.16.0/requirements/requirements-extras-prophet.txt
+    - prophet >=1.0,<2.0.0.dev0
+    # https://github.com/awslabs/gluonts/blob/v0.16.0/requirements/requirements-extras-shell.txt
+    - flask >=3.0,<4.0.0.dev0
+    - waitress >=3.0.1,<3.1.0.dev0
+
+{% set ignored_tests = [
+  "--ignore=test/torch_tests/model/test_multivariate_estimators.py",
+  "--ignore=test/torch_tests/model/test_on_gpu.py",
+  "--ignore=test/torch_tests/model/test_deepar_nonnegative_pred_samples.py",
+  "--ignore=test/dataset/test_train_test_data_leakage.py",
+  "--ignore=test/torch_tests/test_torch_item_id_info.py",
+  "--ignore=test/torch_tests/model/test_torch_incremental_training.py",
+  "--ignore=test/torch_tests/model/test_estimators.py"
+]%}
+# FileNotFoundError: [WinError 2] The system cannot find the file specified
+{% set ignored_win_tests = [
+  "--ignore=test/ext/r_forecast/test_r_hierarchical_predictor.py",
+  "--ignore=test/ext/r_forecast/test_r_multi_seasonality.py",
+  "--ignore=test/ext/r_forecast/test_r_univariate_predictor.py",
+  "--ignore=test/torch_tests/distribution/test_negative_binomial.py",
+  # PermissionError: [WinError 32] The process cannot access the file because it is being used by another process
+  "--ignore=test/dataset/test_arrow.py",
+  "--ignore=test/dataset/test_writer.py",
+  "--ignore=test/ext/r_forecast/test_r_util.py"
+]%}
+test:
+  source_files:
+    - test
+    - pyproject.toml
+  imports:
+    - gluonts
+  requires:
+    # https://github.com/awslabs/gluonts/blob/v0.16.0/requirements/requirements-test.txt
+    - pip
+    - pytest
+    - pandas >=1.1
+    - pytest >7.0
+    - pytest-timeout >2.0,<3.0
+    - pytest-xdist >3.0,<4.0
+    - pytest-rerunfailures >=13.0,<14.0
+    - ujson
+    - orjson
+    - requests
+    - holidays >=0.9,<1.0.0.dev0
+    - matplotlib-base >=3.6,<4.0.0.dev0
+    - pyarrow
+    - statsmodels >=0.11,<1.0.0.dev0
+  commands:
+    - pip check
+    ## Torch tests to check pytorch-lightning bounds are OK ##
+    # MPS Fallback must be enabled on OSX, see https://github.com/awslabs/gluonts/issues/3020
+    - export PYTORCH_ENABLE_MPS_FALLBACK=1  # [osx]
+    # Rename torch test directory to avoid confusion with torch module
+    - mv test/torch test/torch_tests  # [unix]
+    - move test\torch test\torch_tests  # [win]
+    # Skip tests that throw errors in the C++ engine of a backwards training pass because they're calling view()
+    # instead of reshape() on a tensor.
+    - pytest ./test -vv {{ ignored_tests | join(" ")}}  # [not win]
+    # Windows has additional trouble running arrow and datawriter tests since multiple threads try to open the same
+    # file at the same time. Windows also gets different results when comparing their implementation of a
+    # NegativeBinomial distribution vs scipy. See https://github.com/awslabs/gluonts/issues/3129
+    - pytest ./test -vv {{ ignored_tests | join(" ")}} {{ ignored_win_tests | join (" ")}} # [win]
+
+about:
+  home: https://ts.gluon.ai/stable
+  license: Apache-2.0
+  license_family: Apache
+  license_file:
+    - NOTICE
+    - LICENSE
+  dev_url: https://github.com/awslabs/gluonts
+  doc_url: https://ts.gluon.ai/stable
+  summary: GluonTS is a Python toolkit for probabilistic time series modeling, built around Apache MXNet (incubating).
+  description: |
+    GluonTS is a Python package for probabilistic time series modeling, focusing on deep learning based models, based
+    on PyTorch and MXNet.
+
+extra:
+  recipe-maintainers:
+    - dkomisar

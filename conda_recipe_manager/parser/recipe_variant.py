@@ -49,6 +49,9 @@ class RecipeVariant(RecipeReaderDeps):
             # Filters selectors and paths in the node's children.
             new_children = []
             for child in node.children:
+                if child.is_comment():
+                    new_children.append(child)
+                    continue
                 child_selector = SelectorParser._v0_extract_selector(child.comment)  # pylint: disable=protected-access
                 if not child_selector:
                     new_children.append(child)
