@@ -81,10 +81,11 @@ class RecipeVariant(RecipeReaderDeps):
         """
         recipe_vars_context: Final[dict[str, JsonType]] = {k: self.get_variable(k) for k in self._vars_tbl}
         context: Final = {**build_context.get_context(), **recipe_vars_context}
+        _, sub_regex = self._set_on_schema_version()
 
         def _evaluate_jinja_expression_in_node(node: Node) -> None:
             # Evaluates JINJA expression in the node value if applicable.
-            if isinstance(node.value, str):
+            if isinstance(node.value, str) and sub_regex.search(node.value):
                 rendered_value = self._render_jinja_vars(node.value, context)
                 if not isinstance(rendered_value, PRIMITIVES_NO_NONE_TUPLE):
                     raise ValueError(
