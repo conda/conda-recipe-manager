@@ -76,6 +76,15 @@ def test_filter_by_selectors(file: str, build_context: BuildContext, expected_fi
             ),
             "jinja2_rendering/curl_rendered.yaml",
         ),
+        # Regression test for #471: JINJA rendering should only operate on JINJA expressions.
+        (
+            "jinja2_rendering/curl_regression.yaml",
+            BuildContext(
+                platform=Platform.WIN_64,
+                build_env_vars={"zlib": "1.2.13"},
+            ),
+            "jinja2_rendering/curl_regression_rendered.yaml",
+        ),
     ],
 )
 def test_evaluate_jinja_expressions(file: str, build_context: BuildContext, expected_file: str) -> None:
