@@ -734,7 +734,7 @@ class RecipeParserConvert(RecipeParserDeps):
         """
         # Replace `- pip check` in `commands` with the new flag. If not found, set the flag to `False` (as the
         # flag defaults to `True`). DO NOT ADD THIS FLAG IF THE RECIPE IS NOT A "PYTHON RECIPE".
-        if not self._v1_recipe.is_python_recipe():
+        if not self._is_python_recipe:
             return
 
         pip_check_variants: Final[set[str]] = {
@@ -969,6 +969,9 @@ class RecipeParserConvert(RecipeParserDeps):
         """
         # Approach: In the event that we want to expand support later, this function should be implemented in terms
         # of a `RecipeParser` tree. This will make it easier to build an upgrade-path, if we so choose to pursue one.
+
+        # Store early, as is_python_recipe() will not substitute Jinja variables correctly mid-transition.
+        self._is_python_recipe = self._v1_recipe.is_python_recipe()
 
         # Log the original comments
         old_comments: Final[dict[str, str]] = self._v1_recipe.get_comments_table()

@@ -1247,7 +1247,7 @@ class RecipeReader(IsModifiable):
                 return False
 
             host_path = RecipeReader.append_to_path(base_path, "/requirements/host")
-            host_deps = cast(Optional[list[str | dict[str, str]]], self.get_value(host_path, default=[]))
+            host_deps = cast(Optional[list[str | dict[str, str]]], self.get_value(host_path, default=[], sub_vars=True))
             # Skip the rare edge case where the list may be null (usually caused by commented-out code)
             if host_deps is None:
                 continue
