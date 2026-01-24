@@ -30,6 +30,7 @@ tests:
       imports:
         - more_itertools
       pip_check: true
+      python_version: ${{ python_min }}.*
 
 about:
   summary: More routines for operating on iterables, beyond itertools

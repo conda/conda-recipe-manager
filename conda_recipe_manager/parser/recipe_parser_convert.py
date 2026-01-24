@@ -758,6 +758,25 @@ class RecipeParserConvert(RecipeParserDeps):
             pip_check = True
             break
 
+        python_version = None
+        test_dep_path = RecipeParser.append_to_path(test_path, "/requirements/run")
+        # Do not evaluate variables, so that we preserve them when copying.
+        test_deps = cast(Optional[list[str | dict[str, str]]], self._v1_recipe.get_value(test_dep_path, default=[]))
+        # Normalize the rare edge case where the list may be null (usually caused by commented-out code)
+        if test_deps is None:
+            test_deps = []
+        for i, dep in enumerate(test_deps):
+            # If we find a selector on a line, ignore it.
+            if not isinstance(dep, str):
+                continue
+            split_dep = dep.split()
+            if len(split_dep) > 1 and split_dep[0] == "python":
+                # The V0 selector check is more costly and it can be delayed until we've determined we have found
+                # a python test dependency.
+                if self.contains_selector_at_path(RecipeParser.append_to_path(test_dep_path, f"/{i}")):
+                    continue
+                python_version = " ".join(split_dep[1:])
+
         # Edge-case: Remove `commands` (which will soon become `script`) and `requirements` if `pip check` was the only
         # command present. Otherwise, we will effectively create an empty test object.
         if pip_check and len(commands) == 1:
@@ -772,6 +791,14 @@ class RecipeParserConvert(RecipeParserDeps):
         self._patch_and_log(
             {"op": "add", "path": RecipeParser.append_to_path(test_path, "/python/pip_check"), "value": pip_check}
         )
+        if python_version is not None:
+            self._patch_and_log(
+                {
+                    "op": "add",
+                    "path": RecipeParser.append_to_path(test_path, "/python/python_version"),
+                    "value": python_version,
+                }
+            )
 
     def _upgrade_test_section(self, base_package_paths: list[str]) -> None:
         # pylint: disable=too-complex
