@@ -726,6 +726,7 @@ class RecipeParserConvert(RecipeParserDeps):
             self._patch_deprecated_fields(about_path, about_deprecated)
 
     def _upgrade_test_pip_check(self, test_path: str) -> None:
+        # pylint: disable=too-complex
         """
         Replaces the commonly used `pip check` test-case with the new `python/pip_check` attribute, if applicable.
 
