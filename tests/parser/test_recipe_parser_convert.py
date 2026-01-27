@@ -309,6 +309,11 @@ def test_pre_process_recipe_text(input_file: str, expected_file: str) -> None:
                 "Field at `/about/license_family` is no longer supported.",
             ],
         ),
+        (
+            "more-itertools.yaml",
+            [],
+            [],
+        ),
     ],
 )
 def test_render_to_v1_recipe_format(file: str, errors: list[str], warnings: list[str]) -> None:

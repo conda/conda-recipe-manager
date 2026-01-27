@@ -1,0 +1,44 @@
+schema_version: 1
+
+context:
+  python_min: 3.9
+  version: 10.8.0
+
+package:
+  name: more-itertools
+  version: ${{ version }}
+
+source:
+  url: https://pypi.org/packages/source/m/more-itertools/more_itertools-${{ version }}.tar.gz
+  sha256: f638ddf8a1a0d134181275fb5d58b086ead7c6a72429ad725c67503f13ba30bd
+
+build:
+  number: 0
+  noarch: python
+  script: ${{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
+
+requirements:
+  host:
+    - python ${{ python_min }}.*
+    - flit-core >=3.12,<4
+    - pip
+  run:
+    - python >=${{ python_min }}
+
+tests:
+  - python:
+      imports:
+        - more_itertools
+      pip_check: true
+      python_version: ${{ python_min }}.*
+
+about:
+  summary: More routines for operating on iterables, beyond itertools
+  license: MIT
+  license_file: LICENSE
+  homepage: https://github.com/more-itertools/more-itertools
+  documentation: https://more-itertools.readthedocs.io/en/stable/
+
+extra:
+  recipe-maintainers:
+    - mgorny

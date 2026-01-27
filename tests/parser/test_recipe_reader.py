@@ -1131,11 +1131,13 @@ def test_is_multi_output(file: str, expected: bool) -> None:
         ("types-toml.yaml", True),
         ("boto.yaml", True),
         ("cctools-ld64.yaml", False),
+        ("more-itertools.yaml", True),
         ("v1_format/v1_multi-output.yaml", False),
         ("v1_format/v1_simple-recipe.yaml", False),
         ("v1_format/v1_types-toml.yaml", True),
         ("v1_format/v1_boto.yaml", True),
         ("v1_format/v1_cctools-ld64.yaml", False),
+        ("v1_format/v1_more-itertools.yaml", True),
         # Regression test for Issue 289. Compiled projects that use Python are not "pure python" packages.
         ("parser_regressions/issue-289_regression.yaml", False),
         ("parser_regressions/v1_format/v1_issue-289_regression.yaml", False),

@@ -47,6 +47,9 @@ class RecipeParserConvert(RecipeParserDeps):
         # is no development cost in utilizing tools we already must maintain.
         self._v1_recipe: RecipeParserDeps = RecipeParserDeps(self.render(), flags)
 
+        # Store early, as is_python_recipe() will not substitute Jinja variables correctly mid-transition.
+        self._is_python_recipe_v1_bootstrap: Final[bool] = self._v1_recipe.is_python_recipe()
+
         self._msg_tbl = MessageTable()
 
     ## Patch utility functions ##
@@ -726,6 +729,7 @@ class RecipeParserConvert(RecipeParserDeps):
             self._patch_deprecated_fields(about_path, about_deprecated)
 
     def _upgrade_test_pip_check(self, test_path: str) -> None:
+        # pylint: disable=too-complex
         """
         Replaces the commonly used `pip check` test-case with the new `python/pip_check` attribute, if applicable.
 
@@ -734,7 +738,7 @@ class RecipeParserConvert(RecipeParserDeps):
         """
         # Replace `- pip check` in `commands` with the new flag. If not found, set the flag to `False` (as the
         # flag defaults to `True`). DO NOT ADD THIS FLAG IF THE RECIPE IS NOT A "PYTHON RECIPE".
-        if not self._v1_recipe.is_python_recipe():
+        if not self._is_python_recipe_v1_bootstrap:
             return
 
         pip_check_variants: Final[set[str]] = {
@@ -758,6 +762,25 @@ class RecipeParserConvert(RecipeParserDeps):
             pip_check = True
             break
 
+        python_version = None
+        test_dep_path: Final[str] = RecipeParser.append_to_path(test_path, "/requirements/run")
+        # Do not evaluate variables, so that we preserve them when copying.
+        test_deps = cast(Optional[list[str | dict[str, str]]], self._v1_recipe.get_value(test_dep_path, default=[]))
+        # Normalize the rare edge case where the list may be null (usually caused by commented-out code)
+        if test_deps is None:
+            test_deps = []
+        for i, dep in enumerate(test_deps):
+            # If we find a selector on a line, ignore it.
+            if not isinstance(dep, str):
+                continue
+            split_dep = dep.split()
+            if len(split_dep) > 1 and split_dep[0] == "python":
+                # The V0 selector check is more costly and it can be delayed until we've determined we have found
+                # a python test dependency.
+                if self.contains_selector_at_path(RecipeParser.append_to_path(test_dep_path, f"/{i}")):
+                    continue
+                python_version = " ".join(split_dep[1:])
+
         # Edge-case: Remove `commands` (which will soon become `script`) and `requirements` if `pip check` was the only
         # command present. Otherwise, we will effectively create an empty test object.
         if pip_check and len(commands) == 1:
@@ -772,6 +795,14 @@ class RecipeParserConvert(RecipeParserDeps):
         self._patch_and_log(
             {"op": "add", "path": RecipeParser.append_to_path(test_path, "/python/pip_check"), "value": pip_check}
         )
+        if python_version is not None:
+            self._patch_and_log(
+                {
+                    "op": "add",
+                    "path": RecipeParser.append_to_path(test_path, "/python/python_version"),
+                    "value": python_version,
+                }
+            )
 
     def _upgrade_test_section(self, base_package_paths: list[str]) -> None:
         # pylint: disable=too-complex
