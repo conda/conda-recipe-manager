@@ -113,13 +113,13 @@ conda activate conda-recipe-manager
 
 ### Developer Documentation
 We aim for a very high bar when it comes to code documentation so that we may leverage automatic documentation
-workflows. API docs are hosted [here](https://conda.github.io/conda-recipe-manager/index.html)
+workflows. API docs are hosted [here](https://conda.github.io/conda-recipe-manager/index.html).
 
 ### Setup Troubleshooting
 - If you are currently in the `conda-recipe-manager` environment, make sure that you exit the environment with
   `conda deactivate` before running `make dev`. There have been known issues with attempting to delete the environment
   while an active instance is open.
-- There have been known some issues using Berkley `make` (`bmake`) to setup the environment. The `Makefile` provided
+- There have been some known issues using Berkley `make` (`bmake`) to setup the environment. The `Makefile` provided
   assumes GNU `make` is being used. This should only be an issue when running `make dev` as the `conda-recipe-manager`
   environment installs a version of GNU `make` to the environment.
 
@@ -135,10 +135,10 @@ variable, function, etc is `private`/`protected` with a single leading `_`.
 The provided `Makefile` also provides a handful of convenience directives for running all or part of the `pre-commit`
 checks:
 
-1. `make test`: Runs all the unit tests
+1. `make test`: Runs all the unit tests.
 1. `make test-cov`: Reports the current test coverage percentage and indicates which lines are currently untested.
 1. `make lint`: Runs our `pylint` configuration, based on Google's Python standards.
-1. `make format`: Automatically formats code
+1. `make format`: Automatically formats code.
 1. `make analyze`: Runs the static analyzer, `mypy`.
 1. `make pre-commit`: Runs all the `pre-commit` checks on every file.
 
@@ -146,7 +146,7 @@ checks:
 Here is a brief overview of our current release process:
 1. Update `CHANGELOG.md`, including the "range of changes" link at the bottom of the file.
 1. Update the version number in `pyproject.toml`, `docs/conf.py`, and `recipe/meta.yaml`
-1. Ensure `environment.yaml` is up to date with the latest dependencies
+1. Ensure `environment.yaml` is up to date with the latest dependencies.
 1. Create a new release on GitHub with a version tag. Create a PR with a feature branch that contains the version number,
    merge that PR, and tag a release targeting the merge commit.
 1. Manage the conda-forge feedstock, as per [this doc](https://conda-forge.org/docs/maintainer/adding_pkgs/).
