@@ -47,6 +47,9 @@ class RecipeParserConvert(RecipeParserDeps):
         # is no development cost in utilizing tools we already must maintain.
         self._v1_recipe: RecipeParserDeps = RecipeParserDeps(self.render(), flags)
 
+        # Store early, as is_python_recipe() will not substitute Jinja variables correctly mid-transition.
+        self._is_python_recipe_v1_bootstrap: Final[bool] = self._v1_recipe.is_python_recipe()
+
         self._msg_tbl = MessageTable()
 
     ## Patch utility functions ##
@@ -735,7 +738,7 @@ class RecipeParserConvert(RecipeParserDeps):
         """
         # Replace `- pip check` in `commands` with the new flag. If not found, set the flag to `False` (as the
         # flag defaults to `True`). DO NOT ADD THIS FLAG IF THE RECIPE IS NOT A "PYTHON RECIPE".
-        if not self._is_python_recipe:
+        if not self._is_python_recipe_v1_bootstrap:
             return
 
         pip_check_variants: Final[set[str]] = {
@@ -760,7 +763,7 @@ class RecipeParserConvert(RecipeParserDeps):
             break
 
         python_version = None
-        test_dep_path = RecipeParser.append_to_path(test_path, "/requirements/run")
+        test_dep_path: Final[str] = RecipeParser.append_to_path(test_path, "/requirements/run")
         # Do not evaluate variables, so that we preserve them when copying.
         test_deps = cast(Optional[list[str | dict[str, str]]], self._v1_recipe.get_value(test_dep_path, default=[]))
         # Normalize the rare edge case where the list may be null (usually caused by commented-out code)
@@ -997,9 +1000,6 @@ class RecipeParserConvert(RecipeParserDeps):
         """
         # Approach: In the event that we want to expand support later, this function should be implemented in terms
         # of a `RecipeParser` tree. This will make it easier to build an upgrade-path, if we so choose to pursue one.
-
-        # Store early, as is_python_recipe() will not substitute Jinja variables correctly mid-transition.
-        self._is_python_recipe = self._v1_recipe.is_python_recipe()
 
         # Log the original comments
         old_comments: Final[dict[str, str]] = self._v1_recipe.get_comments_table()
