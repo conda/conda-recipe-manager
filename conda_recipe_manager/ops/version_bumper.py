@@ -22,7 +22,7 @@ from conda_recipe_manager.types import JsonPatchType, JsonType
 
 log: Final = logging.getLogger(__name__)
 
-## Cosntants ##
+## Constants ##
 
 # Default starting point for the `/build/number` field for the vast majority of recipe files.
 DEFAULT_BUILD_NUM_START_POINT: Final = 0

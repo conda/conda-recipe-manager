@@ -18,7 +18,7 @@ exclude = ["tests"]
 
 [project]
 name = "conda_recipe_manager"
-version = "0.9.2"
+version = "0.9.3"
 authors = [
   { name="Anaconda, Inc.", email="distribution_team@anaconda.com" },
 ]
