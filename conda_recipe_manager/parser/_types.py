@@ -150,12 +150,15 @@ class Regex:
 
     # Pattern that attempts to identify YAML strings that need to be quote-escaped in the parsing process. Including:
     #   - Strings that start with a quote marker, close the same quote marker, and then are trailed by characters.
+    #   - Strings resembling numeric versions, particularly X.Y versions that can be misinterpreted as floats (#476).
     # Examples:
     #   'm2w64-' if win else ''
     #   "" foo ""
     #   "%R%" -e "library('RSQLite')"
     #   "foo" bar # baz
-    YAML_TO_QUOTE_ESCAPE: Final[re.Pattern[str]] = re.compile(r"^('.*'|\".*\")(?![ \t]#.+).+")
+    #   1.20
+    #   1.2.3
+    YAML_TO_QUOTE_ESCAPE: Final[re.Pattern[str]] = re.compile(r"^(('.*'|\".*\")(?![ \t]#.+).+|\d+([.]\d+)+)$")
 
     ## V0 Formatter regular expressions ##
     V0_FMT_SECTION_HEADER: Final[re.Pattern[str]] = re.compile(r"^[\w|-]+:$")
