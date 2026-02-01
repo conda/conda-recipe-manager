@@ -314,6 +314,12 @@ def test_pre_process_recipe_text(input_file: str, expected_file: str) -> None:
             [],
             [],
         ),
+        # Issue #479: noarch python recipes should use `python_min` instead of `python` in skip conditions
+        (
+            "noarch-python-skip.yaml",
+            [],
+            [],
+        ),
     ],
 )
 def test_render_to_v1_recipe_format(file: str, errors: list[str], warnings: list[str]) -> None:
