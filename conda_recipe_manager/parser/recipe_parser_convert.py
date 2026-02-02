@@ -308,6 +308,17 @@ class RecipeParserConvert(RecipeParserDeps):
                 )
                 self._msg_tbl.add_message(MessageCategory.WARNING, f"Version on dependency changed to: {spec_str}")
 
+    def _is_noarch_python(self, base_path: str = "/") -> bool:
+        """
+        Checks if the recipe (or a specific output) has `noarch: python` set.
+
+        :param base_path: Base path to check (defaults to root for single-output recipes)
+        :returns: True if the recipe has `noarch: python` set, False otherwise.
+        """
+        noarch_path = RecipeParser.append_to_path(base_path, "/build/noarch")
+        noarch_value = self._v1_recipe.get_value(noarch_path, default=None)
+        return noarch_value == "python"
+
     def _upgrade_selectors_to_conditionals(self) -> None:
         """
         Upgrades the proprietary comment-based selector syntax to equivalent conditional logic statements.
@@ -317,6 +328,12 @@ class RecipeParserConvert(RecipeParserDeps):
         conda docs for common selectors:
           https://docs.conda.io/projects/conda-build/en/latest/resources/define-metadata.html#preprocessing-selectors
         """
+        # Per CFEP-25, noarch Python recipes should use `python_min` instead of `python` in match expressions,
+        # as only `python_min` is defined in the variant configuration for noarch packages.
+        # See: https://github.com/conda/conda-recipe-manager/issues/479
+        is_noarch_python: Final[bool] = self._is_noarch_python()
+        python_match_var: Final[str] = "python_min" if is_noarch_python else "python"
+
         selector_path_map: dict[str, str] = {}
         for selector, instances in self._v1_recipe._selector_tbl.items():  # pylint: disable=protected-access
             for info in instances:
@@ -333,21 +350,21 @@ class RecipeParserConvert(RecipeParserDeps):
                 # Some commonly used selectors (like `py<36`) need to be upgraded. Otherwise, these expressions will be
                 # interpreted as strings. See this CEP PR for more details: https://github.com/conda/ceps/pull/71
                 bool_expression = Regex.SELECTOR_PYTHON_VERSION_REPLACEMENT.sub(
-                    r'match(python, "\1\2.\3")', bool_expression
+                    rf'match({python_match_var}, "\1\2.\3")', bool_expression
                 )
                 # Upgrades for less common `py36` and `not py27` selectors
                 bool_expression = Regex.SELECTOR_PYTHON_VERSION_EQ_REPLACEMENT.sub(
-                    r'match(python, "==\1.\2")', bool_expression
+                    rf'match({python_match_var}, "==\1.\2")', bool_expression
                 )
                 bool_expression = Regex.SELECTOR_PYTHON_VERSION_NE_REPLACEMENT.sub(
-                    r'match(python, "!=\1.\2")', bool_expression
+                    rf'match({python_match_var}, "!=\1.\2")', bool_expression
                 )
                 # Upgrades for less common `py2k` and `py3k` selectors
                 bool_expression = Regex.SELECTOR_PYTHON_VERSION_PY2K_REPLACEMENT.sub(
-                    r'match(python, ">=2,<3")', bool_expression
+                    rf'match({python_match_var}, ">=2,<3")', bool_expression
                 )
                 bool_expression = Regex.SELECTOR_PYTHON_VERSION_PY3K_REPLACEMENT.sub(
-                    r'match(python, ">=3,<4")', bool_expression
+                    rf'match({python_match_var}, ">=3,<4")', bool_expression
                 )
 
                 # TODO other common selectors to support:

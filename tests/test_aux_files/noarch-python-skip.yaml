@@ -1,0 +1,37 @@
+{% set name = "noarch-python-skip" %}
+{% set version = "1.0.0" %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  url: https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz
+  sha256: 6d3ac79e36c9ee593c5d4fb33a50cca0e3adceb6ef5cff8b8e5aef67b4c4aaf2
+
+build:
+  number: 0
+  noarch: python
+  skip: true  # [py<310]
+  script: {{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
+
+requirements:
+  host:
+    - python >=3.10
+    - pip
+  run:
+    - python >=3.10
+
+test:
+  imports:
+    - noarch_python_skip
+  commands:
+    - pip check
+  requires:
+    - pip
+
+about:
+  home: https://github.com/example/noarch-python-skip
+  summary: Test package for noarch python skip condition conversion
+  license: MIT
+  license_file: LICENSE
