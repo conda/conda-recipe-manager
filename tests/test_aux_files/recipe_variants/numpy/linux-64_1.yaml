@@ -3,7 +3,7 @@
 # https://github.com/numpy/numpy/blob/v2.3.4/numpy/_core/include/numpy/numpyconfig.h
 package:
   name: numpy_and_numpy_base
-  version: 2.3.4
+  version: "2.3.4"
 
 source:
   - url: https://github.com/numpy/numpy/releases/download/v2.3.4/numpy-2.3.4.tar.gz

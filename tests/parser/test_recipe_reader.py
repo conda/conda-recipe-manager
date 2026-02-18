@@ -1600,10 +1600,10 @@ def test_search() -> None:
     "file,expected",
     [
         ("simple-recipe.yaml", "695b05c43362eb43c22eae23f0129f41f61413912225184cb7234a4d2c15f353"),
-        ("v1_format/v1_simple-recipe.yaml", "b4a8a6d56a77ebfe93e449eb47316bbed8fce69b7bf5b1220095c4875027c520"),
+        ("v1_format/v1_simple-recipe.yaml", "2a0c2f36ac5e0e752a9f3707aa6cf05f662f57acdab799bb5901d3697715add9"),
         ("types-toml.yaml", "e117d210da9ea6507fdea856ee96407265aec40cbc58432aa6e1c7e31998a686"),
-        ("v1_format/v1_types-toml.yaml", "3474ed870eea9c8efbd248d24de8bdf54ad8651a7aed06d240f118272d8a3fd1"),
-        ("v1_format/v1_boto.yaml", "b42349254d020ffeda77f3068e8ad8804a92d1c7b89eb0f3d45632b38fc0a3bc"),
+        ("v1_format/v1_types-toml.yaml", "a826f8aad6114c4ac83d1030fdfc2118bed961b58305f899b9f6043e317d0ff2"),
+        ("v1_format/v1_boto.yaml", "f5b69d3b253a17faaf93928ca5956751f1f2b6ba390be63bcda6ef235ec3279b"),
     ],
 )
 def test_calc_sha256(file: str, expected: str) -> None:

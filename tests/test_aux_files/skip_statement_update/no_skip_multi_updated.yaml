@@ -1,6 +1,6 @@
 package:
   name: test_package
-  version: 0.0.1
+  version: "0.0.1"
 
 outputs:
   - name: output1

@@ -1,6 +1,6 @@
 package:
   name: package_name
-  version: 1.0.0
+  version: "1.0.0"
 
 source:
   url: https://pypi.io/packages/source/p/package_name/package_name-1.0.0.tar.gz

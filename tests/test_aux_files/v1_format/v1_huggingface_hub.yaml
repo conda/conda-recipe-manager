@@ -2,7 +2,7 @@ schema_version: 1
 
 context:
   name: huggingface_hub
-  version: 0.15.1
+  version: "0.15.1"
 
 package:
   name: ${{ name|lower }}

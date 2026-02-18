@@ -1,6 +1,6 @@
 package:
   name: curl_split_recipe
-  version: 8.4.0
+  version: "8.4.0"
 
 source:
   url: https://curl.se/download/curl-8.4.0.tar.bz2

@@ -2,7 +2,7 @@ schema_version: 1
 
 context:
   name: types-toml
-  version: 0.10.8.6
+  version: "0.10.8.6"
 
 package:
   name: ${{ name|lower }}

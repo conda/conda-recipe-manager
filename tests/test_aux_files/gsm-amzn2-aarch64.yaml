@@ -1,6 +1,6 @@
 package:
   name: gsm-amzn2-aarch64
-  version: 1.0.13
+  version: "1.0.13"
 
 source:
   - url: https://graviton-rpms.s3.amazonaws.com/amzn2-core_2021_01_26/amzn2-core/gsm-1.0.13-11.amzn2.0.2.aarch64.rpm

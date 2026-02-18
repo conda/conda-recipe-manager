@@ -1,7 +1,7 @@
 schema_version: 1
 
 context:
-  version: 8.4.0
+  version: "8.4.0"
 
 recipe:
   name: curl_split_recipe
