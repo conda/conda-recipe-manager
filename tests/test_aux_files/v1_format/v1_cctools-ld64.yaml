@@ -4,11 +4,11 @@ schema_version: 1
 context:
   cctools_version: 921
   cctools_sha256: 53449a7f2e316c7df5e6b94fd04e12b6d0356f2487d77aad3000134e4c010cc5
-  ld64_version: 409.12
+  ld64_version: "409.12"
   ld64_sha256: c34561b44210668c51e49efdb7d1e814a33056051ac7698571605ab968d31d5f
-  dyld_version: 551.4
+  dyld_version: "551.4"
   dyld_sha256: 15f86b62fb91c75fcdfedfee2ef8759585d4b9ef9ed1757cae8f4f13bd58e51c
-  clang_version: 7.0.0
+  clang_version: "7.0.0"
   clang_sha256: b3ad93c3d69dfd528df9c5bb1a434367babb8f3baea47fbb99bf49f1b03c94ca
   native_compiler_subdir: linux-64
 

@@ -1,7 +1,7 @@
 schema_version: 1
 
 context:
-  version: 2.22.0
+  version: "2.22.0"
 
 recipe:
   name: google-cloud-cpp-split

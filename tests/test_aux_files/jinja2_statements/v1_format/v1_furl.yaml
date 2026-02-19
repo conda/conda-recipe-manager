@@ -4,7 +4,7 @@ schema_version: 1
 
 context:
   name: furl
-  version: 2.1.4
+  version: "2.1.4"
   skip_broken_tests:
     - test_hosts
     - test_netloc

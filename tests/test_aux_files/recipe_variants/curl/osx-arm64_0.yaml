@@ -1,6 +1,6 @@
 package:
   name: curl-split
-  version: 8.16.0
+  version: "8.16.0"
 
 source:
   url: https://curl.se/download/curl-8.16.0.tar.bz2

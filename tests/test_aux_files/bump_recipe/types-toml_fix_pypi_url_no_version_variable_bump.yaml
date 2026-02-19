@@ -2,7 +2,7 @@
 
 package:
   name: {{ name|lower }}
-  version: 0.10.8.20240310
+  version: "0.10.8.20240310"
 
 source:
   url: https://pypi.org/packages/source/t/types-toml/types-toml-0.10.8.20240310.tar.gz

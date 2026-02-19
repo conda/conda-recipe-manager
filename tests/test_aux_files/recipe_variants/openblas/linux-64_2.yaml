@@ -1,6 +1,6 @@
 package:
   name: openblas
-  version: 0.3.23
+  version: "0.3.23"
 
 source:
   url: https://github.com/xianyi/OpenBLAS/archive/v0.3.23.tar.gz

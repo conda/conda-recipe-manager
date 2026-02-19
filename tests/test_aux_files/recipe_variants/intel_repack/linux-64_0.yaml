@@ -5,7 +5,7 @@
 # this variable defines openmp specific buildnum
 package:
   name: intel_repack
-  version: 2025.0.0
+  version: "2025.0.0"
 
 source:
   - url: https://software.repos.intel.com/python/conda/linux-64/mkl-2025.0.0-intel_939.tar.bz2
@@ -28,7 +28,7 @@ build:
 
 outputs:
   - name: mkl
-    version: 2025.0.0
+    version: "2025.0.0"
     script: repack.sh
     build:
       number: 941
@@ -63,7 +63,7 @@ outputs:
         - test -f $PREFIX/lib/libmkl_core${SHLIB_EXT}
         - test -f $PREFIX/lib/libmkl_rt${SHLIB_EXT}
   - name: mkl-include
-    version: 2025.0.0
+    version: "2025.0.0"
     script: repack.sh
     number: 941
     # An empty requirements/build to satisfy anaconda-linter.
@@ -95,7 +95,7 @@ outputs:
         - test -f $PREFIX/include/mkl_types.h
         - test -f $PREFIX/include/mkl_version.h
   - name: mkl-devel
-    version: 2025.0.0
+    version: "2025.0.0"
     script: install-devel.sh
     number: 941
     build:
@@ -138,7 +138,7 @@ outputs:
         - ./build/myapp
   - name: intel-openmp
     script: repack.sh
-    version: 2025.0.0
+    version: "2025.0.0"
     build:
       number: 1171
       missing_dso_whitelist:
