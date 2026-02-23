@@ -10,6 +10,8 @@ Note: version releases in the 0.x.y range may introduce breaking changes.
 ## [Unreleased]
 ### Added
 ### Changed
+- `click` dependency has been pinned to 8.2.1, which is available on `defaults` and `conda-forge`
+  channels for Python 3.11+.
 ### Deprecated
 ### Removed
 ### Fixed
