@@ -44,9 +44,6 @@ dependencies = [
   "jsonschema",
   "requests >= 2.8.1, == 2.8.*",
   "gitpython",
-  "networkx",
-  "matplotlib",
-  "pygraphviz",
 ]
 
 [project.optional-dependencies]

@@ -23,9 +23,6 @@ from tests.file_loading import get_test_path
                 ProjectDependency(MatchSpec("jsonschema"), DependencySection.RUN),
                 ProjectDependency(MatchSpec("requests"), DependencySection.RUN),
                 ProjectDependency(MatchSpec("gitpython"), DependencySection.RUN),
-                ProjectDependency(MatchSpec("networkx"), DependencySection.RUN),
-                ProjectDependency(MatchSpec("matplotlib"), DependencySection.RUN),
-                ProjectDependency(MatchSpec("pygraphviz"), DependencySection.RUN),
                 # Optional dependencies
                 ProjectDependency(MatchSpec("pytest"), DependencySection.RUN_CONSTRAINTS),
                 ProjectDependency(MatchSpec("conda-build"), DependencySection.RUN_CONSTRAINTS),
@@ -40,9 +37,6 @@ from tests.file_loading import get_test_path
                 ProjectDependency(MatchSpec("jsonschema"), DependencySection.RUN),
                 ProjectDependency(MatchSpec("requests >= 2.8.1, == 2.8.*"), DependencySection.RUN),
                 ProjectDependency(MatchSpec("gitpython"), DependencySection.RUN),
-                ProjectDependency(MatchSpec("networkx"), DependencySection.RUN),
-                ProjectDependency(MatchSpec("matplotlib"), DependencySection.RUN),
-                ProjectDependency(MatchSpec("pygraphviz"), DependencySection.RUN),
                 # Optional dependencies
                 ProjectDependency(MatchSpec("pytest ~= 8.1"), DependencySection.RUN_CONSTRAINTS),
                 ProjectDependency(MatchSpec("conda-build"), DependencySection.RUN_CONSTRAINTS),
@@ -57,9 +51,6 @@ from tests.file_loading import get_test_path
                 ProjectDependency(MatchSpec("jsonschema"), DependencySection.RUN),
                 ProjectDependency(MatchSpec("requests"), DependencySection.RUN),
                 ProjectDependency(MatchSpec("gitpython"), DependencySection.RUN),
-                ProjectDependency(MatchSpec("networkx"), DependencySection.RUN),
-                ProjectDependency(MatchSpec("matplotlib"), DependencySection.RUN),
-                ProjectDependency(MatchSpec("pygraphviz"), DependencySection.RUN),
             },
         ),
         (

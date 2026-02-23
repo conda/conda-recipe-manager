@@ -17,10 +17,6 @@ abbreviated to `crm` for your typing convenience.
 This module provides tools for fetching and normalizing remote resources. Files that are downloaded are done so using
 secure temporary directories.
 
-### `grapher` (WIP)
-This module provides tools that are capable of plotting and understanding how recipe dependencies are related to each
-other.
-
 ### `licenses` (WIP)
 This module provides license file utilities.
 

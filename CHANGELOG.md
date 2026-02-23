@@ -21,6 +21,9 @@ Note: version releases in the 0.x.y range may introduce breaking changes.
   dependencies have also been upgraded to use the latest versions available on `conda-forge` and `defaults` that support Python 3.11-3.14.
 - Some dependencies do not yet exist for Python 3.14 on the `defaults` channel, so we have capped CRM support to `3.13` for now.
 ### Deprecated
+- `crm graph` and the associated libraries have been removed from the project. CRM v0.9.3 will be the last version containing the
+  tool. This was done to remove graphical dependencies which has caused issues running CRM in a headless environment. `crm graph`
+  has not used enough (and was never fully completed) to justify continuing to support it.
 ### Removed
 ### Fixed
 ### Security
