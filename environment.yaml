@@ -30,9 +30,6 @@ dependencies:
   - requests
   - types-requests
   - gitpython
-  - networkx
-  - matplotlib-base
-  - pygraphviz
   - pre-commit
   # Documentation generation packages
   # NOTE: `sphinx` 9.1.0 is not available for Python 3.11, which is the minimum supported by CRM.

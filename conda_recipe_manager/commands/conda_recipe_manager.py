@@ -11,7 +11,6 @@ import click
 
 from conda_recipe_manager.commands.bump_recipe import bump_recipe
 from conda_recipe_manager.commands.convert import convert
-from conda_recipe_manager.commands.graph import graph
 from conda_recipe_manager.commands.patch import patch
 from conda_recipe_manager.commands.rattler_bulk_build import rattler_bulk_build
 from conda_recipe_manager.commands.utils.types import CONTEXT_SETTINGS
@@ -42,7 +41,6 @@ def conda_recipe_manager(verbose: bool) -> None:
 
 
 conda_recipe_manager.add_command(convert)
-conda_recipe_manager.add_command(graph)
 conda_recipe_manager.add_command(rattler_bulk_build)
 conda_recipe_manager.add_command(patch)
 conda_recipe_manager.add_command(bump_recipe)

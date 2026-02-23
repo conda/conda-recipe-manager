@@ -94,7 +94,6 @@ Commands:
   bump-recipe         Bumps a recipe file to a new version.
   convert             Converts a `meta.yaml` formatted-recipe file to the new
                       `recipe.yaml` format.
-  graph               Interactive CLI for examining recipe dependency graphs.
   patch               Modify recipe files with JSON patch blobs.
   rattler-bulk-build  Given a directory, performs a bulk rattler-build
                       operation. Assumes rattler-build is installed.

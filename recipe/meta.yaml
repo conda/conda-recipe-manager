@@ -35,9 +35,6 @@ requirements:
     - jsonschema
     - requests
     - gitpython
-    - networkx
-    - matplotlib-base
-    - pygraphviz
     - evalidate >=2.0.3,<3.0.0
 
 test:
