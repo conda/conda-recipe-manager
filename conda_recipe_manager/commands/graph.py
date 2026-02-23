@@ -63,7 +63,7 @@ def _parse_plot_options(recipe_graph: RecipeGraph, g_type: str, dir_str: Optiona
 
 @click.command(short_help="Interactive CLI for examining recipe dependency graphs.", context_settings=CONTEXT_SETTINGS)
 @click.argument("path", type=click.Path(exists=True, path_type=Path, file_okay=False))
-def graph(path: Path) -> None:
+def graph(path: Path) -> None:  # pylint: disable=too-complex
     """
     Interactive CLI that provides tools for examining a dependency graph created from conda recipes.
 

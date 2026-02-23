@@ -98,7 +98,7 @@ NO_ARCH: Final[str] = "noarch"
 PlatformQualifiers = Arch | OperatingSystem | PlatformAlias
 
 
-def get_platforms_by_arch(arch: Arch | str) -> set[Platform]:
+def get_platforms_by_arch(arch: Arch | str) -> set[Platform]:  # pylint: disable=too-complex
     """
     Given an architecture, return the list of supported build platforms.
 

@@ -23,11 +23,12 @@ requirements:
     - setuptools
     - wheel
   run:
-    - python >=3.11
-    # Version 8.2.0 introduces breaking changes around the `CliRunner` class, which breaks our
-    # automated tests. We can allow for this version when it becomes available on `defaults`.
-    # TODO Future: click 8.2.1 is available on defaults and conda-forge now.
-    - click >=8.1.7,<8.2.0
+    # As of 2026-02-23, Python 3.14 lacks a number of packages on the `defaults` channel, preventing our ability to
+    # install all dependencies.
+    - python >=3.11,<3.14
+    # `click` has historically given us some grief with breaking changes between minor versions, so we hard-pin it.
+    # 8.2.1 is available on `defaults` and `conda-forge` for Python 3.11+.
+    - click ==8.2.1
     - conda
     - jinja2
     - pyyaml
@@ -49,8 +50,8 @@ test:
     - pip
     - pytest
     - pytest-xdist
-    - pytest-socket
-    - pyfakefs >=5.9.0
+    - pytest-socket >=0.7.0
+    - pyfakefs >=6.0.0
   commands:
     - pip check
     - python -m pytest -n auto --ignore=tests/test_aux_files tests/

@@ -8,6 +8,10 @@
 # This has been adapted for use with Anaconda.
 # Changes will be marked with `conda Delta:`
 
+# conda Delta: raises max positional argument to better accommodate parameterized tests.
+[DESIGN]
+max-positional-arguments=10
+
 # conda Delta: use newer, more inclusive tag for "primary" section
 [MAIN]
 

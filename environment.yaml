@@ -2,21 +2,24 @@ name: conda-recipe-manager
 channels:
   - defaults
 
+# TODO Future: break-up dev dependencies into a separate environment file.
 dependencies:
   - black
   - isort
   - make
   - mypy
-  - python >=3.11
+  # As of 2026-02-23, Python 3.14 lacks a number of packages on the `defaults` channel, preventing our ability to
+  # install all dependencies.
+  - python >=3.11,<3.14
   - pytest
   - pytest-cov
-  - pytest-socket
+  - pytest-socket >=0.7.0
   - pytest-xdist
-  - pyfakefs >=5.9.1
+  - pyfakefs >=6.0.0
   # Match version with .pre-commit-config.yaml to ensure consistent rules with `make lint`.
-  - pylint ==3.2.7
+  - pylint ==4.0.4
   - pip
-  - click >=8.1.7,<8.2.0
+  - click 8.2.1
   - conda
   - evalidate >=2.0.3,<3.0.0
   - jinja2
@@ -32,5 +35,7 @@ dependencies:
   - pygraphviz
   - pre-commit
   # Documentation generation packages
-  - sphinx
-  - sphinx-book-theme
+  # NOTE: `sphinx` 9.1.0 is not available for Python 3.11, which is the minimum supported by CRM.
+  - sphinx ==8.2.3
+  # NOTE: 3.14 does not support Python 3.14 yet.
+  - sphinx-book-theme >=1.1.4

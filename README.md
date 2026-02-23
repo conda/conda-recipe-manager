@@ -146,7 +146,7 @@ checks:
 Here is a brief overview of our current release process:
 1. Update `CHANGELOG.md`, including the "range of changes" link at the bottom of the file.
 1. Update the version number in `pyproject.toml`, `docs/conf.py`, and `recipe/meta.yaml`
-1. Ensure `environment.yaml` is up to date with the latest dependencies.
+1. Ensure `environment.yaml` and `recipe/meta.yaml` are up to date with the latest dependencies.
 1. Create a new release on GitHub with a version tag. Create a PR with a feature branch that contains the version number,
    merge that PR, and tag a release targeting the merge commit.
 1. Manage the conda-forge feedstock, as per [this doc](https://conda-forge.org/docs/maintainer/adding_pkgs/).

@@ -134,7 +134,7 @@ class RecipeParserDeps(RecipeParser, RecipeReaderDeps):
 
         return patch_success
 
-    def add_dependency(
+    def add_dependency(  # pylint: disable=too-complex
         self,
         dep: Dependency,
         dep_mode: DependencyConflictMode = DependencyConflictMode.REPLACE,
