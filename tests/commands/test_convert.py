@@ -33,7 +33,7 @@ def test_convert_single_file() -> None:
     """
     Ensures the user can convert a single recipe file.
     """
-    runner: Final = CliRunner(mix_stderr=False)
+    runner: Final = CliRunner()
     result: Final = runner.invoke(convert, [str(get_test_path() / "simple-recipe.yaml")])
     # This recipe has warnings
     assert result.exit_code == ExitCode.RENDER_WARNINGS
@@ -46,7 +46,7 @@ def test_convert_fail_on_unsupported_jinja() -> None:
     Ensures the user gets an expected error when the `--fail_on_unsupported_jinja` flag is used. Also ensures that the
     same recipe file _doesn't_ produce an error when the flag is NOT used.
     """
-    runner: Final = CliRunner(mix_stderr=False)
+    runner: Final = CliRunner()
     # Fail with flag
     result_fail: Final = runner.invoke(
         convert, [str(get_test_path() / "jinja2_statements/pdfium-binaries.yaml"), "--fail-on-unsupported-jinja"]
