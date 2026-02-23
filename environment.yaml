@@ -16,7 +16,7 @@ dependencies:
   # Match version with .pre-commit-config.yaml to ensure consistent rules with `make lint`.
   - pylint ==3.2.7
   - pip
-  - click >=8.1.7,<8.2.0
+  - click 8.2.1
   - conda
   - evalidate >=2.0.3,<3.0.0
   - jinja2
