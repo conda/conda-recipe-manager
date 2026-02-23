@@ -2,12 +2,15 @@ name: conda-recipe-manager
 channels:
   - defaults
 
+# TODO Future: break-up dev dependencies into a separate environment file.
 dependencies:
   - black
   - isort
   - make
   - mypy
-  - python >=3.11
+  # As of 2026-02-23, Python 3.14 lacks a number of packages on the `defaults` channel, preventing our ability to
+  # install all dependencies.
+  - python >=3.11,<3.14
   - pytest
   - pytest-cov
   - pytest-socket >=0.7.0

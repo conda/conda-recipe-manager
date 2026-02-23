@@ -18,8 +18,8 @@ Note: version releases in the 0.x.y range may introduce breaking changes.
   - `pyfakefs`
   - `pytest-socket`
   - `sphinx`
-  dependencies have also been upgraded to use the latest versions available on `conda-forge` and `defaults` that support Python 3.11-3.14. `sphinx-book-theme` was also upgraded but there is no
-  version available for 3.14 on `defaults` yet.
+  dependencies have also been upgraded to use the latest versions available on `conda-forge` and `defaults` that support Python 3.11-3.14.
+- Some dependencies do not yet exist for Python 3.14 on the `defaults` channel, so we have capped CRM support to `3.13` for now.
 ### Deprecated
 ### Removed
 ### Fixed

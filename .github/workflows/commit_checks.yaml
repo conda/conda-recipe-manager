@@ -25,8 +25,11 @@ jobs:
       name: Test on ${{ matrix.python-version }}
       strategy:
         matrix:
-          # NOTE: 3.11 is skipped as it is covered by the `pre-commit` job.
-          python-version: ["3.12", "3.13", "3.14"]
+          # NOTES:
+          #   - 3.11 is skipped as it is covered by the `pre-commit` job.
+          #   - As of 2026-02-23, Python 3.14 lacks a number of packages on the `defaults` channel, preventing
+          #     our ability to install all dependencies.
+          python-version: ["3.12", "3.13"]
       steps:
         - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         - uses: ./.github/actions/setup-env
