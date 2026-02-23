@@ -12,9 +12,9 @@ dependencies:
   - pytest-cov
   - pytest-socket
   - pytest-xdist
-  - pyfakefs >=5.9.1
+  - pyfakefs >=6.0.0
   # Match version with .pre-commit-config.yaml to ensure consistent rules with `make lint`.
-  - pylint ==3.2.7
+  - pylint ==4.0.4
   - pip
   - click 8.2.1
   - conda

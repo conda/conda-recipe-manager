@@ -11,7 +11,9 @@ Note: version releases in the 0.x.y range may introduce breaking changes.
 ### Added
 ### Changed
 - `click` dependency has been pinned to 8.2.1, which is available on `defaults` and `conda-forge`
-  channels for Python 3.11+.
+  channels for Python 3.11-3.14.
+- Similarly, `pylint` and `pyfakefs` dependencies have also been upgraded to use the latest
+  versions available on `conda-forge` and `defaults` that support Python 3.11-3.14.
 ### Deprecated
 ### Removed
 ### Fixed
