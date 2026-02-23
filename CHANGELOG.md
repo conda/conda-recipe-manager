@@ -9,11 +9,17 @@ Note: version releases in the 0.x.y range may introduce breaking changes.
 
 ## [Unreleased]
 ### Added
+- Automated CI testing for Python 3.13. Python 3.14 does not have all CRM dependencies available yet.
 ### Changed
 - `click` dependency has been pinned to 8.2.1, which is available on `defaults` and `conda-forge`
   channels for Python 3.11-3.14.
-- Similarly, `pylint` and `pyfakefs` dependencies have also been upgraded to use the latest
-  versions available on `conda-forge` and `defaults` that support Python 3.11-3.14.
+- Similarly,
+  - `pylint`
+  - `pyfakefs`
+  - `pytest-socket`
+  - `sphinx`
+  dependencies have also been upgraded to use the latest versions available on `conda-forge` and `defaults` that support Python 3.11-3.14. `sphinx-book-theme` was also upgraded but there is no
+  version available for 3.14 on `defaults` yet.
 ### Deprecated
 ### Removed
 ### Fixed

@@ -10,7 +10,7 @@ dependencies:
   - python >=3.11
   - pytest
   - pytest-cov
-  - pytest-socket
+  - pytest-socket >=0.7.0
   - pytest-xdist
   - pyfakefs >=6.0.0
   # Match version with .pre-commit-config.yaml to ensure consistent rules with `make lint`.
@@ -32,5 +32,6 @@ dependencies:
   - pygraphviz
   - pre-commit
   # Documentation generation packages
-  - sphinx
-  - sphinx-book-theme
+  - sphinx >=9.1.0
+  # NOTE: 3.14 does not support Python 3.14 yet.
+  - sphinx-book-theme >= 1.1.4
