@@ -54,7 +54,7 @@ class RecipeGraph:
         self,
         recipe_cache: dict[str, RecipeReaderDeps],
         recipes_failed_to_parse: set[str],
-    ):
+    ):  # pylint: disable=too-complex
         """
         Constructs common types that all recipe graphs share. Derived classes handle initialization details.
 

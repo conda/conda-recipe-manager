@@ -47,7 +47,7 @@ class DependencyConflictMode(Enum):
     EXACT_POSITION = auto()
 
 
-def dependency_section_to_str(section: DependencySection, schema: SchemaVersion) -> str:
+def dependency_section_to_str(section: DependencySection, schema: SchemaVersion) -> str:  # pylint: disable=too-complex
     """
     Converts a dependency section enumeration to the equivalent string found in the recipe, based on the current
     schema.
