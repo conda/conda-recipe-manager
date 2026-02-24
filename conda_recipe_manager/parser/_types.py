@@ -280,7 +280,9 @@ class Regex:
     SELECTOR: Final[re.Pattern[str]] = re.compile(r"\[.*\]")
 
     # Used to assist raw multiline parsing to determine if the next line contains legal raw string characters.
-    MULTILINE_RAW_LOOKAHEAD: Final[re.Pattern[str]] = re.compile(r":\s+|\s+#")
+    # NOTE: This includes handling a dangling `:` or a leading `#` so that we do not miss matches in white-space
+    # stripped text.
+    MULTILINE_RAW_LOOKAHEAD: Final[re.Pattern[str]] = re.compile(r":\s+|:$|\s+#|^#")
     # Detects the special "raw" multiline strings.
     MULTILINE_RAW: Final[re.Pattern[str]] = re.compile(r"^[\s]*(.*):[\s]+(.*)$")
     MULTILINE_RAW_CAPTURE_GROUP_KEY: Final[int] = 1

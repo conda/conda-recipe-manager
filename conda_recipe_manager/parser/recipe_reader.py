@@ -191,14 +191,17 @@ class RecipeReader(IsModifiable):
         # Add the line to the list once it is verified to be the next line to capture in this node. This means that
         # `line_idx` will point to the line of the next node, post-processing. Note that blank lines are valid in
         # multi-line strings, occasionally found in `/about/summary` sections.
+        value = cast(list[str], multiline_node.value)
         while multiline_indent > new_indent or multiline == "":
-            cast(list[str], multiline_node.value).append(multiline.strip())
+            value.append(multiline.strip())
             line_idx += 1
             # Ensure we stop looking if we have reached the end of the file.
             if line_idx >= lines_len:
                 break
             multiline = lines[line_idx]
             multiline_indent = num_tab_spaces(multiline)
+
+        multiline_node.value = value
         new_node.children = [multiline_node]
 
         return line_idx
@@ -233,14 +236,17 @@ class RecipeReader(IsModifiable):
         if Regex.MULTILINE_RAW_LOOKAHEAD.search(look_ahead):
             return line_idx, None
 
-        # TODO reject lists. Dashes are allowed in multiline strings, but only if there are non-whitespace characters
-        # preceding the `-`.
         raw_line_match: Final = Regex.MULTILINE_RAW.match(line)
+        # Reject starting strings that don't match our expected `key: [value]` format
         if not raw_line_match:
             return line_idx, None
 
-        init_key: Final = raw_line_match.group(Regex.MULTILINE_RAW_CAPTURE_GROUP_KEY)
-        init_value: Final = raw_line_match.group(Regex.MULTILINE_RAW_CAPTURE_GROUP_FIRST_VALUE)
+        init_key: Final = cast(str, raw_line_match.group(Regex.MULTILINE_RAW_CAPTURE_GROUP_KEY))
+        init_value: Final = cast(str, raw_line_match.group(Regex.MULTILINE_RAW_CAPTURE_GROUP_FIRST_VALUE))
+
+        # Filter-out any known "block scalar" multiline markers. Those will be handled by `_parse_multiline_node()`.
+        if init_value and init_value != MultilineVariant.RAW and init_value in MultilineVariant:
+            return line_idx, None
 
         new_node = Node(value=init_key, key_flag=True)
         line_idx = RecipeReader._accumulate_multilines_str(
