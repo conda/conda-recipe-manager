@@ -190,6 +190,9 @@ def test_loading_obj_in_list() -> None:
         "x264.yaml",
         "parser_regressions/issue-366_quote_regressions_round_trip.yaml",
         "parser_regressions/issue-378_colon_quote_regression.yaml",
+        # NOTE: Some of these ISSUE #220 examples based on output found in `.conda` files. `conda-build`, as it turns
+        # out, produces a lot of multiline strings not commonly seen in original recipe files.
+        "parser_regressions/issue-220_raw_multiline_str_01.yaml",
         #### V1 Recipe Files ####
         "v1_format/v1_types-toml.yaml",
         "v1_format/v1_simple-recipe.yaml",
@@ -202,6 +205,7 @@ def test_loading_obj_in_list() -> None:
         "v1_format/v1_sub_vars.yaml",
         "parser_regressions/v1_format/v1_issue-366_quote_regressions.yaml",
         "parser_regressions/v1_format/v1_issue-378_colon_quote_regression.yaml",
+        "parser_regressions/v1_format/v1_issue-220_raw_multiline_str_01.yaml",
     ],
 )
 def test_round_trip(file: str) -> None:
