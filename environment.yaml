@@ -8,8 +8,6 @@ dependencies:
   - isort
   - make
   - mypy
-  # As of 2026-02-23, Python 3.14 lacks a number of packages on the `defaults` channel, preventing our ability to
-  # install all dependencies.
   - python >=3.11
   - pytest
   - pytest-cov
@@ -31,9 +29,5 @@ dependencies:
   - types-requests
   - gitpython
   - pre-commit
-  # Documentation generation packages
-  # NOTE: `sphinx` 9.1.0 is not available for Python 3.11, which is the minimum supported by CRM.
-  - sphinx ==8.2.3
-  # NOTE: 3.14 does not support Python 3.14 yet.
-  # TODO re-enable this or handle this differently.
-  - sphinx-book-theme >=1.1.4
+  # NOTE: As of 2026-02-25, we no longer install documentation dependencies for all development environments.
+  # We install them as needed through `make docs`.
