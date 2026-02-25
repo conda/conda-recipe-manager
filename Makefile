@@ -88,7 +88,7 @@ test:			## Runs test cases
 
 test-cov:		## Checks test coverage requirements
 	$(PYTHON3) -m pytest -n auto --cov-config=.coveragerc --cov=$(SRC_DIR) \
-		$(TEST_DIR) --cov-fail-under=85 --cov-report term-missing
+		$(TEST_DIR) --cov-fail-under=90 --cov-report term-missing
 
 lint:			## Runs the linter against the project
 	pylint --rcfile=.pylintrc $(SRC_DIR) $(TEST_DIR)
