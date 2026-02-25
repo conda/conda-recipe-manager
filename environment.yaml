@@ -35,4 +35,5 @@ dependencies:
   # NOTE: `sphinx` 9.1.0 is not available for Python 3.11, which is the minimum supported by CRM.
   - sphinx ==8.2.3
   # NOTE: 3.14 does not support Python 3.14 yet.
-  - sphinx-book-theme >=1.1.4
+  # TODO re-enable this or handle this differently.
+  #- sphinx-book-theme >=1.1.4
