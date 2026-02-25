@@ -36,4 +36,4 @@ dependencies:
   - sphinx ==8.2.3
   # NOTE: 3.14 does not support Python 3.14 yet.
   # TODO re-enable this or handle this differently.
-  #- sphinx-book-theme >=1.1.4
+  - sphinx-book-theme >=1.1.4
