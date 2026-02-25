@@ -217,7 +217,7 @@ class RecipeReader(IsModifiable):
         line: str, lines: list[str], line_idx: int, new_indent: int
     ) -> tuple[int, Optional[Node]]:
         """
-        Parses a "raw" (flow-scalar) multiline strings. These strings are special as the key is defined on the same
+        Parses a "raw" (flow-scalar) multiline string. These strings are special as the key is defined on the same
         line the multiline string starts in-earnest (as in, not with a "block scalar" marker).
 
         :param line: Current line to scan/parse.
@@ -264,6 +264,61 @@ class RecipeReader(IsModifiable):
         return line_idx, new_node
 
     @staticmethod
+    def _parse_multiline_node_raw_list(
+        line: str, lines: list[str], line_idx: int, new_indent: int, new_node: Node
+    ) -> int:
+        """
+        Parses a "raw" (flow-scalar) multiline string in a list. These strings are special as the value is defined on
+        the same line as the list marker. Note that this logic is very similar to `_parse_multiline_node_raw()`, but
+        differs in a few key ways:
+          - This function is called by `_parse_multiline_node()`, so logic around discerning between flow and block
+            scalars are skipped.
+          - No additional nodes are created, instead `new_node` is supplied and modified directly.
+          - Indentation calculations have to account for the list marker taking up leading character-counts.
+
+        :param line: Current line to scan/parse.
+        :param lines: Array of all lines in the file.
+        :param line_idx: Current index into the `lines` array, representing the current parser position. This may be
+            incremented by this function. This starts by pointing to the line after `line`.
+        :param new_indent: Current indentation level to track.
+        :param new_node: Current parse-tree node to operate on.
+        :returns: A tuple containing the new `line_idx` value and reference to a newly created node, if a "raw" multi-
+            line strings was found.
+        """
+        # Bail-out before we go out-of-bounds.
+        if line_idx >= len(lines):
+            return line_idx
+
+        # "Raw" multiline strings are indicated by having the next line be at a greater indentation level.
+        # Look-ahead and bail if that is not the case.
+        look_ahead: Final = lines[line_idx]
+        if num_tab_spaces(look_ahead) <= new_indent:
+            return line_idx
+
+        # `:` and `#` characters can't be used in a multiline string if they are followed or proceeded by
+        # whitespace. This is how YAML discerns between keys/comments against multiline strings.
+        if Regex.MULTILINE_RAW_LOOKAHEAD.search(look_ahead):
+            return line_idx
+
+        raw_line_match: Final = Regex.MULTILINE_RAW_LIST.match(line)
+        # Reject starting strings that don't match our expected key or list formats. Additionally, reject if the
+        # next string looks to be part of the outer list. YAML is particular about `-`'s in this context.
+        if not raw_line_match or Regex.MULTILINE_RAW_LIST.match(look_ahead):
+            return line_idx
+
+        line_marker: Final = cast(str, raw_line_match.group(Regex.MULTILINE_RAW_CAPTURE_GROUP_KEY))
+        init_value: Final = cast(str, raw_line_match.group(Regex.MULTILINE_RAW_CAPTURE_GROUP_FIRST_VALUE))
+
+        # Modify the existing node to indicate this is a part of a list.
+        new_node.multiline_variant = MultilineVariant.RAW
+        new_node.list_member_flag = True
+        new_node.value = [init_value]
+        # NOTE: We MUST account for the list marker (i.e. `- `) increasing the leading indentation.
+        line_idx = RecipeReader._accumulate_multiline_str(new_node, lines, line_idx, new_indent, len(line_marker))
+
+        return line_idx
+
+    @staticmethod
     def _parse_multiline_extract_block_scalar(s: str) -> tuple[Optional[bool], Optional[str], Optional[str]]:
         """
         Helper function for `_parse_multiline_node()` that picks the applicable regex to match a potential starting
@@ -292,7 +347,7 @@ class RecipeReader(IsModifiable):
     @staticmethod
     def _parse_multiline_node(line: str, lines: list[str], line_idx: int, new_indent: int, new_node: Node) -> int:
         """
-        Parses all multiline strings within lists and  block-scalar multiline string. These 3 kinds of multiline
+        Parses all multiline strings within lists and block-scalar multiline string. These 3 kinds of multiline
         strings require a key node to be defined on the previous line.
 
         :param line: Current line to scan/parse.
@@ -308,38 +363,7 @@ class RecipeReader(IsModifiable):
         # If required fields are `None`, we know that no "block scalar" pattern could be matched. So we attempt to
         # handle listed raw/"flow scalar" multiline strings.
         if is_lst is None or variant_capture is None:
-            # Bail-out before we go out-of-bounds.
-            if line_idx >= len(lines):
-                return line_idx
-
-            # "Raw" multiline strings are indicated by having the next line be at a greater indentation level.
-            # Look-ahead and bail if that is not the case.
-            look_ahead: Final = lines[line_idx]
-            if num_tab_spaces(look_ahead) <= new_indent:
-                return line_idx
-
-            # `:` and `#` characters can't be used in a multiline string if they are followed or proceeded by
-            # whitespace. This is how YAML discerns between keys/comments against multiline strings.
-            if Regex.MULTILINE_RAW_LOOKAHEAD.search(look_ahead):
-                return line_idx
-
-            raw_line_match: Final = Regex.MULTILINE_RAW_LIST.match(line)
-            # Reject starting strings that don't match our expected key or list formats. Additionally, reject if the
-            # next string looks to be part of the outer list. YAML is particular about `-`'s in this context.
-            if not raw_line_match or Regex.MULTILINE_RAW_LIST.match(look_ahead):
-                return line_idx
-
-            line_marker: Final = cast(str, raw_line_match.group(Regex.MULTILINE_RAW_CAPTURE_GROUP_KEY))
-            init_value: Final = cast(str, raw_line_match.group(Regex.MULTILINE_RAW_CAPTURE_GROUP_FIRST_VALUE))
-
-            # Modify the existing node to indicate this is a part of a list.
-            new_node.multiline_variant = MultilineVariant.RAW
-            new_node.list_member_flag = True
-            new_node.value = [init_value]
-            # NOTE: We MUST account for the list marker (i.e. `- `) increasing the leading indentation.
-            line_idx = RecipeReader._accumulate_multiline_str(new_node, lines, line_idx, new_indent, len(line_marker))
-
-            return line_idx
+            return RecipeReader._parse_multiline_node_raw_list(line, lines, line_idx, new_indent, new_node)
 
         # Calculate which multiline symbol is used. The first character must be matched, the second is optional.
         if variant_sign is not None:
