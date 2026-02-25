@@ -263,6 +263,26 @@ def test_pre_process_recipe_text(input_file: str, expected_file: str) -> None:
                 "Field at `/about/license_family` is no longer supported.",
             ],
         ),
+        (
+            "parser_regressions/issue-220_raw_multiline_str_02.yaml",
+            ["Could not parse dependencies when attempting to upgrade ambiguous version numbers."],
+            [],
+        ),
+        (
+            "parser_regressions/issue-220_raw_multiline_str_03.yaml",
+            ["Could not parse dependencies when attempting to upgrade ambiguous version numbers."],
+            [],
+        ),
+        (
+            "parser_regressions/issue-220_raw_multiline_str_04.yaml",
+            ["Could not parse dependencies when attempting to upgrade ambiguous version numbers."],
+            [],
+        ),
+        (
+            "parser_regressions/issue-220_raw_multiline_str_05.yaml",
+            ["Could not parse dependencies when attempting to upgrade ambiguous version numbers."],
+            [],
+        ),
         # Tests upgrading the `/build/script` when `script_env` is present (this is essentially a test for
         # `_upgrade_build_script_section()`)
         (

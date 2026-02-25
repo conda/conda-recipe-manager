@@ -195,6 +195,8 @@ def test_loading_obj_in_list() -> None:
         "parser_regressions/issue-220_raw_multiline_str_01.yaml",
         "parser_regressions/issue-220_raw_multiline_str_02.yaml",
         "parser_regressions/issue-220_raw_multiline_str_03.yaml",
+        "parser_regressions/issue-220_raw_multiline_str_04.yaml",
+        "parser_regressions/issue-220_raw_multiline_str_05.yaml",
         #### V1 Recipe Files ####
         "v1_format/v1_types-toml.yaml",
         "v1_format/v1_simple-recipe.yaml",
@@ -210,6 +212,8 @@ def test_loading_obj_in_list() -> None:
         "parser_regressions/v1_format/v1_issue-220_raw_multiline_str_01.yaml",
         "parser_regressions/v1_format/v1_issue-220_raw_multiline_str_02.yaml",
         "parser_regressions/v1_format/v1_issue-220_raw_multiline_str_03.yaml",
+        "parser_regressions/v1_format/v1_issue-220_raw_multiline_str_04.yaml",
+        "parser_regressions/v1_format/v1_issue-220_raw_multiline_str_05.yaml",
     ],
 )
 def test_round_trip(file: str) -> None:
