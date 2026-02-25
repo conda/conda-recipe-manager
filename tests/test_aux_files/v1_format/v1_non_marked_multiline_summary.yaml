@@ -24,8 +24,7 @@ requirements:
     - python
 
 about:
-  summary: |
-    Foo bar
+  summary: Foo bar
     foo foo bar
     bar baz bar baz
   description: Tests recipes that contain multiline strings that don't use | or > characters, common in R-packages

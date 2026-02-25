@@ -26,6 +26,9 @@ Note: version releases in the 0.x.y range may introduce breaking changes.
   has not used enough (and was never fully completed) to justify continuing to support it.
 ### Removed
 ### Fixed
+- Fixes Issue #220 (and others). CRM now supports all YAML multiline string formats. This should significantly
+  improve parsing compatibility. In our testing, we believe this should allow CRM to be able to parse recipe output from
+  `conda-build` artifacts.
 ### Security
 
 ## [0.9.3]

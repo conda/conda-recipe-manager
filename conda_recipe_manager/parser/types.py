@@ -116,11 +116,15 @@ class MultilineVariant(StrEnum):
     """
     Captures which "multiline" descriptor was used on a Node, if one was used at all.
 
-    See this guide for details on the YAML spec:
-      https://stackoverflow.com/questions/3790454/how-do-i-break-a-string-in-yaml-over-multiple-lines/21699210
+    See these resources for more details:
+      - https://yaml-multiline.info/
+      - https://stackoverflow.com/questions/3790454/how-do-i-break-a-string-in-yaml-over-multiple-lines/21699210
     """
 
     NONE = ""
+    # When multiline strings are defined by indentation markers only. a.k.a. the "Flow Scalar" format.
+    RAW = "RAW"
+    # These are all "Block Scalar" format markers.
     PIPE = "|"
     PIPE_PLUS = "|+"
     PIPE_MINUS = "|-"
@@ -130,9 +134,6 @@ class MultilineVariant(StrEnum):
     L_ANGLE = "<"
     L_ANGLE_PLUS = "<+"
     L_ANGLE_MINUS = "<-"
-    # This variant works differently. The starting line must begin with a " and end with a \. Every subsequent line
-    # then must start with a \ until an unescaped-closing-" is found.
-    BACKSLASH_QUOTE = "\\"
 
 
 # NOTE: This is a copy of the default variants from conda-build.

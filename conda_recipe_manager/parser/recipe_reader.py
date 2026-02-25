@@ -170,83 +170,218 @@ class RecipeReader(IsModifiable):
         return s[comment_re_result.start(2) :].rstrip()
 
     @staticmethod
-    def _parse_multiline_node(
-        line: str, lines: list[str], line_idx: int, new_indent: int, new_node: Optional[Node]
-    ) -> tuple[int, Optional[Node]]:
+    def _accumulate_multiline_str(
+        multiline_node: Node, lines: list[str], line_idx: int, new_indent: int, lst_indent: Optional[int] = None
+    ) -> int:
         """
-        Parses a multiline string. This handles both quote-backslash and general variations.
+        Helper function that accumulates multiline strings into the parse tree. Used by both `_parse_multiline_node*()`
+        functions.
 
-        :param line: Current line to scan/parse.
+        :param multiline_node: "Multiline" node that will accumulate multiple lines.
         :param lines: Array of all lines in the file.
         :param line_idx: Current index into the `lines` array, representing the current parser position. This may be
-            incremented by this function.
+            incremented by this function. This starts by pointing to the line after `line`.
         :param new_indent: Current indentation level to track.
-        :param new_node: Current parse-tree node to operate on. If this is not set, this function may initialize and
-            return this value if a quote-backslash multiline string is found.
-        :returns: A tuple containing the new `line_idx` value and reference to `new_node`. `new_node` may be initialized
-            if it is initially set to `None`.
+        :param lst_indent: (Optional) If provided, this accounts for additional character spacing that needs to be
+            accounted for when parsing multiline strings in lists. In other words, this is the length of the `-` and
+            proceeding whitespace that signifies a list.
+        :returns: The new `line_idx` value, to be used by the reset of the parsing logic.
         """
-        # The backslash-quote syntax is special and requires us to bypass the usually Node initialization process. We
-        # store the initial state as a bool so that we can modify `new_node` later.
-        check_backslash_variant: Final[bool] = new_node is None
-
-        # Pick the applicable regular expression to match the starting line with.
-        multiline_re_match: Final = (
-            Regex.MULTILINE_BACKSLASH_QUOTE.match(line)
-            if check_backslash_variant
-            else Regex.MULTILINE_VARIANT.match(line)
-        )
-
-        if not multiline_re_match:
-            return line_idx, new_node
-
-        # Initialization of the child "multiline-node" differs between the two major multiline string forms.
-        # NOTE: We perform a redundant `new_node is None` check to help-out the type-checker.
-        multiline_node: Node
-        if new_node is None or check_backslash_variant:
-            new_node = Node(
-                value=multiline_re_match.group(Regex.MULTILINE_BACKSLASH_QUOTE_CAPTURE_GROUP_KEY), key_flag=True
-            )
-            multiline_node = Node(
-                # We do not need to increment `line_idx`. It is modified after the current line is read.
-                value=[multiline_re_match.group(Regex.MULTILINE_BACKSLASH_QUOTE_CAPTURE_GROUP_FIRST_VALUE)],
-                multiline_variant=MultilineVariant.BACKSLASH_QUOTE,
-            )
-        else:
-            # Calculate which multiline symbol is used. The first character must be matched, the second is optional.
-            variant_capture = cast(str, multiline_re_match.group(Regex.MULTILINE_VARIANT_CAPTURE_GROUP_CHAR))
-            variant_sign = cast(str | None, multiline_re_match.group(Regex.MULTILINE_VARIANT_CAPTURE_GROUP_SUFFIX))
-            if variant_sign is not None:
-                variant_capture += variant_sign
-            # Per YAML spec, multiline statements can't be commented. In other words, the `#` symbol is seen as a
-            # string character in multiline values.
-            multiline_node = Node(
-                value=[],
-                multiline_variant=MultilineVariant(variant_capture),
-            )
-
         multiline = lines[line_idx]
         multiline_indent = num_tab_spaces(multiline)
+        if lst_indent:
+            multiline_indent += lst_indent
         lines_len: Final[int] = len(lines)
         # Add the line to the list once it is verified to be the next line to capture in this node. This means that
-        # `line_idx` will point to the line of the next node, post-processing. Note that blank lines are valid in
-        # multi-line strings, occasionally found in `/about/summary` sections.
-        while (
-            multiline_indent > new_indent
-            or multiline == ""
-            or (check_backslash_variant and multiline and multiline[-1] == "\\")
-        ):
-            cast(list[str], multiline_node.value).append(multiline.strip())
+        # `line_idx` will point to the line of the next node, post-processing.
+        # NOTE:
+        #   - Blank lines are valid in multiline strings, occasionally found in `/about/summary` sections.
+        #   - `.render()` handles interpretation of how newlines are displayed, depending on the `MultilineVariant`
+        #     setting.
+        value = cast(list[str], multiline_node.value)
+        while multiline_indent > new_indent or multiline == "":
+            value.append(multiline.strip())
             line_idx += 1
             # Ensure we stop looking if we have reached the end of the file.
             if line_idx >= lines_len:
                 break
             multiline = lines[line_idx]
             multiline_indent = num_tab_spaces(multiline)
-        # The previous level is the key to this multiline value, so we can safely reset it.
+
+        multiline_node.value = value
+
+        return line_idx
+
+    @staticmethod
+    def _parse_multiline_node_raw(
+        line: str, lines: list[str], line_idx: int, new_indent: int
+    ) -> tuple[int, Optional[Node]]:
+        """
+        Parses a "raw" (flow-scalar) multiline string. These strings are special as the key is defined on the same
+        line the multiline string starts in-earnest (as in, not with a "block scalar" marker).
+
+        :param line: Current line to scan/parse.
+        :param lines: Array of all lines in the file.
+        :param line_idx: Current index into the `lines` array, representing the current parser position. This may be
+            incremented by this function. This starts by pointing to the line after `line`.
+        :param new_indent: Current indentation level to track.
+        :returns: A tuple containing the new `line_idx` value and reference to a newly created node, if a "raw" multi-
+            line strings was found.
+        """
+        # Bail-out before we go out-of-bounds.
+        if line_idx >= len(lines):
+            return line_idx, None
+
+        # "Raw" multiline strings are indicated by having the next line be at a greater indentation level. Look-ahead
+        # and bail if that is not the case.
+        look_ahead: Final = lines[line_idx]
+        if num_tab_spaces(look_ahead) <= new_indent:
+            return line_idx, None
+
+        # `:` and `#` characters can't be used in a multiline string if they are followed or proceeded by whitespace.
+        # This is how YAML discerns between keys/comments against multiline strings.
+        if Regex.MULTILINE_RAW_LOOKAHEAD.search(look_ahead):
+            return line_idx, None
+
+        raw_line_match: Final = Regex.MULTILINE_RAW.match(line)
+        # Reject starting strings that don't match our expected key or list formats.
+        if not raw_line_match:
+            return line_idx, None
+
+        init_key: Final = cast(str, raw_line_match.group(Regex.MULTILINE_RAW_CAPTURE_GROUP_KEY))
+        init_value: Final = cast(str, raw_line_match.group(Regex.MULTILINE_RAW_CAPTURE_GROUP_FIRST_VALUE))
+
+        # Filter-out any known "block scalar" multiline markers. Those will be handled by `_parse_multiline_node()` as
+        # they require a starting `new_node` generated by standard line-parsing process.
+        if init_value and init_value != MultilineVariant.RAW and init_value in set(MultilineVariant):
+            return line_idx, None
+
+        new_node = Node(value=init_key, key_flag=True)
+        multiline_node = Node(value=[init_value], multiline_variant=MultilineVariant.RAW)
+        line_idx = RecipeReader._accumulate_multiline_str(multiline_node, lines, line_idx, new_indent)
         new_node.children = [multiline_node]
 
         return line_idx, new_node
+
+    @staticmethod
+    def _parse_multiline_node_raw_list(
+        line: str, lines: list[str], line_idx: int, new_indent: int, new_node: Node
+    ) -> int:
+        """
+        Parses a "raw" (flow-scalar) multiline string in a list. These strings are special as the value is defined on
+        the same line as the list marker. Note that this logic is very similar to `_parse_multiline_node_raw()`, but
+        differs in a few key ways:
+          - This function is called by `_parse_multiline_node()`, so logic around discerning between flow and block
+            scalars are skipped.
+          - No additional nodes are created, instead `new_node` is supplied and modified directly.
+          - Indentation calculations have to account for the list marker taking up leading character-counts.
+
+        :param line: Current line to scan/parse.
+        :param lines: Array of all lines in the file.
+        :param line_idx: Current index into the `lines` array, representing the current parser position. This may be
+            incremented by this function. This starts by pointing to the line after `line`.
+        :param new_indent: Current indentation level to track.
+        :param new_node: Current parse-tree node to operate on.
+        :returns: A tuple containing the new `line_idx` value and reference to a newly created node, if a "raw" multi-
+            line strings was found.
+        """
+        # Bail-out before we go out-of-bounds.
+        if line_idx >= len(lines):
+            return line_idx
+
+        # "Raw" multiline strings are indicated by having the next line be at a greater indentation level.
+        # Look-ahead and bail if that is not the case.
+        look_ahead: Final = lines[line_idx]
+        if num_tab_spaces(look_ahead) <= new_indent:
+            return line_idx
+
+        # `:` and `#` characters can't be used in a multiline string if they are followed or proceeded by
+        # whitespace. This is how YAML discerns between keys/comments against multiline strings.
+        if Regex.MULTILINE_RAW_LOOKAHEAD.search(look_ahead):
+            return line_idx
+
+        raw_line_match: Final = Regex.MULTILINE_RAW_LIST.match(line)
+        # Reject starting strings that don't match our expected key or list formats. Additionally, reject if the
+        # next string looks to be part of the outer list. YAML is particular about `-`'s in this context.
+        if not raw_line_match or Regex.MULTILINE_RAW_LIST.match(look_ahead):
+            return line_idx
+
+        line_marker: Final = cast(str, raw_line_match.group(Regex.MULTILINE_RAW_CAPTURE_GROUP_KEY))
+        init_value: Final = cast(str, raw_line_match.group(Regex.MULTILINE_RAW_CAPTURE_GROUP_FIRST_VALUE))
+
+        # Modify the existing node to indicate this is a part of a list.
+        new_node.multiline_variant = MultilineVariant.RAW
+        new_node.list_member_flag = True
+        new_node.value = [init_value]
+        # NOTE: We MUST account for the list marker (i.e. `- `) increasing the leading indentation.
+        line_idx = RecipeReader._accumulate_multiline_str(new_node, lines, line_idx, new_indent, len(line_marker))
+
+        return line_idx
+
+    @staticmethod
+    def _parse_multiline_extract_block_scalar(s: str) -> tuple[Optional[bool], Optional[str], Optional[str]]:
+        """
+        Helper function for `_parse_multiline_node()` that picks the applicable regex to match a potential starting
+        multiline string with. This helper function normalizes data between list and non-list scalar multiline strings.
+
+        :param s: String to match block scalar markers with.
+        :returns: A tuple containing:
+            - A boolean indicating if the line is part of a list or `None` if there was no match.
+            - The primary component of the block scalar or `None` if there was no match.
+            - The secondary component of the block scalar, if one is present.
+        """
+        if match := Regex.MULTILINE_VARIANT.match(s):
+            return (
+                False,
+                cast(str, match.group(Regex.MULTILINE_VARIANT_CAPTURE_GROUP_CHAR)),
+                cast(str | None, match.group(Regex.MULTILINE_VARIANT_CAPTURE_GROUP_SUFFIX)),
+            )
+        if match := Regex.MULTILINE_VARIANT_LIST.match(s):
+            return (
+                True,
+                cast(str, match.group(Regex.MULTILINE_VARIANT_CAPTURE_GROUP_CHAR)),
+                cast(str | None, match.group(Regex.MULTILINE_VARIANT_CAPTURE_GROUP_SUFFIX)),
+            )
+        return None, None, None
+
+    @staticmethod
+    def _parse_multiline_node(line: str, lines: list[str], line_idx: int, new_indent: int, new_node: Node) -> int:
+        """
+        Parses all multiline strings within lists and block-scalar multiline string. These 3 kinds of multiline
+        strings require a key node to be defined on the previous line.
+
+        :param line: Current line to scan/parse.
+        :param lines: Array of all lines in the file.
+        :param line_idx: Current index into the `lines` array, representing the current parser position. This may be
+            incremented by this function. This starts by pointing to the line after `line`.
+        :param new_indent: Current indentation level to track.
+        :param new_node: Current parse-tree node to operate on.
+        :returns: The new `line_idx` value, to be used by the reset of the parsing logic.
+        """
+        is_lst, variant_capture, variant_sign = RecipeReader._parse_multiline_extract_block_scalar(line)
+
+        # If required fields are `None`, we know that no "block scalar" pattern could be matched. So we attempt to
+        # handle listed raw/"flow scalar" multiline strings.
+        if is_lst is None or variant_capture is None:
+            return RecipeReader._parse_multiline_node_raw_list(line, lines, line_idx, new_indent, new_node)
+
+        # Calculate which multiline symbol is used. The first character must be matched, the second is optional.
+        if variant_sign is not None:
+            variant_capture += variant_sign
+
+        # List members that start with "block scalars" (i.e. `- |`) are rendered as `['']` by PyYaml. To help correct
+        # this issue, we take the original node and patch-in the multiline string data.
+        if is_lst:
+            new_node.multiline_variant = MultilineVariant(variant_capture)
+            new_node.list_member_flag = True
+            new_node.value = []
+            return RecipeReader._accumulate_multiline_str(new_node, lines, line_idx, new_indent)
+
+        multiline_node = Node(value=[], multiline_variant=MultilineVariant(variant_capture))
+        line_idx = RecipeReader._accumulate_multiline_str(multiline_node, lines, line_idx, new_indent)
+        new_node.children = [multiline_node]
+
+        return line_idx
 
     @staticmethod
     def _parse_line_node(s: str, only_seen_comments: bool, yaml_loader: type[SafeLoader] = SafeLoader) -> Node:
@@ -296,6 +431,7 @@ class RecipeReader(IsModifiable):
             if s.startswith("#"):
                 # Comments are list members to ensure indentation
                 return Node(comment=comment, list_member_flag=True)
+
             # Special scenarios that can occur on 1 line:
             #   1. Lists can contain lists: - - foo -> [["foo"]]
             #   2. Lists can contain keys:  - foo: bar -> [{"foo": "bar"}]
@@ -314,10 +450,13 @@ class RecipeReader(IsModifiable):
                 elem_node = Node(comment=comment, list_member_flag=True)
                 elem_node.children.append(key_node)
                 return elem_node
+
             # Handle lists of lists
             if output[0] is None:
                 return Node(comment=comment, list_member_flag=True)
+
             return Node(value=cast(Primitives, output[0]), comment=comment, list_member_flag=True)
+
         # Other types are just leaf nodes. This is scenario should likely not be triggered given our recipe files don't
         # have single valid lines of YAML, but we cover this case for the sake of correctness.
         return Node(value=output, comment=comment)
@@ -629,18 +768,17 @@ class RecipeReader(IsModifiable):
                 continue
 
             new_indent = num_tab_spaces(line)
-            # Special multiline case. This will initialize `new_node` if the special "-backslash multiline pattern is
-            # found.
-            line_idx, new_node = RecipeReader._parse_multiline_node(clean_line, lines, line_idx, new_indent, None)
+            # Special multiline case. This will initialize `new_node` if a "raw" multiline string is found.
+            line_idx, new_node = RecipeReader._parse_multiline_node_raw(clean_line, lines, line_idx, new_indent)
             if new_node is None:
                 new_node = RecipeReader._parse_line_node(
                     clean_line, tof_comment_cntr > 0, yaml_loader=self._yaml_loader
                 )
                 tof_comment_cntr -= 1
-                # In the general case (which does not create a new-node), we ignore the returned `new_node` value and
+                # In the general case (which does not create a `new_node`), we ignore the returned `new_node` value and
                 # rely on the object being modified by the reference we pass-in. As a small optimization, we only run
                 # checks on the other multiline variants if the special case fails.
-                line_idx, _ = RecipeReader._parse_multiline_node(clean_line, lines, line_idx, new_indent, new_node)
+                line_idx = RecipeReader._parse_multiline_node(clean_line, lines, line_idx, new_indent, new_node)
             # Insurance policy: If we miscounted, force-drop the ToF-comment state.
             if tof_comment_cntr > 0 and not new_node.is_comment():
                 tof_comment_cntr = -1
@@ -837,7 +975,7 @@ class RecipeReader(IsModifiable):
         node: Node, depth: int, lines: list[str], schema_version: SchemaVersion, parent: Optional[Node] = None
     ) -> None:
         # pylint: disable=too-complex
-        # TODO Refactor and simplify ^
+        # TODO This function REALLY needs to be refactored and simplified ^
         """
         Recursive helper function that traverses the parse tree to generate a file.
 
@@ -848,6 +986,25 @@ class RecipeReader(IsModifiable):
         :param parent: (Optional) Parent node to the current node. Set by recursive calls only.
         """
         spaces = TAB_AS_SPACES * depth
+
+        # Helper function that renders multiline strings within lists.
+        def _render_multiline_lst(n: Node) -> bool:
+            multi_variant_lst = n.multiline_variant
+            if multi_variant_lst == MultilineVariant.NONE:
+                return False
+
+            # Raw/"flow scalar" multiline strings start rendering on the same line. "Block scalars" render
+            # the block marker on the same line.
+            multi_start_idx = 0
+            if multi_variant_lst == MultilineVariant.RAW:
+                lines.append(f"{spaces}{TAB_AS_SPACES}- {cast(list[str], n.value)[0]}".rstrip())
+                multi_start_idx = 1
+            else:
+                lines.append(f"{spaces}{TAB_AS_SPACES}- {multi_variant_lst}".rstrip())
+            for mulit_line in cast(list[str], n.value)[multi_start_idx:]:
+                lines.append(f"{spaces}{TAB_AS_SPACES}  {mulit_line}".rstrip())
+
+            return True
 
         # Edge case: The first element of dictionary in a list has a list `- ` prefix. Subsequent keys in the dictionary
         # just have a tab.
@@ -863,11 +1020,12 @@ class RecipeReader(IsModifiable):
                     lines.append(f"{TAB_AS_SPACES * (depth-1)}- {node.value}:  {node.comment}".rstrip())
                 else:
                     lines.append(f"{spaces}{node.value}:  {node.comment}".rstrip())
-                lines.append(
-                    f"{spaces}{TAB_AS_SPACES}- "
-                    f"{stringify_yaml(node.children[0].value, multiline_variant=node.children[0].multiline_variant)}  "
-                    f"{node.children[0].comment}".rstrip()
-                )
+                # Handle multiline strings that are contained within a list. This returns `True` if lines are added.
+                if not _render_multiline_lst(node.children[0]):
+                    value_str = stringify_yaml(
+                        node.children[0].value, multiline_variant=node.children[0].multiline_variant
+                    )
+                    lines.append(f"{spaces}{TAB_AS_SPACES}- " f"{value_str}  " f"{node.children[0].comment}".rstrip())
                 return
 
             if is_first_collection_child:
@@ -878,21 +1036,15 @@ class RecipeReader(IsModifiable):
                 )
                 return
 
-            # Handle multi-line statements. In theory this will probably only ever be strings, but we'll try to account
-            # for other types.
-            #
-            # By the language spec, # symbols do not indicate comments on multiline strings.
+            # Handle multiline strings. By the language spec, # symbols do not indicate comments on most multiline
+            # strings.
             if node.children[0].multiline_variant != MultilineVariant.NONE:
-                # TODO should we even render comments in multi-line strings? I don't believe they are valid.
                 multi_variant: Final[MultilineVariant] = node.children[0].multiline_variant
                 start_idx = 0
-                # Quoted multiline strings with backslashes are special. They start by rendering on the same line as
-                # their key.
-                if multi_variant == MultilineVariant.BACKSLASH_QUOTE:
+                # "Raw" multiline strings are special. They start by rendering on the same line as their key.
+                if multi_variant == MultilineVariant.RAW:
                     start_idx = 1
-                    lines.append(
-                        f"{spaces}{node.value}: {cast(list[str], node.children[0].value)[0]} {node.comment}".rstrip()
-                    )
+                    lines.append(f"{spaces}{node.value}: {cast(list[str], node.children[0].value)[0]}".rstrip())
                 else:
                     lines.append(f"{spaces}{node.value}: {multi_variant}  {node.comment}".rstrip())
                 for val_line in cast(list[str], node.children[0].value)[start_idx:]:
@@ -901,6 +1053,7 @@ class RecipeReader(IsModifiable):
                         f"{stringify_yaml(val_line, multiline_variant=multi_variant)}".rstrip()
                     )
                 return
+
             lines.append(
                 f"{spaces}{node.value}: "
                 f"{stringify_yaml(node.children[0].value)}  "
@@ -926,6 +1079,7 @@ class RecipeReader(IsModifiable):
             if is_first_collection_child:
                 list_prefix = "- "
                 tmp_spaces = tmp_spaces[TAB_SPACE_COUNT:]
+
             # Nodes representing collections in a list have nothing to render
             lines.append(f"{tmp_spaces}{list_prefix}{node.value}:  {node.comment}".rstrip())
 
@@ -945,7 +1099,11 @@ class RecipeReader(IsModifiable):
                 lines.append(f"{spaces}{extra_tab}" f"{stringify_yaml(child.value)}:  " f"{child.comment}".rstrip())
             # Leaf nodes are rendered as members in a list
             elif child.is_strong_leaf():
-                lines.append(f"{spaces}{extra_tab}- " f"{stringify_yaml(child.value)}  " f"{child.comment}".rstrip())
+                # Handle multiline strings that are contained within a list. This returns `True` if lines are added.
+                if not _render_multiline_lst(child):
+                    lines.append(
+                        f"{spaces}{extra_tab}- " f"{stringify_yaml(child.value)}  " f"{child.comment}".rstrip()
+                    )
             else:
                 RecipeReader._render_tree(child, depth + depth_delta, lines, schema_version, node)
             # By tradition, recipes have a blank line after every top-level section, unless they are a comment. Comments

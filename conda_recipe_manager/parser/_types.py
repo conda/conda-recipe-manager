@@ -278,16 +278,28 @@ class Regex:
     JINJA_VAR_VALUE_TERNARY: Final[re.Pattern[str]] = re.compile(r"^.*\s+if\s+(\w|-)+\s+else\s+.*")
 
     SELECTOR: Final[re.Pattern[str]] = re.compile(r"\[.*\]")
+
+    # Used to assist raw multiline parsing to determine if the next line contains legal raw string characters.
+    # NOTE:
+    #   - This includes handling a dangling `:` or a leading `#` so that we do not miss matches in white-space
+    #     stripped text.
+    #   - We use `[ \t]` over `\s` as YAML is pretty clear about delimiting by _space_ characters for multiline strings.
+    #     Although tabs are not recognized by YAML, we support them in the off chance some have made their way into
+    #     a recipe file by accident.
+    MULTILINE_RAW_LOOKAHEAD: Final[re.Pattern[str]] = re.compile(r":[ \t]+|:$|[ \t]+#|^#")
+    # Detects the special "raw" multiline strings.
+    MULTILINE_RAW: Final[re.Pattern[str]] = re.compile(r"^[ \t]*(.*):[ \t]+(.*)$")
+    MULTILINE_RAW_LIST: Final[re.Pattern[str]] = re.compile(r"^[ \t]*(-[ \t]+)(.*)$")
+    MULTILINE_RAW_CAPTURE_GROUP_KEY: Final[int] = 1
+    MULTILINE_RAW_CAPTURE_GROUP_FIRST_VALUE: Final[int] = 2
     # Detects the 6 common variants (3 |'s, 3 >'s). See this guide for more info:
     #   https://stackoverflow.com/questions/3790454/how-do-i-break-a-string-in-yaml-over-multiple-lines/21699210
-    MULTILINE_VARIANT: Final[re.Pattern[str]] = re.compile(r"^[ \t]*.*:[ \t]+(\||>)(\+|\-)?([ \t]*|[ \t]+#.*)")
-    # Group where the "variant" string is identified
+    _BLOCK_SCALAR_GROUPS: Final[str] = r"(\||>)(\+|\-)?"
+    MULTILINE_VARIANT: Final[re.Pattern[str]] = re.compile(r"^[ \t]*.*:[ \t]+" + _BLOCK_SCALAR_GROUPS)
+    MULTILINE_VARIANT_LIST: Final[re.Pattern[str]] = re.compile(r"^[ \t]*-[ \t]+" + _BLOCK_SCALAR_GROUPS)
+    # Group where the "variant" string is identified. These indices are the same, no matter which regex is used.
     MULTILINE_VARIANT_CAPTURE_GROUP_CHAR: Final[int] = 1
     MULTILINE_VARIANT_CAPTURE_GROUP_SUFFIX: Final[int] = 2
-    # Detects the special "-backslash multiline string.
-    MULTILINE_BACKSLASH_QUOTE: Final[re.Pattern[str]] = re.compile(r"^[ \t]*(.*):[ \t]+(\".*\\)$")
-    MULTILINE_BACKSLASH_QUOTE_CAPTURE_GROUP_KEY: Final[int] = 1
-    MULTILINE_BACKSLASH_QUOTE_CAPTURE_GROUP_FIRST_VALUE: Final[int] = 2
 
     DETECT_TRAILING_COMMENT: Final[re.Pattern[str]] = re.compile(r"([ \t])+(#)")
 
