@@ -1,0 +1,7 @@
+schema_version: 1
+
+foo:
+  - |
+    pytest -v  \
+    -k "not (test_use_proxy_from_environment or TestRequests or TestTimeout \
+    or test_requests_are_updated_each_time or tests/test_requests.py::test_urllib3_retries \

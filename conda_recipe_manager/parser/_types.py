@@ -289,8 +289,10 @@ class Regex:
     MULTILINE_RAW_CAPTURE_GROUP_FIRST_VALUE: Final[int] = 2
     # Detects the 6 common variants (3 |'s, 3 >'s). See this guide for more info:
     #   https://stackoverflow.com/questions/3790454/how-do-i-break-a-string-in-yaml-over-multiple-lines/21699210
-    MULTILINE_VARIANT: Final[re.Pattern[str]] = re.compile(r"^[ \t]*.*:[ \t]+(\||>)(\+|\-)?([ \t]*|[ \t]+#.*)")
-    # Group where the "variant" string is identified
+    _BLOCK_SCALAR_GROUPS: Final[str] = r"(\||>)(\+|\-)?"
+    MULTILINE_VARIANT: Final[re.Pattern[str]] = re.compile(r"^[ \t]*.*:[ \t]+" + _BLOCK_SCALAR_GROUPS)
+    MULTILINE_VARIANT_LIST: Final[re.Pattern[str]] = re.compile(r"^[ \t]*-[ \t]+" + _BLOCK_SCALAR_GROUPS)
+    # Group where the "variant" string is identified. These indices are the same, no matter which regex is used.
     MULTILINE_VARIANT_CAPTURE_GROUP_CHAR: Final[int] = 1
     MULTILINE_VARIANT_CAPTURE_GROUP_SUFFIX: Final[int] = 2
 
