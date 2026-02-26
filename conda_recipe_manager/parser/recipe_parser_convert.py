@@ -701,6 +701,8 @@ class RecipeParserConvert(RecipeParserDeps):
             "tags",
             "keywords",
             "doc_source_url",
+            # Deprecated in CEP-0014 here: https://github.com/conda/ceps/commit/6e6bae8cf45c106d2a85b8d1b2d6da20cf4162c2
+            "license_url",
         ]
 
         for base_path in base_package_paths:
