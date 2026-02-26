@@ -530,3 +530,32 @@ def test_render_to_v1_recipe_format(file: str, errors: list[str], warnings: list
     # Ensure that the original file was untouched
     assert not parser.is_modified()
     assert parser.diff() == ""
+
+
+@pytest.mark.parametrize(
+    "file,errors,warnings",
+    [
+        # Ensures a V0 `run_exports` field gets upgraded to a list if a single value is present.
+        (
+            "parser_regressions/run_exports_as_list.yaml",
+            [],
+            [],
+        ),
+    ],
+)
+def test_render_to_v1_recipe_format_with_preprocess(file: str, errors: list[str], warnings: list[str]) -> None:
+    """
+    Validates rendering a recipe in the V1 format in combination with the text pre-processor. This simulates
+    what `crm convert` actually does and doesn't hold the two phases in isolation.
+
+    :param file: File path for the input that is also used to calculate the expected output, by convention.
+    """
+    file_path: Final = Path(file)
+    parser = RecipeParserConvert(RecipeParserConvert.pre_process_recipe_text(load_file(file)))
+    result, tbl, _ = parser.render_to_v1_recipe_format()
+    assert result == load_file(f"{file_path.parent}/v1_format/v1_{file_path.name}")
+    assert tbl.get_messages(MessageCategory.ERROR) == errors
+    assert tbl.get_messages(MessageCategory.WARNING) == warnings
+    # Ensure that the original file was untouched
+    assert not parser.is_modified()
+    assert parser.diff() == ""

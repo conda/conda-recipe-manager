@@ -69,10 +69,11 @@ jobs:
           export RECIPE_DIR=""
           conda-recipe-manager \
             convert -t -m ${{ matrix.convert-success }} -o recipe.yaml test_data/recipes_v0/${{ matrix.test-directory }} \
-            | tee logs/convert_${{ matrix.test-directory }}.log
+              | tee logs/convert_${{ matrix.test-directory }}.log
           conda-recipe-manager \
-            rattler-bulk-build -t -m ${{ matrix.rattler-success }} test_data/recipes_v0/${{ matrix.test-directory }} --render-only \
-            | tee logs/rbb_${{ matrix.test-directory }}.log
+            rattler-bulk-build -t -m ${{ matrix.rattler-success }} --inject-vars \
+              test_data/recipes_v0/${{ matrix.test-directory }} --render-only \
+              | tee logs/rbb_${{ matrix.test-directory }}.log
       - uses: actions/upload-artifact@v4
         with:
           name: integration-logs-${{ matrix.test-directory }}

@@ -150,7 +150,6 @@ outputs:
 
 about:
   license: curl
-  license_url: https://curl.se/docs/copyright.html
   summary: tool and library for transferring data with URL syntax
   description: |
     Curl is an open source command line tool and library for transferring data

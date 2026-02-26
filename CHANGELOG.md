@@ -29,6 +29,8 @@ Note: version releases in the 0.x.y range may introduce breaking changes.
 - Fixes Issue #220 (and others). CRM now supports all YAML multiline string formats. This should significantly
   improve parsing compatibility. In our testing, we believe this should allow CRM to be able to parse recipe output from
   `conda-build` artifacts.
+- `crm convert` now deprecates the `license_url` field in compliance with recent changes to CEP-0014.
+- `crm convert` now ensures `run_exports` contains a list if a single value is provided.
 ### Security
 
 ## [0.9.3]
