@@ -103,5 +103,10 @@ format-docs:	## Runs the docstring auto-formatter. NOTE: this requires manually 
 analyze:		## Runs static analyzer on the project
 	mypy --config-file=.mypy.ini --cache-dir=/dev/null $(SRC_DIR) $(TEST_DIR) $(SCRIPTS_DIR)
 
+# As of 2026-02-25, some of our documentation dependencies are not available on 3.14. In an attempt to fix our CI
+# processes for 3.14, we now install these dependencies on-demand when generating documentation.
+# NOTE: Explicitly specifying the environment by name while that environment is active, causes `conda` to crash.
+# Tracking here: https://github.com/conda/conda/issues/15737
 docs: clean-docs	## Generates static html documentation
+	conda install sphinx sphinx-book-theme --yes
 	$(MAKE) -C docs html
