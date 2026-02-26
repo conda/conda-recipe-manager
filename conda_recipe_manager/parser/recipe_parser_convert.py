@@ -579,6 +579,15 @@ class RecipeParserConvert(RecipeParserDeps):
                 if not self._v1_recipe.contains_value(requirements_path):
                     self._patch_and_log({"op": "add", "path": requirements_path, "value": None})
                 self._patch_and_log({"op": "move", "from": old_re_path, "path": new_re_path})
+
+                # Force run-exports to be a list if a single value is present. This is a commonly seen problem in a
+                # number of bioconda recipes, with something like:
+                #   run_exports: '{{ pin_subpackage("bioconductor-erma", max_pin="x.x") }}'
+                # V1 expects `run_exports` to be a list or an object.
+                run_exports = self._v1_recipe.get_value(new_re_path)
+                if run_exports and not isinstance(run_exports, list):
+                    self._patch_and_log({"op": "replace", "path": new_re_path, "value": [run_exports]})
+
             # `ignore_run_exports`
             for old_ire_name, new_ire_name in [
                 ("ignore_run_exports", "by_name"),
