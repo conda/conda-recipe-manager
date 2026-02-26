@@ -9,6 +9,14 @@ Note: version releases in the 0.x.y range may introduce breaking changes.
 
 ## [Unreleased]
 ### Added
+### Changed
+### Deprecated
+### Removed
+### Fixed
+### Security
+
+## [0.10.0]
+### Added
 - Automated CI testing for Python 3.13. Python 3.14 does not have all CRM dependencies available yet.
 ### Changed
 - `click` dependency has been pinned to 8.2.1, which is available on `defaults` and `conda-forge`
@@ -24,14 +32,13 @@ Note: version releases in the 0.x.y range may introduce breaking changes.
 - `crm graph` and the associated libraries have been removed from the project. CRM v0.9.3 will be the last version containing the
   tool. This was done to remove graphical dependencies which has caused issues running CRM in a headless environment. `crm graph`
   has not used enough (and was never fully completed) to justify continuing to support it.
-### Removed
 ### Fixed
+- Fixes #476. CRM now quotes version values that could be interpreted as a float.
 - Fixes Issue #220 (and others). CRM now supports all YAML multiline string formats. This should significantly
   improve parsing compatibility. In our testing, we believe this should allow CRM to be able to parse recipe output from
   `conda-build` artifacts.
 - `crm convert` now deprecates the `license_url` field in compliance with recent changes to CEP-0014.
 - `crm convert` now ensures `run_exports` contains a list if a single value is provided.
-### Security
 
 ## [0.9.3]
 ### Changed
@@ -249,7 +256,8 @@ and continually changing.
 Migrates parser from [percy](https://github.com/anaconda-distribution/percy/tree/main)
 , ,
 
-[Unreleased]: https://github.com/conda/conda-recipe-manager/compare/v0.9.3...HEAD
+[Unreleased]: https://github.com/conda/conda-recipe-manager/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/conda/conda-recipe-manager/compare/v0.9.3...v0.10.0
 [0.9.3]: https://github.com/conda/conda-recipe-manager/compare/v0.9.2...v0.9.3
 [0.9.2]: https://github.com/conda/conda-recipe-manager/compare/v0.9.1...v0.9.2
 [0.9.1]: https://github.com/conda/conda-recipe-manager/compare/v0.9.0...v0.9.1
