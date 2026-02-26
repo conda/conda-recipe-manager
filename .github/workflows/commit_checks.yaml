@@ -51,7 +51,8 @@ jobs:
             conda build -c defaults recipe/meta.yaml
   # Eat our own dog food and build this project with rattler-build by converting our existing recipe.
   # Remember, `rattler-build` will pull from the `conda-forge` channel, which may cause some version inconsistencies.
-  # NOTE: As of 2026-02-25, we tell `rattler-build` to target 3.11 explicitly to avoid issues with the 3.14 build-out.
+  # NOTE: As of 2026-02-25, we tell `rattler-build` to ignore 3.14+ explicitly (via `sed`) to avoid issues with the
+  #       3.14 build-out.
   build-recipe-rattler:
       runs-on: ubuntu-latest
       steps:
@@ -65,5 +66,6 @@ jobs:
             conda activate conda-recipe-manager
             conda install -y -c conda-forge rattler-build
             conda-recipe-manager convert -o recipe/recipe.yaml recipe/meta.yaml
+            sed -ie 's/python >=3.11/python >=3.11,<3.14/g' recipe/recipe.yaml
             mkdir -p ../temp
-            rattler-build build --variant python=3.11 -r recipe/ --output-dir=../temp
+            rattler-build build -r recipe/ --output-dir=../temp
