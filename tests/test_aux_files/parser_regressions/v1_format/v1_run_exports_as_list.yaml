@@ -1,0 +1,54 @@
+schema_version: 1
+
+recipe:
+  name: libprotobuf-suite
+  version: ${{ version }}
+
+source:
+  - url: https://github.com/protocolbuffers/protobuf/archive/v${{ version }}/libprotobuf-v${{ version }}.tar.gz
+    sha256: 9c0fd39c7a08dff543c643f0f4baf081988129a411b977a07c46221793605638
+    patches:  # [linux]
+      - if: linux
+        then: 0001-remove-Werror-from-test-flags.patch
+  - url: https://github.com/google/benchmark/archive/5b7683f49e1e9223cf9927b24f6fd3d6bd82e3f8.tar.gz
+    sha256: 5dc92703f811f94e2aa63bdab07ab749f28a094befa6cdfd5fe177f947590a48
+    target_directory: third_party/benchmark
+  - url: https://github.com/google/googletest/archive/5ec7f0c4a113e2f18ac2c6cc7df51ad6afc24081.tar.gz
+    sha256: 0e2f36e8e403c125fd0ab02171bdb786d3b6b3875b6ccf3b2eb7969be8faecd0
+    target_directory: third_party/googletest
+
+build:
+  number: 0
+
+requirements:
+  build:  # [linux or (osx and arm64)]
+    - if: linux
+      then: patch
+    - if: osx and arm64
+      then: sed
+
+outputs:
+  - package:
+      name: libprotobuf
+    build:
+      dynamic_linking:
+        missing_dso_allowlist:
+          - if: s390x
+            then: $RPATH/ld64.so.1
+      script:
+        file: ${{ 'build-shared.sh' if unix else 'bld-shared.bat' if win else '' }}
+    requirements:
+      run_exports:
+        - ${{ pin_subpackage('libprotobuf', upper_bound='x.x') }}
+  - package:
+      name: libprotobuf-electric-boogaloo
+    build:
+      dynamic_linking:
+        missing_dso_allowlist:
+          - if: s390x
+            then: $RPATH/ld64.so.1
+      script:
+        file: ${{ 'build-shared.sh' if unix else 'bld-shared.bat' if win else '' }}
+    requirements:
+      run_exports:
+        - ${{ pin_subpackage('libprotobuf', upper_bound='x.x') }}
