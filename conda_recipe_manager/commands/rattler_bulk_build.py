@@ -105,10 +105,10 @@ def _build_recipe(file: Path, path: Path, inject_vars: bool, args: list[str]) ->
     cmd.extend(args)
     try:
         output: Final[subprocess.CompletedProcess[str]] = subprocess.run(
-            " ".join(cmd),
+            cmd,
             encoding="utf-8",
             capture_output=True,
-            shell=True,
+            shell=False,
             check=False,
             timeout=DEFAULT_RATTLER_BUILD_TIMEOUT,
         )
