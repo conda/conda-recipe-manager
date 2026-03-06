@@ -11,6 +11,7 @@ import pytest
 
 from conda_recipe_manager.parser._message_table import MessageCategory
 from conda_recipe_manager.parser.recipe_parser_convert import RecipeParserConvert
+from conda_recipe_manager.parser.types import RecipeReaderFlags
 from tests.file_loading import load_file, load_recipe
 
 
@@ -559,3 +560,15 @@ def test_render_to_v1_recipe_format_with_preprocess(file: str, errors: list[str]
     # Ensure that the original file was untouched
     assert not parser.is_modified()
     assert parser.diff() == ""
+
+
+def test_render_to_v1_also_test_latest_python() -> None:
+    """
+    Validates that the ALSO_TEST_LATEST_PYTHON flag expands python_version to a list
+    that also tests on the latest Python.
+    """
+    parser = RecipeParserConvert(load_file("more-itertools.yaml"), flags=RecipeReaderFlags.ALSO_TEST_LATEST_PYTHON)
+    result, tbl, _ = parser.render_to_v1_recipe_format()
+    assert result == load_file("v1_format/v1_more-itertools_also_latest.yaml")
+    assert tbl.get_messages(MessageCategory.ERROR) == []
+    assert tbl.get_messages(MessageCategory.WARNING) == []
