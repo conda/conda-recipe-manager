@@ -807,11 +807,13 @@ class RecipeParserConvert(RecipeParserDeps):
             {"op": "add", "path": RecipeParser.append_to_path(test_path, "/python/pip_check"), "value": pip_check}
         )
         if python_version is not None:
+            # When the constraint references `python_min`, test on both the minimum and latest Python.
+            pv_value: JsonType = [python_version, "*"] if "python_min" in python_version else python_version
             self._patch_and_log(
                 {
                     "op": "add",
                     "path": RecipeParser.append_to_path(test_path, "/python/python_version"),
-                    "value": python_version,
+                    "value": pv_value,
                 }
             )
 

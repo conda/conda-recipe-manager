@@ -106,6 +106,7 @@ class CanonicalSortOrder:
     V1_PYTHON_TEST_KEY_SORT_ORDER: Final[dict[str, int]] = {
         "imports": 0,
         "pip_check": 10,
+        "python_version": 20,
     }
 
 
