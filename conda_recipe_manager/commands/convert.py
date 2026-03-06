@@ -86,7 +86,12 @@ def _record_unrecoverable_failure(
 
 
 def convert_file(
-    file_path: Path, output: Optional[Path], print_output: bool, debug: bool, fail_on_unsupported_jinja: bool
+    file_path: Path,
+    output: Optional[Path],
+    print_output: bool,
+    debug: bool,
+    fail_on_unsupported_jinja: bool,
+    also_test_latest_python: bool = False,
 ) -> ConversionResult:
     """
     Converts a single recipe file to the V1 format, tracking results.
@@ -98,6 +103,7 @@ def convert_file(
     :param debug: Enables debug mode output. Prints to STDERR.
     :param fail_on_unsupported_jinja: If set, the conversion process will exit with a failure if unsupported JINJA is
         encountered in the V0 recipe.
+    :param also_test_latest_python: If set, expand python_version to a list that also tests on the latest Python.
     :returns: A struct containing the results of the conversion process, including debugging metadata.
     """
     # pylint: disable=too-complex
@@ -132,9 +138,12 @@ def convert_file(
         )
 
     # Parse the recipe
+    base_flags = RecipeReaderFlags.NONE
+    if also_test_latest_python:
+        base_flags |= RecipeReaderFlags.ALSO_TEST_LATEST_PYTHON
     parser: RecipeParserConvert
     try:
-        parser = RecipeParserConvert(recipe_content)
+        parser = RecipeParserConvert(recipe_content, flags=base_flags)
     except ParsingJinjaException as e0:
         if fail_on_unsupported_jinja:
             return _record_unrecoverable_failure(
@@ -156,7 +165,7 @@ def convert_file(
             "They will be removed and parsing will be attempted again.",
         )
         try:
-            parser = RecipeParserConvert(recipe_content, flags=RecipeReaderFlags.FORCE_REMOVE_JINJA)
+            parser = RecipeParserConvert(recipe_content, flags=base_flags | RecipeReaderFlags.FORCE_REMOVE_JINJA)
         except ParsingException as e1:
             return _record_unrecoverable_failure(
                 conversion_result,
@@ -222,7 +231,12 @@ def convert_file(
 
 
 def process_recipe(
-    file: Path, path: Path, output: Optional[Path], debug: bool, fail_on_unsupported_jinja: bool
+    file: Path,
+    path: Path,
+    output: Optional[Path],
+    debug: bool,
+    fail_on_unsupported_jinja: bool,
+    also_test_latest_python: bool = False,
 ) -> tuple[str, ConversionResult]:
     """
     Helper function that performs the conversion operation for parallelizable execution.
@@ -233,10 +247,11 @@ def process_recipe(
     :param debug: Enables debug mode output. Prints to STDERR.
     :param fail_on_unsupported_jinja: If set, the conversion process will exit with a failure if unsupported JINJA is
         encountered in the V0 recipe.
+    :param also_test_latest_python: If set, expand python_version to a list that also tests on the latest Python.
     :returns: Tuple containing the key/value pairing that tracks the result of the conversion operation
     """
     out_file: Optional[Path] = None if output is None else file.parent / output
-    conversion_result = convert_file(file, out_file, False, debug, fail_on_unsupported_jinja)
+    conversion_result = convert_file(file, out_file, False, debug, fail_on_unsupported_jinja, also_test_latest_python)
     conversion_result.project_name = file.relative_to(path).parts[0]
     return str(file.relative_to(path)), conversion_result
 
@@ -326,6 +341,14 @@ def _collect_issue_stats(project_name: str, issues: list[str], hist: dict[str, i
     is_flag=True,
     help="Debug mode, prints debugging information to STDERR.",
 )
+@click.option(
+    "--also-test-latest-python",
+    is_flag=True,
+    help=(
+        "When a test section references python_min, expand python_version to a list"
+        " that tests on both the minimum and latest Python."
+    ),
+)
 def convert(
     path: Path,
     output: Optional[Path],
@@ -333,6 +356,7 @@ def convert(
     truncate: bool,
     debug: bool,
     fail_on_unsupported_jinja: bool,
+    also_test_latest_python: bool,
 ) -> None:  # pylint: disable=redefined-outer-name
     """
     Recipe conversion CLI utility. By default, recipes print to STDOUT. Messages always print to STDERR. Takes 1 file or
@@ -345,7 +369,9 @@ def convert(
 
     ## Single-file case ##
     if len(files) == 1:
-        result: Final[ConversionResult] = convert_file(files[0], output, True, debug, fail_on_unsupported_jinja)
+        result: Final[ConversionResult] = convert_file(
+            files[0], output, True, debug, fail_on_unsupported_jinja, also_test_latest_python
+        )
         result.msg_tbl.print_messages_by_category(MessageCategory.WARNING)
         result.msg_tbl.print_messages_by_category(MessageCategory.ERROR)
         print_err(result.msg_tbl.get_totals_message())
@@ -359,7 +385,9 @@ def convert(
         results = dict(
             pool.starmap(
                 process_recipe,
-                [(file, path, output, debug, fail_on_unsupported_jinja) for file in files],  # type: ignore[misc]
+                [  # type: ignore[misc]
+                    (file, path, output, debug, fail_on_unsupported_jinja, also_test_latest_python) for file in files
+                ],
             )
         )
 
