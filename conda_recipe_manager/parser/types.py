@@ -183,8 +183,11 @@ class RecipeReaderFlags(Flag):
             then unsupported JINJA statements will trigger a ParsingJinjaException.
     FLOATS_AS_STRINGS: Whether to treat floats as strings. If this is set to True,
         then floats will be treated as strings during parsing.
+    ALSO_TEST_LATEST_PYTHON: When converting, expand ``python_version`` to a list that tests on both
+        the pinned version and the latest Python.
     """
 
     NONE = 0
     FORCE_REMOVE_JINJA = auto()
     FLOATS_AS_STRINGS = auto()
+    ALSO_TEST_LATEST_PYTHON = auto()

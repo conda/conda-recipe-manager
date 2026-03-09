@@ -49,6 +49,7 @@ class RecipeParserConvert(RecipeParserDeps):
 
         # Store early, as is_python_recipe() will not substitute Jinja variables correctly mid-transition.
         self._is_python_recipe_v1_bootstrap: Final[bool] = self._v1_recipe.is_python_recipe()
+        self._also_test_latest_python: Final[bool] = RecipeReaderFlags.ALSO_TEST_LATEST_PYTHON in flags
 
         self._msg_tbl = MessageTable()
 
@@ -807,11 +808,14 @@ class RecipeParserConvert(RecipeParserDeps):
             {"op": "add", "path": RecipeParser.append_to_path(test_path, "/python/pip_check"), "value": pip_check}
         )
         if python_version is not None:
+            pv_value: JsonType = python_version
+            if self._also_test_latest_python and python_version != "*":
+                pv_value = [python_version, "*"]
             self._patch_and_log(
                 {
                     "op": "add",
                     "path": RecipeParser.append_to_path(test_path, "/python/python_version"),
-                    "value": python_version,
+                    "value": pv_value,
                 }
             )
 
