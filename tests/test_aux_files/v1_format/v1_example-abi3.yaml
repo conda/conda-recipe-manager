@@ -1,0 +1,55 @@
+schema_version: 1
+
+package:
+  name: python-abi3-package-sample
+  version: "0.0.1"
+
+source:
+  url: https://github.com/joerick/python-abi3-package-sample/archive/6f74ae7b31e58ef5f8f09b647364854122e61155.tar.gz
+  sha256: e81fd4d4c4f5b7bc9786d9ee990afc659e14a25ce11182b7b69f826407cc1718
+
+build:
+  number: 0
+  skip: is_abi3 and not is_python_min
+  script: ${{ PYTHON }} -m pip install . -vv
+  python:
+    version_independent: ${{ true if is_abi3 }}
+
+requirements:
+  build:
+    - ${{ compiler('c') }}
+    - ${{ stdlib('c') }}
+  host:
+    - if: is_abi3
+      then: python-abi3
+    - python
+    - pip
+    - setuptools
+  run:
+    - python
+
+tests:
+  - python:
+      imports:
+        - spam
+  - requirements:
+      run:
+        - pip
+        - if: is_abi3
+          then: abi3audit
+    script:
+      - pip check
+      - if: unix and is_abi3
+        then: abi3audit $SP_DIR/spam.abi3.so -s -v --assume-minimum-abi3 ${{ python_min }}
+      - if: win and is_abi3
+        then: abi3audit %SP_DIR%/spam.pyd -s -v --assume-minimum-abi3 ${{ python_min }}
+
+about:
+  summary: ABI3 example
+  license: Apache-2.0
+  license_file: LICENSE
+  homepage: https://github.com/joerick/python-abi3-package-sample
+
+extra:
+  recipe-maintainers:
+    - isuruf
