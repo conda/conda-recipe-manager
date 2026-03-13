@@ -619,6 +619,9 @@ class RecipeParserConvert(RecipeParserDeps):
             # `build/force_use_keys` -> `build/variant/use_keys`
             self._patch_move_new_path(build_path, "/force_use_keys", "/variant", "use_keys")
 
+            # `build/python_version_independent` -> `build/python/version_independent`
+            self._patch_move_new_path(build_path, "/python_version_independent", "/python", "version_independent")
+
             # New `prefix_detection` section changes
             # NOTE: There is a new `force_file_type` field that may map to an unknown field that conda supports.
             self._patch_move_new_path(build_path, "/ignore_prefix_files", "/prefix_detection", "/ignore")
