@@ -47,8 +47,6 @@ class RecipeParserConvert(RecipeParserDeps):
         # is no development cost in utilizing tools we already must maintain.
         self._v1_recipe: RecipeParserDeps = RecipeParserDeps(self.render(), flags)
 
-        # Store early, as is_python_recipe() will not substitute Jinja variables correctly mid-transition.
-        self._is_python_recipe_v1_bootstrap: Final[bool] = self._v1_recipe.is_python_recipe()
         self._also_test_latest_python: Final[bool] = RecipeReaderFlags.ALSO_TEST_LATEST_PYTHON in flags
 
         self._msg_tbl = MessageTable()
@@ -751,11 +749,6 @@ class RecipeParserConvert(RecipeParserDeps):
         :param test_path: Test path for the build target to upgrade
         :raises SentinelTypeEvaluationException: If a node value with a sentinel type is evaluated.
         """
-        # Replace `- pip check` in `commands` with the new flag. If not found, set the flag to `False` (as the
-        # flag defaults to `True`). DO NOT ADD THIS FLAG IF THE RECIPE IS NOT A "PYTHON RECIPE".
-        if not self._is_python_recipe_v1_bootstrap:
-            return
-
         pip_check_variants: Final[set[str]] = {
             "pip check",
             "python -m pip check",
@@ -806,7 +799,6 @@ class RecipeParserConvert(RecipeParserDeps):
             if self._v1_recipe.contains_value(requirements_path):
                 self._patch_and_log({"op": "remove", "path": requirements_path})
 
-        self._patch_add_missing_path(test_path, "/python")
         self._patch_and_log(
             {"op": "add", "path": RecipeParser.append_to_path(test_path, "/python/pip_check"), "value": pip_check}
         )
@@ -863,13 +855,13 @@ class RecipeParserConvert(RecipeParserDeps):
                 self._patch_add_missing_path(test_path, "/requirements")
             self._patch_move_base_path(test_path, "/requires", "/requirements/run")
 
-            # Upgrade `pip-check`, if applicable
-            self._upgrade_test_pip_check(test_path)
-
-            self._patch_move_base_path(test_path, "/commands", "/script")
             if self._v1_recipe.contains_value(RecipeParser.append_to_path(test_path, "/imports")):
                 self._patch_add_missing_path(test_path, "/python")
                 self._patch_move_base_path(test_path, "/imports", "/python/imports")
+                # Upgrade `pip-check`, if applicable
+                self._upgrade_test_pip_check(test_path)
+
+            self._patch_move_base_path(test_path, "/commands", "/script")
             self._patch_move_base_path(test_path, "/downstreams", "/downstream")
 
             # Canonically sort the python section, if it exists
