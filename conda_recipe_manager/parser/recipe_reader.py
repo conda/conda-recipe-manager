@@ -40,11 +40,7 @@ from conda_recipe_manager.parser._utils import (
     stringify_yaml,
     substitute_markers,
 )
-from conda_recipe_manager.parser.dependency import (
-    DependencySection,
-    dependency_data_from_str,
-    dependency_section_to_str,
-)
+from conda_recipe_manager.parser.dependency import DependencySection, dependency_section_to_str
 from conda_recipe_manager.parser.enums import SchemaVersion
 from conda_recipe_manager.parser.exceptions import (
     DuplicateKeyException,
@@ -1384,46 +1380,6 @@ class RecipeReader(IsModifiable):
         :returns: True if the recipe produces multiple outputs. False otherwise.
         """
         return self.contains_value("/outputs")
-
-    def is_python_recipe(self) -> bool:
-        """
-        Indicates if a recipe is a "pure Python" recipe.
-
-        :raises SentinelTypeEvaluationException: If a node value with a sentinel type is evaluated.
-        :return: True if the recipe is a "pure Python recipe". False otherwise.
-        """
-        # TODO cache this or otherwise find a way to reduce the computation complexity.
-        # TODO consider making a single query interface similar to `RecipeReaderDeps::get_all_dependencies()`
-        # TODO improve definition/validation of "pure Python"
-        for base_path in self.get_package_paths():
-            # A "pure python" package shouldn't need a `build` dependencies.
-            build_deps = cast(
-                Optional[list[str | dict[str, str]]],
-                self.get_value(RecipeReader.append_to_path(base_path, "/requirements/build"), default=[]),
-            )
-            if build_deps:
-                return False
-
-            host_path = RecipeReader.append_to_path(base_path, "/requirements/host")
-            host_deps = cast(Optional[list[str | dict[str, str]]], self.get_value(host_path, default=[], sub_vars=True))
-            # Skip the rare edge case where the list may be null (usually caused by commented-out code)
-            if host_deps is None:
-                continue
-            for i, dep in enumerate(host_deps):
-                # If we find a selector on a line, ignore it. Conditionalized `python` inclusion does not indicate
-                # something that is "pure Python". We check for V1 selectors first as it is cheaper and prevents a
-                # a type issue. We do not check which schema the current recipe for the sake of the recipe converter,
-                # which uses this function in the upgrade process.
-                # TODO Improve V1 selector check (when more utilities are built). Checking for
-                if not isinstance(dep, str):
-                    continue
-                if "python" == cast(str, dependency_data_from_str(dep).name).lower():
-                    # The V0 selector check is more costly and it can be delayed until we've determined we have found
-                    # a python host dependency.
-                    if self.contains_selector_at_path(RecipeReader.append_to_path(host_path, f"/{i}")):
-                        continue
-                    return True
-        return False
 
     def get_package_paths(self) -> list[str]:
         """

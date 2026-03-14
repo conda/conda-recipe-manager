@@ -1142,36 +1142,6 @@ def test_is_multi_output(file: str, expected: bool) -> None:
 @pytest.mark.parametrize(
     "file,expected",
     [
-        ("multi-output.yaml", False),
-        ("simple-recipe.yaml", False),
-        ("types-toml.yaml", True),
-        ("boto.yaml", True),
-        ("cctools-ld64.yaml", False),
-        ("more-itertools.yaml", True),
-        ("v1_format/v1_multi-output.yaml", False),
-        ("v1_format/v1_simple-recipe.yaml", False),
-        ("v1_format/v1_types-toml.yaml", True),
-        ("v1_format/v1_boto.yaml", True),
-        ("v1_format/v1_cctools-ld64.yaml", False),
-        ("v1_format/v1_more-itertools.yaml", True),
-        # Regression test for Issue 289. Compiled projects that use Python are not "pure python" packages.
-        ("parser_regressions/issue-289_regression.yaml", False),
-        ("parser_regressions/v1_format/v1_issue-289_regression.yaml", False),
-    ],
-)
-def test_is_python_recipe(file: str, expected: bool) -> None:
-    """
-    Validates if a recipe is a "pure Python" package.
-
-    :param file: File to test against
-    :param expected: Expected output
-    """
-    assert load_recipe(file, RecipeReader).is_python_recipe() == expected
-
-
-@pytest.mark.parametrize(
-    "file,expected",
-    [
         ("multi-output.yaml", ["/", "/outputs/0", "/outputs/1"]),
         ("simple-recipe.yaml", ["/"]),
         ("simple-recipe_comment_in_requirements.yaml", ["/"]),
