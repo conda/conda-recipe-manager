@@ -29,6 +29,7 @@ tests:
       imports:
         - huggingface_hub
         - huggingface_hub.commands
+      pip_check: false
   - requirements:
       run:
         - pip

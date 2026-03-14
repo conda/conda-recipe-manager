@@ -32,13 +32,13 @@ tests:
   - python:
       imports:
         - spam
+      pip_check: true
   - requirements:
       run:
         - pip
         - if: is_abi3
           then: abi3audit
     script:
-      - pip check
       - if: unix and is_abi3
         then: abi3audit $SP_DIR/spam.abi3.so -s -v --assume-minimum-abi3 ${{ python_min }}
       - if: win and is_abi3
