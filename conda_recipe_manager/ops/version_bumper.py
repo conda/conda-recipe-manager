@@ -201,7 +201,7 @@ class VersionBumper:
         :param options: (Optional) A series of flags that change how this class operates. See the `VersionBumperOption`
             docs for more details.
         :param parser_flags: (Optional) RecipeReaderFlags forwarded to the underlying `RecipeParserDeps` instance.
-            Defaults to ``FORCE_REMOVE_JINJA | FLOATS_AS_STRINGS``.
+            Defaults to `FORCE_REMOVE_JINJA | FLOATS_AS_STRINGS`.
         :raises IOError: If there is an issue accessing the recipe file on disk.
         :raises ParsingException: If there is an issue parsing the recipe file provided.
         :raises VersionBumperPatchError: If there was an issue editing the recipe file in the pre- or post-processing
