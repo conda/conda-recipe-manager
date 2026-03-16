@@ -321,25 +321,28 @@ def test_vb_update_build_num_throws_on_missing_build(file: str, value: Optional[
 
 
 @pytest.mark.parametrize(
-    ["file", "value", "expected"],
+    ["file", "value", "expected", "parser_flags"],
     [
         ## V0 Format ##
-        ("types-toml.yaml", "1.2.3", "1.2.3"),
+        ("types-toml.yaml", "1.2.3", "1.2.3", RecipeReaderFlags.FORCE_REMOVE_JINJA),
+        ("types-toml_float_version.yaml", "2.3", 2.3, RecipeReaderFlags.FORCE_REMOVE_JINJA),
         # This file just so happens to be missing a `version` key (but has "/package").
-        ("bump_recipe/no_build_key.yaml", "3.4.3", "3.4.3"),
+        ("bump_recipe/no_build_key.yaml", "3.4.3", "3.4.3", RecipeReaderFlags.FORCE_REMOVE_JINJA),
         ## V1 Format ##
-        ("v1_format/v1_types-toml.yaml", "1.2.3", "1.2.3"),
+        ("v1_format/v1_types-toml.yaml", "1.2.3", "1.2.3", RecipeReaderFlags.FORCE_REMOVE_JINJA),
+        ("v1_format/v1_types-toml_float_version.yaml", "2.3", 2.3, RecipeReaderFlags.FORCE_REMOVE_JINJA),
     ],
 )
-def test_vb_update_version(file: str, value: str, expected: str) -> None:
+def test_vb_update_version(file: str, value: str, expected: str, parser_flags: RecipeReaderFlags) -> None:
     """
     Validates updating the `/package/version` field.
 
     :param file: Target recipe file to use.
     :param value: Value to set.
     :param expected: Expected value to be set.
+    :param parser_flags: `RecipeReaderFlags` to be passed to the `VersionBumper` constructor.
     """
-    vb: Final = VersionBumper(get_test_path() / file)
+    vb: Final = VersionBumper(get_test_path() / file, parser_flags=parser_flags)
     vb.update_version(value)
     # Checking this way ensures we evaluate the field is correct, regardless if a variable was changed or not.
     assert vb.get_recipe_reader().get_value("/package/version", sub_vars=True) == expected
@@ -347,59 +350,40 @@ def test_vb_update_version(file: str, value: str, expected: str) -> None:
 
 
 @pytest.mark.parametrize(
-    ["file", "value"],
+    ["file", "value", "parser_flags"],
     [
         ## V0 Format ##
-        ("types-toml.yaml", "0.10.8.6"),
+        ("types-toml.yaml", "0.10.8.6", RecipeReaderFlags.FORCE_REMOVE_JINJA | RecipeReaderFlags.FLOATS_AS_STRINGS),
         # Tests versions that look like floats.
-        ("types-toml_float_version.yaml", "2.3"),
+        (
+            "types-toml_float_version.yaml",
+            "2.3",
+            RecipeReaderFlags.FORCE_REMOVE_JINJA | RecipeReaderFlags.FLOATS_AS_STRINGS,
+        ),
         ## V1 Format ##
-        ("v1_format/v1_types-toml.yaml", "0.10.8.6"),
-        ("v1_format/v1_types-toml_float_version.yaml", "2.3"),
+        (
+            "v1_format/v1_types-toml.yaml",
+            "0.10.8.6",
+            RecipeReaderFlags.FORCE_REMOVE_JINJA | RecipeReaderFlags.FLOATS_AS_STRINGS,
+        ),
+        (
+            "v1_format/v1_types-toml_float_version.yaml",
+            "2.3",
+            RecipeReaderFlags.FORCE_REMOVE_JINJA | RecipeReaderFlags.FLOATS_AS_STRINGS,
+        ),
     ],
 )
-def test_vb_update_to_same_version_throws_error(file: str, value: str) -> None:
+def test_vb_update_to_same_version_throws_error(file: str, value: str, parser_flags: RecipeReaderFlags) -> None:
     """
     Validates updating the `/package/version` field to the same version throws an error.
 
     :param file: Target recipe file to use.
     :param value: Value to set.
+    :param parser_flags: `RecipeReaderFlags` to be passed to the `VersionBumper` constructor.
     """
-    vb: Final = VersionBumper(get_test_path() / file)
+    vb: Final = VersionBumper(get_test_path() / file, parser_flags=parser_flags)
     with pytest.raises(VersionBumperInvalidState):
         vb.update_version(value)
-
-
-@pytest.mark.parametrize(
-    ["file", "value", "expected", "floats_as_strings"],
-    [
-        ## V0 Format ##
-        # Tests versions that look like floats.
-        ("types-toml_float_version.yaml", "2.3", 2.3, False),
-        ("types-toml_float_version.yaml", "2.3", "2.3", True),
-        ## V1 Format ##
-        ("v1_format/v1_types-toml_float_version.yaml", "2.3", 2.3, False),
-        ("v1_format/v1_types-toml_float_version.yaml", "2.3", "2.3", True),
-    ],
-)
-def test_vb_update_version_flag_behavior(file: str, value: str, expected: float | str, floats_as_strings: bool) -> None:
-    """
-    Validates updating the `/package/version` field to the same version with and without the `FLOATS_AS_STRINGS` flag.
-
-    :param file: Target recipe file to use.
-    :param value: Value to set.
-    :param expected: Expected value to be set if valid.
-    :param floats_as_strings: Boolean for if the `RecipeReaderFlags.FLOATS_AS_STRINGS` flag should be used in
-        the `VersionBumper` constructor.
-    """
-    if not floats_as_strings:
-        vb_no_flag: Final = VersionBumper(get_test_path() / file, parser_flags=RecipeReaderFlags.FORCE_REMOVE_JINJA)
-        assert vb_no_flag.get_recipe_reader().get_value("/package/version", sub_vars=True) == expected
-        assert_vb_no_disk_usage(vb_no_flag)
-    else:
-        vb: Final = VersionBumper(get_test_path() / file)
-        with pytest.raises(VersionBumperInvalidState):
-            vb.update_version(value)
 
 
 ## Functions that require fetched source data. ##
