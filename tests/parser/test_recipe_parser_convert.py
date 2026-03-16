@@ -514,6 +514,16 @@ def test_pre_process_recipe_text(input_file: str, expected_file: str) -> None:
             [],
             [],
         ),
+        (
+            "example-abi3.yaml",
+            [],
+            [
+                "Recipe upgrades cannot currently upgrade ambiguous version constraints on "
+                "dependencies that use variables: {{ compiler('c') }}",
+                "Recipe upgrades cannot currently upgrade ambiguous version constraints on "
+                "dependencies that use variables: {{ stdlib('c') }}",
+            ],
+        ),
     ],
 )
 def test_render_to_v1_recipe_format(file: str, errors: list[str], warnings: list[str]) -> None:
