@@ -191,6 +191,7 @@ class VersionBumper:
         self,
         recipe_path: Path | str,
         options: Optional[VersionBumperOption] = None,
+        parser_flags: RecipeReaderFlags = RecipeReaderFlags.FORCE_REMOVE_JINJA | RecipeReaderFlags.FLOATS_AS_STRINGS,
     ) -> None:
         """
         Constructs a `VersionBumper` instance. This class aims to streamline the process of updating a recipe file to
@@ -199,6 +200,8 @@ class VersionBumper:
         :param recipe_path: Path to the underlying recipe file to "version bump".
         :param options: (Optional) A series of flags that change how this class operates. See the `VersionBumperOption`
             docs for more details.
+        :param parser_flags: (Optional) RecipeReaderFlags forwarded to the underlying `RecipeParserDeps` instance.
+            Defaults to `FORCE_REMOVE_JINJA | FLOATS_AS_STRINGS`.
         :raises IOError: If there is an issue accessing the recipe file on disk.
         :raises ParsingException: If there is an issue parsing the recipe file provided.
         :raises VersionBumperPatchError: If there was an issue editing the recipe file in the pre- or post-processing
@@ -210,9 +213,7 @@ class VersionBumper:
         self._disk_write_cntr = 0
 
         recipe_content: Final = self._recipe_path.read_text(encoding="utf-8")
-        self._recipe_parser = RecipeParserDeps(
-            VersionBumper._pre_process_cleanup(recipe_content), flags=RecipeReaderFlags.FORCE_REMOVE_JINJA
-        )
+        self._recipe_parser = RecipeParserDeps(VersionBumper._pre_process_cleanup(recipe_content), flags=parser_flags)
         self._post_process_cleanup()
 
     def get_recipe_reader(self) -> RecipeReaderDeps:
