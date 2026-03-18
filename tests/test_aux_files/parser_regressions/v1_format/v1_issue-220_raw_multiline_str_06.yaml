@@ -160,6 +160,7 @@ tests:
         - scipy.stats.mstats
         - scipy.stats.qmc
         - scipy.stats.sampling
+      pip_check: false
   - requirements:
       run:
         - array-api-strict >=2.3.1
