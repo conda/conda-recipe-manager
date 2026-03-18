@@ -183,6 +183,8 @@ class RecipeReaderFlags(Flag):
             then unsupported JINJA statements will trigger a ParsingJinjaException.
     FLOATS_AS_STRINGS: Whether to treat floats as strings. If this is set to True,
         then floats will be treated as strings during parsing.
+    ALLOW_DUPLICATE_KEYS: Whether to log a warning for duplicate keys and allow the rest
+        of the bump if True. Throws an exception on duplicate keys if False.
     ALSO_TEST_LATEST_PYTHON: When converting, expand ``python_version`` to a list that tests on both
         the pinned version and the latest Python.
     """
@@ -190,4 +192,5 @@ class RecipeReaderFlags(Flag):
     NONE = 0
     FORCE_REMOVE_JINJA = auto()
     FLOATS_AS_STRINGS = auto()
+    ALLOW_DUPLICATE_KEYS = auto()
     ALSO_TEST_LATEST_PYTHON = auto()

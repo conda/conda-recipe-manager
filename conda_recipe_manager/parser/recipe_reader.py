@@ -10,6 +10,7 @@ import hashlib
 import logging
 import re
 import sys
+import warnings
 from collections.abc import Callable
 from typing import Final, Optional, cast, no_type_check
 
@@ -48,6 +49,7 @@ from conda_recipe_manager.parser.dependency import (
 from conda_recipe_manager.parser.enums import SchemaVersion
 from conda_recipe_manager.parser.exceptions import (
     DuplicateKeyException,
+    DuplicateKeyWarning,
     ParsingException,
     ParsingJinjaException,
     SentinelTypeEvaluationException,
@@ -808,7 +810,19 @@ class RecipeReader(IsModifiable):
                 and not new_node.list_member_flag
                 and new_node.value in [child.value for child in parent.children]
             ):
-                raise DuplicateKeyException(line_idx, str(new_node.value))
+                if RecipeReaderFlags.ALLOW_DUPLICATE_KEYS not in self._flags:
+                    raise DuplicateKeyException(line_idx, str(new_node.value))
+
+                # This warning is disabled in conda-recipe-manager by default and up to the client to enable if needed.
+                # If enabled, warnings.warn will raise the warning to any calling code to be caught without
+                # interrupting code execution like an exception would. This will print to stderr as well.
+                # See /conda-recipe-manager/__init__.py for an example of enabling it.
+                warnings.warn(
+                    f"Duplicate {new_node.value} keys found, ALLOW_DUPLICATE_KEYS enabled, allowing...",
+                    DuplicateKeyWarning,
+                )
+                # Log the warning to actual logs.
+                log.warning("Duplicate %s keys found, ALLOW_DUPLICATE_KEYS enabled, allowing...", new_node.value)
             parent.children.append(new_node)
             # Update the last node for the next line interpretation
             last_node = new_node
@@ -831,6 +845,7 @@ class RecipeReader(IsModifiable):
         # Note: _init_content should be Final, but mypy requires Final attributes to be declared in __init__
         # See https://mypy.readthedocs.io/en/stable/final_attrs.html#syntax-variants
         self._init_content: str = content
+        self._flags = flags
         force_remove_jinja: Final[bool] = RecipeReaderFlags.FORCE_REMOVE_JINJA in flags
         floats_as_strings: Final[bool] = RecipeReaderFlags.FLOATS_AS_STRINGS in flags
         self._yaml_loader: type[SafeLoader] = StringLoader if floats_as_strings else SafeLoader

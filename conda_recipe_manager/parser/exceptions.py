@@ -187,3 +187,12 @@ class DuplicateKeyException(ParsingException):
         :param key: The duplicate key that was encountered.
         """
         super().__init__(f"Duplicate key found at line {line_number}: {key}")
+
+
+class DuplicateKeyWarning(UserWarning):
+    """
+    Issued when duplicate keys are found in a recipe file and ALLOW_DUPLICATE_KEYS is enabled.
+    Wrapping the generic UserWarning in a more descriptive warning for the use case.
+    """
+
+    pass
