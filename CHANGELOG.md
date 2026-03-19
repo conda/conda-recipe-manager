@@ -15,6 +15,15 @@ Note: version releases in the 0.x.y range may introduce breaking changes.
 ### Fixed
 ### Security
 
+## [0.10.1]
+### Added
+- `ALLOW_DUPLICATE_KEYS` flag to ignore duplicate key exception on parsing of recipe files with duplicate keys.
+- `crm convert` support for `python_version_independent` field.
+- `crm convert` flag for managing latest Python version.
+### Changed
+- `FLOATS_AS_STRINGS` to a default flag for the `VersionBumper`.
+- `crm convert` to improve `pip_check` conversion.
+
 ## [0.10.0]
 ### Added
 - Automated CI testing for Python 3.13. Python 3.14 does not have all CRM dependencies available yet.
@@ -256,7 +265,8 @@ and continually changing.
 Migrates parser from [percy](https://github.com/anaconda-distribution/percy/tree/main)
 , ,
 
-[Unreleased]: https://github.com/conda/conda-recipe-manager/compare/v0.10.0...HEAD
+[Unreleased]: https://github.com/conda/conda-recipe-manager/compare/v0.10.1...HEAD
+[0.10.1]: https://github.com/conda/conda-recipe-manager/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/conda/conda-recipe-manager/compare/v0.9.3...v0.10.0
 [0.9.3]: https://github.com/conda/conda-recipe-manager/compare/v0.9.2...v0.9.3
 [0.9.2]: https://github.com/conda/conda-recipe-manager/compare/v0.9.1...v0.9.2
