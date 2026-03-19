@@ -816,7 +816,9 @@ class RecipeReader(IsModifiable):
                 # This warning is disabled in conda-recipe-manager by default and up to the client to enable if needed.
                 # If enabled, warnings.warn will raise the warning to any calling code to be caught without
                 # interrupting code execution like an exception would. This will print to stderr as well.
-                # See /conda-recipe-manager/__init__.py for an example of enabling it.
+                # See:
+                #   - `/conda-recipe-manager/__init__.py` for an example of enabling it.
+                #   - https://docs.python.org/3.11/library/warnings.html for more details.
                 warnings.warn(
                     f"Duplicate {new_node.value} keys found, ALLOW_DUPLICATE_KEYS enabled, allowing...",
                     DuplicateKeyWarning,
@@ -846,8 +848,8 @@ class RecipeReader(IsModifiable):
         # See https://mypy.readthedocs.io/en/stable/final_attrs.html#syntax-variants
         self._init_content: str = content
         self._flags = flags
-        force_remove_jinja: Final[bool] = RecipeReaderFlags.FORCE_REMOVE_JINJA in flags
-        floats_as_strings: Final[bool] = RecipeReaderFlags.FLOATS_AS_STRINGS in flags
+        force_remove_jinja: Final[bool] = RecipeReaderFlags.FORCE_REMOVE_JINJA in self._flags
+        floats_as_strings: Final[bool] = RecipeReaderFlags.FLOATS_AS_STRINGS in self._flags
         self._yaml_loader: type[SafeLoader] = StringLoader if floats_as_strings else SafeLoader
 
         sanitized_yaml, tof_comment_cntr = self._init_schema_version_and_sanitize_v0_yaml(
