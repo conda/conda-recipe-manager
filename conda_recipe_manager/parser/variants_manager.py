@@ -11,6 +11,7 @@ from conda_recipe_manager.parser.cbc_parser import CbcParser, GeneratedVariantsT
 from conda_recipe_manager.parser.recipe_parser_deps import RecipeParserDeps
 from conda_recipe_manager.parser.recipe_reader_deps import RecipeReaderDeps
 from conda_recipe_manager.parser.recipe_variant import RecipeVariant
+from conda_recipe_manager.parser.types import RecipeReaderFlags
 from conda_recipe_manager.types import PRIMITIVES_TUPLE
 
 
@@ -19,18 +20,25 @@ class VariantsManager:
     Class that manages the variants of a recipe, given a list of CBC files.
     """
 
-    def __init__(self, recipe_str: str, cbc_strs: list[str], build_context: BuildContext):
+    def __init__(
+        self,
+        recipe_str: str,
+        cbc_strs: list[str],
+        build_context: BuildContext,
+        flags: RecipeReaderFlags = RecipeReaderFlags.NONE,
+    ):
         """
         Initializes the VariantsManager.
 
         :param recipe_str: String representation of the recipe.
         :param cbc_strs: List of string representations of the CBC files.
         :param build_context: Build context to generate the variants for.
+        :param flags: RecipeReaderFlags to be set. Defaults to `RecipeReaderFlags.NONE`.
         """
         self._build_context = build_context
         self._cbc_parsers: list[CbcParser] = [CbcParser(cbc_str) for cbc_str in cbc_strs]
         variants: Final[GeneratedVariantsType] = CbcParser.generate_variants(self._cbc_parsers, build_context)
-        self._base_recipe: RecipeParserDeps = RecipeParserDeps(recipe_str)
+        self._base_recipe: RecipeParserDeps = RecipeParserDeps(recipe_str, flags=flags)
         self._recipe_variants: list[RecipeVariant] = []
         known_hashes: set[str] = set()
         for full_var in variants:
@@ -38,7 +46,7 @@ class VariantsManager:
             post_cbc_build_context: BuildContext = BuildContext(
                 build_context.get_platform(), {**build_context.get_context(), **var}
             )
-            recipe_var = RecipeVariant(recipe_str, post_cbc_build_context)
+            recipe_var = RecipeVariant(recipe_str, post_cbc_build_context, flags=flags)
             if recipe_var.get_value("/build/skip", default=None) is True:
                 continue
             recipe_var_hash: str = recipe_var.calc_sha256()

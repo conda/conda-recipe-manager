@@ -4,14 +4,16 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Final
 
 import pytest
 
 from conda_recipe_manager.parser._node_var import NodeVar
 from conda_recipe_manager.parser.enums import SchemaVersion
-from conda_recipe_manager.parser.exceptions import DuplicateKeyException, ParsingJinjaException
+from conda_recipe_manager.parser.exceptions import DuplicateKeyException, DuplicateKeyWarning, ParsingJinjaException
 from conda_recipe_manager.parser.recipe_parser import RecipeReader
+from conda_recipe_manager.parser.types import RecipeReaderFlags
 from conda_recipe_manager.types import JsonType, Primitives
 from tests.constants import SIMPLE_DESCRIPTION
 from tests.file_loading import load_file, load_recipe
@@ -1630,16 +1632,20 @@ def test_calc_sha256(file: str, expected: str) -> None:
     assert parser.calc_sha256() == expected
 
 
-@pytest.mark.parametrize("force_remove_jinja", [True, False])
 @pytest.mark.parametrize(
-    "package_name,exception,jinja_statement",
+    "package_name,exception,jinja_statement,flags",
     [
-        ("pdfium-binaries", True, "{% for each_header in headers %}"),  # for statement
-        ("furl", False, ""),  # multi-line and single-line set statements exclusively
+        ("pdfium-binaries", True, "{% for each_header in headers %}", RecipeReaderFlags.NONE),  # for statement
+        (
+            "furl",
+            False,
+            "",
+            RecipeReaderFlags.FORCE_REMOVE_JINJA,
+        ),  # multi-line and single-line set statements exclusively
     ],
 )
 def test_unsupported_jinja2_statements_parsing(
-    package_name: str, exception: bool, jinja_statement: str, force_remove_jinja: bool
+    package_name: str, exception: bool, jinja_statement: str, flags: RecipeReaderFlags
 ) -> None:
     """
     Tests that the recipe parser correctly handles JINJA2 statements
@@ -1647,37 +1653,57 @@ def test_unsupported_jinja2_statements_parsing(
     :param package_name: Name of the package to test
     :param exception: Whether an exception should be raised
     :param jinja_statement: The JINJA statement that caused the exception
-    :param force_remove_jinja: Whether to force remove unsupported JINJA statements from the recipe file.
-            If this is set to True,
-                then unsupported JINJA statements will silently be removed from the recipe file.
-            If this is set to False,
-                then unsupported JINJA statements will trigger a ParsingJinjaException.
+    :param flags: RecipeReaderFlags to enable.
     """
     file: Final[str] = f"jinja2_statements/{package_name}.yaml"
 
-    if exception and not force_remove_jinja:
+    if exception:
         with pytest.raises(ParsingJinjaException) as e:
-            load_recipe(file, RecipeReader, force_remove_jinja)
+            load_recipe(file, RecipeReader, flags)
         assert jinja_statement in str(e.value)
         return
 
     rendered_file: Final[str] = f"jinja2_statements/{package_name}_rendered.yaml"
-    parser = load_recipe(file, RecipeReader, force_remove_jinja)
+    parser = load_recipe(file, RecipeReader, flags)
     assert parser.render() == load_file(rendered_file)
 
 
 @pytest.mark.parametrize(
-    "file",
+    "file,flags",
     [
-        "duplicate_keys/google-cloud-cpp.yaml",
+        ("duplicate_keys/google-cloud-cpp.yaml", RecipeReaderFlags.NONE),
     ],
 )
-def test_duplicate_keys(file: str) -> None:
+def test_duplicate_keys_exception(file: str, flags: RecipeReaderFlags) -> None:
     """
     Tests that the recipe reader correctly handles duplicate keys.
 
     :param file: File to run against
+    :param flags: RecipeReaderFlags to enable.
     """
     with pytest.raises(DuplicateKeyException) as e:
-        load_recipe(file, RecipeReader)
+        load_recipe(file, RecipeReader, flags)
     assert e.value.message == "Duplicate key found at line 36: script"
+
+
+@pytest.mark.parametrize(
+    "file,flags",
+    [
+        ("duplicate_keys/google-cloud-cpp.yaml", RecipeReaderFlags.ALLOW_DUPLICATE_KEYS),
+    ],
+)
+def test_duplicate_keys_allowed(file: str, flags: RecipeReaderFlags, caplog: pytest.LogCaptureFixture) -> None:
+    """
+    Tests that the recipe reader correctly allows duplicate keys and logs a warning.
+
+    :param file: File to run against
+    :param flags: RecipeReaderFlags to enable.
+    :param caplog: Pytest log capture fixture request object.
+    """
+    with caplog.at_level(logging.WARNING):
+        # pytest.ini enables all warnings at error level which treats a warning as an exception.
+        # Use pytest.warns to catch the warning before pytest can classify it as an exception.
+        with pytest.warns(DuplicateKeyWarning):
+            load_recipe(file, RecipeReader, flags)
+
+    assert "Duplicate script keys found, ALLOW_DUPLICATE_KEYS enabled, allowing..." in caplog.text
