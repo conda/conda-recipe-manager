@@ -154,8 +154,6 @@ Here is a brief overview of our current release process:
      feedstock repository.
 1. Make a post to the [build-tools Zulip channel](https://conda.zulipchat.com/#narrow/channel/471111-builds-tools) announcing the release with highlights from `CHANGELOG.md`.
 
-Don't forget, you can use `crm bump-recipe -t <version> recipe/meta.yaml` to help update the recipe file!
-
 # Special Thanks
 - @cbouss for his work on the [Percy project](https://github.com/anaconda/percy) that originally inspired the recipe parser.
 - @akabanovs for his work and experimentation on package dependency graph building.
