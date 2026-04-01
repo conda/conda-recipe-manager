@@ -466,8 +466,36 @@ class RecipeParserConvert(RecipeParserDeps):
                         MessageCategory.WARNING, "HG (Mercurial) packages are no longer supported in the V1 format"
                     )
 
-                # Basic renaming transformations
-                self._patch_move_base_path(src_path, "/fn", "/file_name")
+                # Handle `fn` field conversion to `file_name`
+                # Issue #500: For archive source files, converting `fn` to `file_name` changes behavior
+                # In V1, `file_name` on archives disables automatic extraction, which is not desired
+                fn_path = RecipeParser.append_to_path(src_path, "/fn")
+                if self._v1_recipe.contains_value(fn_path):
+                    fn_value = cast(Optional[str], self._v1_recipe.get_value(fn_path, default=None))
+                    url_value = cast(Optional[str], self._v1_recipe.get_value(RecipeParser.append_to_path(src_path, "url"), default=None))
+                    
+                    # Check if this is an archive source by checking either the fn value or the url
+                    is_archive_source = False
+                    if fn_value is not None and Regex.ARCHIVE_FILE_EXTENSION.search(fn_value):
+                        is_archive_source = True
+                    elif url_value is not None and Regex.ARCHIVE_FILE_EXTENSION.search(url_value):
+                        is_archive_source = True
+                    
+                    if is_archive_source:
+                        # For archive sources, remove `fn` and warn the user
+                        # The user should manually handle this case as there's no direct equivalent
+                        self._patch_and_log({"op": "remove", "path": fn_path})
+                        self._msg_tbl.add_message(
+                            MessageCategory.WARNING,
+                            f"Field `fn` at `{src_path}/fn` was removed. `file_name` cannot be used for "
+                            "archive sources (.tar.gz, .zip, .7z, etc.) as it disables automatic extraction. "
+                            "If a specific file name is needed, consider using a non-archive URL or manual extraction."
+                        )
+                    else:
+                        # For non-archive sources, perform the normal conversion
+                        self._patch_move_base_path(src_path, "/fn", "/file_name")
+
+                # Basic renaming transformations (other than fn, which is handled above)
                 self._patch_move_base_path(src_path, "/folder", "/target_directory")
 
                 # `git` source transformations (`conda` does not appear to support all of the new features)

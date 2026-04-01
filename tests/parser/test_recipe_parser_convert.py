@@ -82,6 +82,9 @@ def test_pre_process_recipe_text(input_file: str, expected_file: str) -> None:
             "pytest-pep8.yaml",
             [],
             [
+                "Field `fn` at `/source/fn` was removed. `file_name` cannot be used for "
+                "archive sources (.tar.gz, .zip, .7z, etc.) as it disables automatic extraction. "
+                "If a specific file name is needed, consider using a non-archive URL or manual extraction.",
                 "Field at `/about/doc_source_url` is no longer supported.",
             ],
         ),
@@ -140,6 +143,9 @@ def test_pre_process_recipe_text(input_file: str, expected_file: str) -> None:
             "boto.yaml",
             [],
             [
+                "Field `fn` at `/source/fn` was removed. `file_name` cannot be used for "
+                "archive sources (.tar.gz, .zip, .7z, etc.) as it disables automatic extraction. "
+                "If a specific file name is needed, consider using a non-archive URL or manual extraction.",
                 "Field at `/about/doc_source_url` is no longer supported.",
             ],
         ),
@@ -165,6 +171,9 @@ def test_pre_process_recipe_text(input_file: str, expected_file: str) -> None:
                     ' use variables: {{ pin_subpackage("libnvpl-fft" ~ somajor ) }}'
                 ),
                 "The following key(s) contain partially unsupported syntax: soversion",
+                "Field `fn` at `/source/fn` was removed. `file_name` cannot be used for "
+                "archive sources (.tar.gz, .zip, .7z, etc.) as it disables automatic extraction. "
+                "If a specific file name is needed, consider using a non-archive URL or manual extraction.",
                 "No `license` provided in `/about`",
             ],
         ),
@@ -173,6 +182,9 @@ def test_pre_process_recipe_text(input_file: str, expected_file: str) -> None:
             "parser_regressions/issue-366_quote_regressions.yaml",
             [],
             [
+                "Field `fn` at `/source/fn` was removed. `file_name` cannot be used for "
+                "archive sources (.tar.gz, .zip, .7z, etc.) as it disables automatic extraction. "
+                "If a specific file name is needed, consider using a non-archive URL or manual extraction.",
                 "The following key(s) contain partially unsupported syntax: soversion",
                 "No `license` provided in `/about`",
             ],

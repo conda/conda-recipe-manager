@@ -307,6 +307,13 @@ class Regex:
     # Regex to detect output section paths
     OUTPUT_SECTION_PATH: Final[re.Pattern[str]] = re.compile(r"^/outputs/\d+")
 
+    # Regex to detect archive file extensions (for source files)
+    # These archives are automatically extracted by rattler-build, but setting `file_name` disables extraction
+    # Based on rattler-build documentation: .tar.gz, .zip, .7z, etc.
+    ARCHIVE_FILE_EXTENSION: Final[re.Pattern[str]] = re.compile(
+        r"\.(tar(\.(gz|bz2|xz|zst|lz4|lzma))?|tgz|tbz2|txz|zip|7z|rar|ar|cpio|shar|iso|deb|rpm)(\s*$|\s*#)"
+    )
+
 
 class StringLoader(SafeLoader):
     """
