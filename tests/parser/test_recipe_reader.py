@@ -246,6 +246,10 @@ def test_round_trip(file: str) -> None:
             "parser_regressions/issue-407_duplicate_jinja_vars_input_streamlit.yaml",
             "parser_regressions/issue-407_duplicate_jinja_vars_parsed_streamlit.yaml",
         ),
+        (
+            "cbc_files/zip_keys_compact_nested_list.yaml",
+            "cbc_files/zip_keys_compact_nested_list_rendered.yaml",
+        ),
         #### V1 Recipe Files ####
     ],
 )
