@@ -464,7 +464,7 @@ class RecipeReader(IsModifiable):
         return Node(value=output, comment=comment)
 
     @staticmethod
-    def _expand_compact_nested_lists(lines: list[str]) -> list[str]:
+    def _expand_compact_nested_lists(yaml_str: str) -> str:
         """
         Expands compact nested list syntax into the equivalent expanded form. For example:
           "  - - target_machine"
@@ -472,21 +472,12 @@ class RecipeReader(IsModifiable):
           "  -"
           "    - target_machine"
 
-        This ensures the parser builds the same tree regardless of which valid YAML form is used.
-
-        :param lines: List of raw YAML lines.
-        :returns: A new list with compact nested lists expanded.
+        :param yaml_str: Raw YAML string.
+        :returns: YAML string with compact nested lists expanded.
         """
-        expanded: list[str] = []
-        for line in lines:
-            stripped = line.lstrip()
-            if stripped.startswith("- - "):
-                indent = len(line) - len(stripped)
-                expanded.append(" " * indent + "-")
-                expanded.append(" " * (indent + TAB_SPACE_COUNT) + stripped[2:])
-            else:
-                expanded.append(line)
-        return expanded
+        if not yaml_str:
+            return yaml_str
+        return re.sub(r"^(\s*)- - ", r"\1-\n\1  - ", yaml_str, flags=re.MULTILINE)
 
     @staticmethod
     def _create_private_recipe_reader(content: str) -> RecipeReader:
@@ -782,7 +773,8 @@ class RecipeReader(IsModifiable):
 
         # Iterate with an index variable, so we can handle multiline values
         line_idx = 0
-        lines: Final = RecipeReader._expand_compact_nested_lists(sanitized_yaml.splitlines())
+        sanitized_yaml = RecipeReader._expand_compact_nested_lists(sanitized_yaml)
+        lines: Final = sanitized_yaml.splitlines()
         num_lines: Final = len(lines)
         while line_idx < num_lines:
             line = lines[line_idx]
