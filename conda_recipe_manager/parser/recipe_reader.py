@@ -477,7 +477,7 @@ class RecipeReader(IsModifiable):
         """
         if not yaml_str:
             return yaml_str
-        return re.sub(r"^(\s*)- - ", r"\1-\n\1  - ", yaml_str, flags=re.MULTILINE)
+        return re.sub(r"^(\s*)-\s+- ", r"\1-\n\1  - ", yaml_str, flags=re.MULTILINE)
 
     @staticmethod
     def _create_private_recipe_reader(content: str) -> RecipeReader:

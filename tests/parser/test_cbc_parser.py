@@ -366,6 +366,11 @@ def test_get_cbc_variable_values_with_default(
             BuildContext(platform=Platform.LINUX_64),
             [{"target_machine", "cross_target_platform", "centos_machine"}],
         ),
+        (
+            "zip_keys_compact_nested_list_extra_spaces.yaml",
+            BuildContext(platform=Platform.LINUX_64),
+            [{"target_machine", "cross_target_platform", "centos_machine"}],
+        ),
     ],
 )
 def test_get_zip_keys(file: str, build_context: BuildContext, expected: list[set[str]]) -> None:
