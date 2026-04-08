@@ -82,6 +82,9 @@ def stack_path_to_str(path_stack: StrStack | StrStackImmutable) -> str:
     :param path_stack: Stack to construct back into a string.
     :returns: Path, described as a string.
     """
+    # Immediately make a shallow copy of the list so that when we pop() we are modifying the copy and not the original.
+    # The list() constructor is a shallow copy by default which is enough since we are only modifying the list itself
+    # with the pop(), not the list contents (which would need a deepcopy).
     path_stack = list(path_stack)
     path = ""
     while len(path_stack) > 0:
