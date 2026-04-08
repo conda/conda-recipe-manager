@@ -148,6 +148,7 @@ def test_fetch(
     request.getfixturevalue("fs").add_real_directory(get_test_path() / "archive_files")  # type: ignore[misc]
 
     http_fetcher = cast(HttpArtifactFetcher, request.getfixturevalue(http_fixture))
+    request.addfinalizer(http_fetcher.cleanup)
     with patch("requests.get", new=mock_requests_get):
         http_fetcher.fetch()
 
