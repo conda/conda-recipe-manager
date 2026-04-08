@@ -82,9 +82,7 @@ def stack_path_to_str(path_stack: StrStack | StrStackImmutable) -> str:
     :param path_stack: Stack to construct back into a string.
     :returns: Path, described as a string.
     """
-    # Normalize type if a tuple is given.
-    if isinstance(path_stack, tuple):
-        path_stack = list(path_stack)
+    path_stack = list(path_stack)
     path = ""
     while len(path_stack) > 0:
         value = path_stack.pop()
