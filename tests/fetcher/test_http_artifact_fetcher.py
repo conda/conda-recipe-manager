@@ -214,6 +214,7 @@ def test_get_path_to_source_code(http_fixture: str, expected_src: str, request: 
     request.getfixturevalue("fs").add_real_directory(get_test_path() / "archive_files")  # type: ignore[misc]
 
     http_fetcher = cast(HttpArtifactFetcher, request.getfixturevalue(http_fixture))
+    request.addfinalizer(http_fetcher.cleanup)
     with patch("requests.get", new=mock_requests_get):
         http_fetcher.fetch()
 
@@ -253,6 +254,7 @@ def test_get_path_to_archive(http_fixture: str, expected_archive: str, request: 
     request.getfixturevalue("fs").add_real_directory(get_test_path() / "archive_files")  # type: ignore[misc]
 
     http_fetcher = cast(HttpArtifactFetcher, request.getfixturevalue(http_fixture))
+    request.addfinalizer(http_fetcher.cleanup)
     with patch("requests.get", new=mock_requests_get):
         http_fetcher.fetch()
 
@@ -292,6 +294,7 @@ def test_get_archive_sha256(http_fixture: str, expected_hash: str, request: pyte
     request.getfixturevalue("fs").add_real_directory(get_test_path() / "archive_files")  # type: ignore[misc]
 
     http_fetcher = cast(HttpArtifactFetcher, request.getfixturevalue(http_fixture))
+    request.addfinalizer(http_fetcher.cleanup)
     with patch("requests.get", new=mock_requests_get):
         http_fetcher.fetch()
 
@@ -331,6 +334,7 @@ def test_get_archive_type(
     request.getfixturevalue("fs").add_real_directory(get_test_path() / "archive_files")  # type: ignore[misc]
 
     http_fetcher = cast(HttpArtifactFetcher, request.getfixturevalue(http_fixture))
+    request.addfinalizer(http_fetcher.cleanup)
     with patch("requests.get", new=mock_requests_get):
         http_fetcher.fetch()
 
