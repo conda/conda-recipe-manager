@@ -7,11 +7,11 @@ from __future__ import annotations
 from typing import Final, cast
 
 from conda_recipe_manager.parser.build_context import BuildContext
-from conda_recipe_manager.parser.cbc_parser import CbcParser, GeneratedVariantsType
+from conda_recipe_manager.parser.cbc_reader import CbcReader
 from conda_recipe_manager.parser.recipe_parser_deps import RecipeParserDeps
 from conda_recipe_manager.parser.recipe_reader_deps import RecipeReaderDeps
 from conda_recipe_manager.parser.recipe_variant import RecipeVariant
-from conda_recipe_manager.parser.types import RecipeReaderFlags
+from conda_recipe_manager.parser.types import GeneratedVariantsType, RecipeReaderFlags
 from conda_recipe_manager.types import PRIMITIVES_TUPLE
 
 
@@ -36,8 +36,8 @@ class VariantsManager:
         :param flags: RecipeReaderFlags to be set. Defaults to `RecipeReaderFlags.NONE`.
         """
         self._build_context = build_context
-        self._cbc_parsers: list[CbcParser] = [CbcParser(cbc_str) for cbc_str in cbc_strs]
-        variants: Final[GeneratedVariantsType] = CbcParser.generate_variants(self._cbc_parsers, build_context)
+        self._cbc_parsers: list[CbcReader] = [CbcReader(cbc_str) for cbc_str in cbc_strs]
+        variants: Final[GeneratedVariantsType] = CbcReader.generate_variants(self._cbc_parsers, build_context)
         self._base_recipe: RecipeParserDeps = RecipeParserDeps(recipe_str, flags=flags)
         self._recipe_variants: list[RecipeVariant] = []
         known_hashes: set[str] = set()
@@ -67,7 +67,7 @@ class VariantsManager:
         """
         return cast(list[RecipeReaderDeps], self._recipe_variants)
 
-    def get_cbc_parsers(self) -> list[CbcParser]:
+    def get_cbc_parsers(self) -> list[CbcReader]:
         """
         Returns the CBC parsers.
         """

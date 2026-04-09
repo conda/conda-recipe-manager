@@ -1,5 +1,5 @@
 """
-:Description: Provides unit tests for the CBC Parser module
+:Description: Provides unit tests for the CBC Reader module
 """
 
 from pathlib import Path
@@ -8,8 +8,9 @@ from typing import Final, cast
 import pytest
 
 from conda_recipe_manager.parser.build_context import BuildContext
-from conda_recipe_manager.parser.cbc_parser import _SPECIAL_KEYS, CbcOutputType, CbcParser
+from conda_recipe_manager.parser.cbc_reader import _SPECIAL_KEYS, CbcReader
 from conda_recipe_manager.parser.platform_types import Platform
+from conda_recipe_manager.parser.types import CbcOutputType
 from conda_recipe_manager.types import JsonType, Primitives
 from tests.file_loading import get_test_path, load_cbc, load_json_file
 
@@ -24,7 +25,7 @@ CONDA_BUILD_VARIANTS_PATH: Final[Path] = get_test_path() / "variants"
 )
 def test_eq(file0: str, file1: str, expected: bool) -> None:
     """
-    Ensures that two CBC Parsers can be checked for equality.
+    Ensures that two CBC Readers can be checked for equality.
 
     :param file0: File to initialize the LHS-parser in the expression
     :param file1: File to initialize the RHS-parser in the expression
@@ -53,8 +54,7 @@ def test_contains(file: str, variable: str, expected: bool) -> None:
     :param variable: Target variable name
     :param expected: Expected result of the test
     """
-    parser = load_cbc(file)
-    assert (variable in parser) == expected
+    assert (variable in load_cbc(file)) == expected
 
 
 @pytest.mark.parametrize(
@@ -159,13 +159,12 @@ def test_contains(file: str, variable: str, expected: bool) -> None:
 )
 def test_list_cbc_variables(file: str, expected: list[str]) -> None:
     """
-    Validates fetching all variables defined in a CBC parser instance.
+    Validates fetching all variables defined in a CBC reader instance.
 
     :param file: File to test against
     :param expected: Expected result of the test
     """
-    parser = load_cbc(file)
-    assert parser.list_cbc_variables() == expected
+    assert load_cbc(file).list_cbc_variables() == expected
 
 
 @pytest.mark.parametrize(
@@ -212,8 +211,7 @@ def test_get_cbc_variable_values(
     :param build_context: Target build context
     :param expected: Expected result of the test
     """
-    parser = load_cbc(file)
-    assert parser.get_cbc_variable_values(variable, build_context) == expected
+    assert load_cbc(file).get_cbc_variable_values(variable, build_context) == expected
 
 
 @pytest.mark.parametrize(
@@ -236,9 +234,9 @@ def test_get_cbc_variable_values_raises(
     :param build_context: Target build context
     :param exception: Exception expected to be raised
     """
-    parser = load_cbc(file)
+    reader: Final = load_cbc(file)
     with pytest.raises(exception):  # type: ignore
-        parser.get_cbc_variable_values(variable, build_context)
+        reader.get_cbc_variable_values(variable, build_context)
 
 
 @pytest.mark.parametrize(
@@ -263,8 +261,7 @@ def test_get_cbc_variable_values_with_default(
     :param default: Default value to use if the value could not be found
     :param expected: Expected result of the test
     """
-    parser = load_cbc(file)
-    assert parser.get_cbc_variable_values(variable, build_context, default) == expected
+    assert load_cbc(file).get_cbc_variable_values(variable, build_context, default) == expected
 
 
 @pytest.mark.parametrize(
@@ -371,8 +368,7 @@ def test_get_zip_keys(file: str, build_context: BuildContext, expected: list[set
     :param build_context: Target build context
     :param expected: Expected result of the test
     """
-    parser = load_cbc(file)
-    assert parser.get_zip_keys(build_context) == expected
+    assert load_cbc(file).get_zip_keys(build_context) == expected
 
 
 @pytest.mark.parametrize(
@@ -429,7 +425,7 @@ def test_get_zip_keys(file: str, build_context: BuildContext, expected: list[set
         ),
     ],
 )
-def test_generate_cbc_values(files: list[CbcParser], build_context: BuildContext, expected: CbcOutputType) -> None:
+def test_generate_cbc_values(files: list[CbcReader], build_context: BuildContext, expected: CbcOutputType) -> None:
     """
     Validates generating the CBC variable values from a list of CBC files.
 
@@ -437,7 +433,7 @@ def test_generate_cbc_values(files: list[CbcParser], build_context: BuildContext
     :param build_context: Build context to generate the values for.
     :param expected: Expected result of the test.
     """
-    assert CbcParser.generate_cbc_values(files, build_context) == expected
+    assert CbcReader.generate_cbc_values(files, build_context) == expected
 
 
 def _remove_special_keys(variant: dict[str, JsonType]) -> dict[str, JsonType]:
@@ -535,7 +531,7 @@ def _find_matching_variant(var_to_find: dict[str, JsonType], variants: list[dict
     ],
 )
 def test_generate_variants(
-    cbc_files: list[CbcParser], build_context: BuildContext, conda_build_variants: list[dict[str, JsonType]]
+    cbc_files: list[CbcReader], build_context: BuildContext, conda_build_variants: list[dict[str, JsonType]]
 ) -> None:
     """
     Validates generating the variants from a list of CBC files.
@@ -545,7 +541,7 @@ def test_generate_variants(
     :param conda_build_variants: Conda build variants to compare against.
     """
     # Generate the variants
-    generated_variants: list[dict[str, JsonType]] = list(CbcParser.generate_variants(cbc_files, build_context))
+    generated_variants: list[dict[str, JsonType]] = list(CbcReader.generate_variants(cbc_files, build_context))
     # Remove the ignored special keys from the expected variants
     expected_variants = [_remove_special_keys(variant) for variant in conda_build_variants]
 
