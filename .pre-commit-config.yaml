@@ -34,27 +34,21 @@ repos:
   - id: check-github-actions
   - id: check-github-workflows
   - id: check-renovate
-# Notes:
-# - By default, `black` uses a line-length of 88.
-# - `isort` will conflict with `black`, if not properly configured
-- repo: https://github.com/pycqa/isort
-  rev: 5.13.2
-  hooks:
-  - id: isort
-    args: ["--profile", "black", --line-length=120]
-- repo: https://github.com/psf/black
-  rev: 24.4.2
-  hooks:
-  - id: black
-    args: [--line-length=120]
-- repo: https://github.com/PyCQA/pylint
-  rev: v4.0.4
-  hooks:
-  - id: pylint
-    args: ["--rcfile=.pylintrc"]
 # `pre-commit` no longer provides a hook for `pytest`, by design
 - repo: local
   hooks:
+  # To prevent version inconsistencies between pre-commit and our `make` directives, we now invoke the `make`
+  # versions of formatting and linting commands.
+  - id: code-format
+    language: system
+    name: code-format
+    pass_filenames: false
+    entry: make format
+  - id: pylint
+    language: system
+    name: pylint
+    pass_filenames: false
+    entry: make lint
   - id: mypy
     language: system
     name: mypy
