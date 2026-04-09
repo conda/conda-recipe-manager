@@ -19,7 +19,7 @@ class NodeVar:
     """
     Simple representation of a variable found in a recipe or CBC file.
 
-    This class was originally called `_CBCEntry` and was exclusively used in the `CbcParser` class. It has now been
+    This class was originally called `_CBCEntry` and was exclusively used in the `CbcReader` class. It has now been
     generalized for use in the `RecipeParser` class.
     """
 

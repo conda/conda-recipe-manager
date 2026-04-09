@@ -9,7 +9,7 @@ import os
 from pathlib import Path
 from typing import Final, Type, TypeVar, cast
 
-from conda_recipe_manager.parser.cbc_parser import CbcParser
+from conda_recipe_manager.parser.cbc_reader import CbcReader
 from conda_recipe_manager.parser.recipe_reader import RecipeReader
 from conda_recipe_manager.parser.types import RecipeReaderFlags
 from conda_recipe_manager.types import JsonType
@@ -66,15 +66,15 @@ def load_recipe(
     return recipe_parser(recipe, parser_flags)
 
 
-def load_cbc(file_name: Path | str) -> CbcParser:
+def load_cbc(file_name: Path | str) -> CbcReader:
     """
     Convenience function that simplifies initializing a CBC parser.
 
     :param file_name: File name of the test CBC file to load
-    :returns: RecipeParser instance, based on the file
+    :returns: CbcReader instance, based on the file
     """
     cbc: Final[str] = load_file(get_test_path() / "cbc_files" / file_name)
-    return CbcParser(cbc)
+    return CbcReader(cbc)
 
 
 def load_json_file(file: Path | str) -> JsonType:
