@@ -620,6 +620,9 @@ class RecipeParserConvert(RecipeParserDeps):
             # `build/python_version_independent` -> `build/python/version_independent`
             self._patch_move_new_path(build_path, "/python_version_independent", "/python", "version_independent")
 
+            # `build/skip_compile_pyc` -> `build/python/skip_pyc_compilation`
+            self._patch_move_new_path(build_path, "/skip_compile_pyc", "/python", "skip_pyc_compilation")
+
             # New `prefix_detection` section changes
             # NOTE: There is a new `force_file_type` field that may map to an unknown field that conda supports.
             self._patch_move_new_path(build_path, "/ignore_prefix_files", "/prefix_detection", "/ignore")
