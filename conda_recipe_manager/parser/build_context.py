@@ -4,7 +4,7 @@
 
 from enum import StrEnum
 from functools import cache
-from typing import Final, cast
+from typing import Final, Optional, cast
 
 from conda_recipe_manager.parser.exceptions import BuildContextVersionException
 from conda_recipe_manager.parser.platform_types import (
@@ -123,9 +123,7 @@ class BuildContext:
             selector_context[key] = value
         return selector_context
 
-    def __init__(  # pylint: disable=dangerous-default-value
-        self, platform: Platform, build_env_vars: dict[str, Primitives] = {}
-    ) -> None:
+    def __init__(self, platform: Platform, build_env_vars: Optional[dict[str, Primitives]] = None) -> None:
         """
         Constructs a build context given the platform and build environment variables.
 
@@ -133,7 +131,7 @@ class BuildContext:
         :param build_env_vars: Build environment variables to evaluate the context for.
         """
         self._platform: Final[Platform] = platform
-        self._build_env_vars: Final[dict[str, Primitives]] = build_env_vars
+        self._build_env_vars: Final[dict[str, Primitives]] = {} if build_env_vars is None else build_env_vars
         self._context: Final[dict[str, Primitives]] = self._construct_build_context()
         self._selector_context: Final[dict[str, Primitives]] = self._construct_selector_context()
 
