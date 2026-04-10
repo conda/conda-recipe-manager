@@ -91,10 +91,11 @@ class RecipeReaderDeps(RecipeReader):
         )
         for path in self.get_package_paths():
             try:
-                if path == ROOT_NODE_VALUE:
-                    name = cast(str, self.get_value(root_name_path, sub_vars=True))
-                else:
-                    name = cast(str, self.get_value(RecipeReader.append_to_path(path, name_path), sub_vars=True))
+                name = (
+                    str(self.get_value(root_name_path, sub_vars=True))
+                    if path == ROOT_NODE_VALUE
+                    else str(self.get_value(RecipeReader.append_to_path(path, name_path), sub_vars=True))
+                )
             except KeyError as e:
                 raise KeyError(f"Could not find a package name associated with path: {path}") from e
 
