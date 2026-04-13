@@ -1023,9 +1023,14 @@ class RecipeReader(IsModifiable):
 
             return True
 
+        # Edge case: A list of lists needs to be indicated with an additional `-` before subsequent list items are
+        # shown. In CBC files, these list indicator lines may also contain selectors.
+        if node.is_collection_element() and node.children and node.children[0].list_member_flag:
+            lines.append(f"{TAB_AS_SPACES * (depth)}-  {node.comment}".rstrip())
+
         # Edge case: The first element of dictionary in a list has a list `- ` prefix. Subsequent keys in the dictionary
         # just have a tab.
-        is_first_collection_child: Final[bool] = (
+        is_first_collection_child: Final = (
             parent is not None and parent.is_collection_element() and node == parent.children[0]
         )
 
@@ -1123,6 +1128,7 @@ class RecipeReader(IsModifiable):
                     )
             else:
                 RecipeReader._render_tree(child, depth + depth_delta, lines, schema_version, node)
+            # TODO: CBC Parsers should not add new lines
             # By tradition, recipes have a blank line after every top-level section, unless they are a comment. Comments
             # should be left where they are.
             if depth < 0 and not child.is_comment():

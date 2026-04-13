@@ -221,11 +221,16 @@ def test_loading_obj_in_list() -> None:
         "parser_regressions/v1_format/v1_issue-220_raw_multiline_str_05.yaml",
         "parser_regressions/v1_format/v1_issue-220_raw_multiline_str_06.yaml",
         "parser_regressions/v1_format/v1_issue-220_raw_multiline_str_07.yaml",
-        ## V0-style CBC files ##
+        #### List-within-a-list Regressions (V0 + V1) ####
+        "parser_regressions/list_of_lists_multiline_str_01.yaml",
+        "parser_regressions/list_of_lists_multiline_str_02.yaml",
+        "parser_regressions/list_of_lists_multiline_str_03.yaml",
+        "parser_regressions/list_of_lists_one_member.yaml",
+        #### V0-style CBC files ####
         "cbc_files/boost_cbc.yaml",
         "cbc_files/zip_keys_simple_list.yaml",
-        # TODO fix
-        # "cbc_files/zip_keys_multiple_lists.yaml",
+        # Regression: `RecipeReader` should be able to render lists within lists correctly.
+        "cbc_files/zip_keys_multiple_lists.yaml",
     ],
 )
 def test_round_trip(file: str) -> None:
@@ -270,7 +275,7 @@ def test_round_trip_with_changes(file: str, expected: str) -> None:
 @pytest.mark.parametrize(
     "file,substitute,expected",
     [
-        # V0 Recipes
+        #### V0 Recipes ####
         (
             "simple-recipe.yaml",
             False,
@@ -434,7 +439,33 @@ def test_round_trip_with_changes(file: str, expected: str) -> None:
                 ]
             },
         ),
-        ## V0-style CBC files ##
+        #### List-within-a-list Regressions (V0 + V1) ####
+        (
+            "parser_regressions/list_of_lists_multiline_str_01.yaml",
+            False,
+            {"mr_burns": [["It was the best of times,\nIt was the blurst of times!?\nYou stupid monkey!"]]},
+        ),
+        (
+            "parser_regressions/list_of_lists_multiline_str_02.yaml",
+            False,
+            {"mr_burns": [["It was the best of times, It was the blurst of times!? You stupid monkey!"]]},
+        ),
+        (
+            "parser_regressions/list_of_lists_multiline_str_03.yaml",
+            False,
+            {
+                "mr_burns": [
+                    [
+                        "Excellent, Smithers.",
+                        "It was the best of times, It was the blurst of times!? You stupid monkey!",
+                        "It was the best of times,\nIt was the blurst of times!?\nYou stupid monkey!",
+                        "Homer Simpson, eh?",
+                    ],
+                ]
+            },
+        ),
+        ("parser_regressions/list_of_lists_one_member.yaml", False, {"foo": [["bar"]]}),
+        #### V0-style CBC files ####
         (
             "cbc_files/boost_cbc.yaml",
             False,
