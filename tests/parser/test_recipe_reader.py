@@ -397,6 +397,43 @@ def test_round_trip_with_changes(file: str, expected: str) -> None:
                 "package": {"name": "types-toml"},
             },
         ),
+        (
+            "multi-output.yaml",
+            False,
+            {
+                "outputs": [
+                    {
+                        "name": "libdb",
+                        "build": {
+                            "run_exports": ["bar"],
+                        },
+                        "test": {
+                            "commands": [
+                                "test -f ${PREFIX}/lib/libdb${SHLIB_EXT}",
+                                r"if not exist %LIBRARY_BIN%\libdb%SHLIB_EXT%",
+                            ],
+                        },
+                    },
+                    {
+                        "name": "db",
+                        "requirements": {
+                            "build": [
+                                "foo3",
+                                "foo2",
+                                "{{ compiler('c') }}",
+                                "{{ compiler('cxx') }}",
+                            ],
+                            "run": ["foo"],
+                        },
+                        "test": {
+                            "commands": [
+                                "db_archive -m hello",
+                            ]
+                        },
+                    },
+                ]
+            },
+        ),
         ## V0-style CBC files ##
         (
             "cbc_files/boost_cbc.yaml",
@@ -507,46 +544,6 @@ def test_render_to_object(file: str, substitute: bool, expected: JsonType) -> No
     """
     parser = load_recipe(file, RecipeReader)
     assert parser.render_to_object(substitute) == expected
-
-
-def test_render_to_object_multi_output() -> None:
-    """
-    Tests rendering a recipe to an object format.
-    """
-    parser = load_recipe("multi-output.yaml", RecipeReader)
-    assert parser.render_to_object() == {
-        "outputs": [
-            {
-                "name": "libdb",
-                "build": {
-                    "run_exports": ["bar"],
-                },
-                "test": {
-                    "commands": [
-                        "test -f ${PREFIX}/lib/libdb${SHLIB_EXT}",
-                        r"if not exist %LIBRARY_BIN%\libdb%SHLIB_EXT%",
-                    ],
-                },
-            },
-            {
-                "name": "db",
-                "requirements": {
-                    "build": [
-                        "foo3",
-                        "foo2",
-                        "{{ compiler('c') }}",
-                        "{{ compiler('cxx') }}",
-                    ],
-                    "run": ["foo"],
-                },
-                "test": {
-                    "commands": [
-                        "db_archive -m hello",
-                    ]
-                },
-            },
-        ]
-    }
 
 
 ## Values ##
