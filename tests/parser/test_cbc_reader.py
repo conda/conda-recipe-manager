@@ -448,19 +448,6 @@ def _remove_special_keys(variant: dict[str, JsonType]) -> dict[str, JsonType]:
     return variant
 
 
-def _transform_integers_to_strings(variant: dict[str, JsonType]) -> dict[str, JsonType]:
-    """
-    Transforms integers to strings in a variant.
-
-    :param variant: Variant to transform.
-    :returns: Variant with integers transformed to strings.
-    """
-    for key, value in variant.items():
-        if isinstance(value, int):
-            variant[key] = str(value)
-    return variant
-
-
 def _find_matching_variant(var_to_find: dict[str, JsonType], variants: list[dict[str, JsonType]]) -> bool:
     """
     Finds a matching variant in a tuple of variants.

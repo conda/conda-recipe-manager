@@ -204,6 +204,32 @@ class Dependency(NamedTuple):
     # The selector applied to this dependency, if applicable
     selector: Optional[SelectorParser] = None
 
+    @staticmethod
+    def from_auto(
+        required_by: str, path: str, data: DependencyData, selector: Optional[SelectorParser] = None
+    ) -> Dependency:
+        """
+        Construct a `Dependency` instance with some automatically-derived fields. Namely, the `path` field inherently
+        contains the information to determine the `type` of dependency.
+
+        This allows the `Dependency` structure to preserve backwards compatibility with existing projects while also
+        offering a mechanism to conveniently and accurately derive the `type` for users.
+
+        :param required_by: Owning package name
+        :param path: Path in the recipe where this dependency was found
+        :param type: Identifies what kind of dependency this is
+        :param data: Parsed dependency. Identifies a name and version constraints
+        :param selector: The selector applied to this dependency, if applicable
+        """
+        return Dependency(
+            required_by=required_by,
+            path=path,
+            # TODO
+            type=None,
+            data=data,
+            selector=selector,
+        )
+
 
 # Maps-out dependencies found in a recipe. Maps package name -> list of parsed dependencies.
 DependencyMap = dict[str, list[Dependency]]
