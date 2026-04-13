@@ -852,7 +852,8 @@ class RecipeReader(IsModifiable):
         floats_as_strings: Final[bool] = RecipeReaderFlags.FLOATS_AS_STRINGS in self._flags
         self._yaml_loader: type[SafeLoader] = StringLoader if floats_as_strings else SafeLoader
         # Flag indicating if the file being read-in is a CBC file, which changes some behaviors of the parser's
-        # rendering engine to match common Conda conventions. This is set by the CBC-parsing-child classes.
+        # rendering engine to match common Conda conventions. This is set by the CBC-parsing-child classes and prevents
+        # those classes from having to override critical infrastructure provided by the `RecipeReader` class.
         self._is_cbc = False
 
         sanitized_yaml, tof_comment_cntr = self._init_schema_version_and_sanitize_v0_yaml(
