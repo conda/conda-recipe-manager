@@ -1,5 +1,6 @@
 """
-:Description: Unit tests for the RecipeReader class
+:Description: Unit tests for the `RecipeReader` class and its derivatives (`RecipeParser`, `CbcReader`, etrc). This file
+    extensively validates our V0 and V1 recipe (and CBC) file parsing capabilities.
 """
 
 from __future__ import annotations
@@ -220,6 +221,11 @@ def test_loading_obj_in_list() -> None:
         "parser_regressions/v1_format/v1_issue-220_raw_multiline_str_05.yaml",
         "parser_regressions/v1_format/v1_issue-220_raw_multiline_str_06.yaml",
         "parser_regressions/v1_format/v1_issue-220_raw_multiline_str_07.yaml",
+        ## V0-style CBC files ##
+        "cbc_files/boost_cbc.yaml",
+        "cbc_files/zip_keys_simple_list.yaml",
+        # TODO fix
+        # "cbc_files/zip_keys_multiple_lists.yaml",
     ],
 )
 def test_round_trip(file: str) -> None:
@@ -389,6 +395,103 @@ def test_round_trip_with_changes(file: str, expected: str) -> None:
                 },
                 "build": {"is_true": True, "skip": True, "number": 0},
                 "package": {"name": "types-toml"},
+            },
+        ),
+        ## V0-style CBC files ##
+        (
+            "cbc_files/boost_cbc.yaml",
+            False,
+            {
+                "c_compiler_version": ["17.0.6"],
+                "cxx_compiler_version": ["17.0.6"],
+            },
+        ),
+        (
+            "cbc_files/boost_cbc.yaml",
+            # NOTE: CBC files define variables, they should not contain JINJA variables/expressions. This test acts as
+            #       a small smoke-test against setting this flag on reading from a CBC file.
+            True,
+            {
+                "c_compiler_version": ["17.0.6"],
+                "cxx_compiler_version": ["17.0.6"],
+            },
+        ),
+        (
+            "cbc_files/zip_keys_simple_list.yaml",
+            False,
+            {
+                "zip_keys": [
+                    "python",
+                    "numpy",
+                    "pypy",
+                    "pypy3",
+                    "boost",
+                    "boost_cpp",
+                    "libpng",
+                    "libtiff",
+                    "lzo",
+                    "lz4",
+                    "xz",
+                    "zstd",
+                    "liblzma",
+                    "libzstd",
+                    "m2w64_c_compiler_version",
+                    "m2w64_cxx_compiler_version",
+                    "m2w64_fortran_compiler_version",
+                    "rust_compiler_version",
+                    "rust_gnu_compiler_version",
+                    "r_version",
+                    "r_implementation",
+                ],
+            },
+        ),
+        (
+            "cbc_files/zip_keys_multiple_lists.yaml",
+            False,
+            {
+                "zip_keys": [
+                    [
+                        "python",
+                        "numpy",
+                    ],
+                    [
+                        "pypy",
+                        "pypy3",
+                    ],
+                    [
+                        "boost",
+                        "boost_cpp",
+                    ],
+                    [
+                        "libpng",
+                        "libtiff",
+                    ],
+                    [
+                        "lzo",
+                        "lz4",
+                    ],
+                    [
+                        "xz",
+                        "zstd",
+                    ],
+                    [
+                        "liblzma",
+                        "libzstd",
+                    ],
+                    [
+                        "m2w64_c_compiler_version",
+                        "m2w64_cxx_compiler_version",
+                        "m2w64_fortran_compiler_version",
+                    ],
+                    [
+                        "rust_compiler_version",
+                        "rust_gnu_compiler_version",
+                    ],
+                    [
+                        "r_version",
+                        "r_implementation",
+                    ],
+                ],
             },
         ),
     ],
