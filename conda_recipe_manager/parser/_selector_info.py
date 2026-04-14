@@ -25,5 +25,5 @@ class SelectorInfo(NamedTuple):
 
         :returns: String representation of a `SelectorInfo` instance
         """
-        path_str = stack_path_to_str(self.path.copy())
+        path_str = stack_path_to_str(self.path)
         return f"{self.node.short_str()} -> {path_str}"

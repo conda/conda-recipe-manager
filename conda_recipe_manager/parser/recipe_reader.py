@@ -868,6 +868,10 @@ class RecipeReader(IsModifiable):
         force_remove_jinja: Final[bool] = RecipeReaderFlags.FORCE_REMOVE_JINJA in self._flags
         floats_as_strings: Final[bool] = RecipeReaderFlags.FLOATS_AS_STRINGS in self._flags
         self._yaml_loader: type[SafeLoader] = StringLoader if floats_as_strings else SafeLoader
+        # Flag indicating if the file being read-in is a CBC file, which changes some behaviors of the parser's
+        # rendering engine to match common Conda conventions. This is set by the CBC-parsing-child classes and prevents
+        # those classes from having to override critical infrastructure provided by the `RecipeReader` class.
+        self._is_cbc = False
 
         sanitized_yaml, tof_comment_cntr = self._init_schema_version_and_sanitize_v0_yaml(
             internal_call, force_remove_jinja
@@ -1006,17 +1010,26 @@ class RecipeReader(IsModifiable):
 
     @staticmethod
     def _render_tree(
-        node: Node, depth: int, lines: list[str], schema_version: SchemaVersion, parent: Optional[Node] = None
+        node: Node,
+        depth: int,
+        lines: list[str],
+        schema_version: SchemaVersion,
+        is_cbc: bool,
+        omit_trailing_newline: bool,
+        parent: Optional[Node] = None,
     ) -> None:
         # pylint: disable=too-complex
         # TODO This function REALLY needs to be refactored and simplified ^
         """
         Recursive helper function that traverses the parse tree to generate a file.
 
-        :param node: Current node in the tree
-        :param depth: Current depth of the recursion
-        :param lines: Accumulated list of lines in the recipe file
-        :param schema_version: Target recipe schema version
+        :param node: Current node in the tree.
+        :param depth: Current depth of the recursion.
+        :param lines: Accumulated list of lines in the recipe file.
+        :param schema_version: Target recipe schema version.
+        :param is_cbc: Flag indicating if this file is being interpreted as a CBC file.
+        :param omit_trailing_newline: User-supplied flag indicating if the trailing newline should NOT be included. This
+            is a strong preference for various groups of the Conda Community.
         :param parent: (Optional) Parent node to the current node. Set by recursive calls only.
         """
         spaces = TAB_AS_SPACES * depth
@@ -1040,9 +1053,14 @@ class RecipeReader(IsModifiable):
 
             return True
 
+        # Edge case: A list of lists needs to be indicated with an additional `-` before subsequent list items are
+        # shown. In CBC files, these list indicator lines may also contain selectors.
+        if node.is_collection_element() and node.children and node.children[0].list_member_flag:
+            lines.append(f"{TAB_AS_SPACES * (depth)}-  {node.comment}".rstrip())
+
         # Edge case: The first element of dictionary in a list has a list `- ` prefix. Subsequent keys in the dictionary
         # just have a tab.
-        is_first_collection_child: Final[bool] = (
+        is_first_collection_child: Final = (
             parent is not None and parent.is_collection_element() and node == parent.children[0]
         )
 
@@ -1139,10 +1157,19 @@ class RecipeReader(IsModifiable):
                         f"{spaces}{extra_tab}- " f"{stringify_yaml(child.value)}  " f"{child.comment}".rstrip()
                     )
             else:
-                RecipeReader._render_tree(child, depth + depth_delta, lines, schema_version, node)
-            # By tradition, recipes have a blank line after every top-level section, unless they are a comment. Comments
-            # should be left where they are.
-            if depth < 0 and not child.is_comment():
+                RecipeReader._render_tree(
+                    child, depth + depth_delta, lines, schema_version, is_cbc, omit_trailing_newline, node
+                )
+
+            # Unless overridden by the `omit_trailing_newline` preference, by convention, recipes have a blank line
+            # after every top-level section, unless:
+            #   - They are a comment. Comments should be left where they are without additional blank lines.
+            #   - The file being read-in is a CBC file. It is common practice to omit blank lines in these files, EXCEPT
+            #     for a final trailing blank line at the end of the file.
+            is_last_line = depth < 0 and child == node.children[-1]
+            if is_last_line and omit_trailing_newline:
+                return
+            if (is_cbc and is_last_line) or (not is_cbc and depth < 0 and not child.is_comment()):
                 lines.append("")
 
     def render(self, omit_trailing_newline: bool = False) -> str:
@@ -1173,10 +1200,7 @@ class RecipeReader(IsModifiable):
 
         # Render parse-tree, -1 is passed in as the "root-level" is not directly rendered in a YAML file; it is merely
         # implied.
-        RecipeReader._render_tree(self._root, -1, lines, self._schema_version)
-
-        if omit_trailing_newline and lines and lines[-1] == "":
-            lines = lines[:-1]
+        RecipeReader._render_tree(self._root, -1, lines, self._schema_version, self._is_cbc, omit_trailing_newline)
 
         return "\n".join(lines)
 

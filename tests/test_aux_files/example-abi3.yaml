@@ -9,6 +9,7 @@ source:
 build:
   number: 0
   python_version_independent: true   # [is_abi3]
+  skip_compile_pyc: []
   script: {{ PYTHON }} -m pip install . -vv
   skip: True                         # [is_abi3 and not is_python_min]
 

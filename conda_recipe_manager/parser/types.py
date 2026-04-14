@@ -194,3 +194,12 @@ class RecipeReaderFlags(Flag):
     FLOATS_AS_STRINGS = auto()
     ALLOW_DUPLICATE_KEYS = auto()
     ALSO_TEST_LATEST_PYTHON = auto()
+
+
+## Public CBC Types ##
+
+# Type that represents the values and zip_keys of a CBC file as a tuple.
+CbcOutputType = tuple[dict[str, list[Primitives]], list[set[str]]]
+
+# Type that represents generated variants.
+GeneratedVariantsType = tuple[dict[str, JsonType], ...]

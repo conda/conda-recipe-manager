@@ -1,5 +1,6 @@
 """
-:Description: Unit tests for the RecipeReader class
+:Description: Unit tests for the `RecipeReader` class and its derivatives (`RecipeParser`, `CbcReader`, etrc). This file
+    extensively validates our V0 and V1 recipe (and CBC) file parsing capabilities.
 """
 
 from __future__ import annotations
@@ -10,9 +11,10 @@ from typing import Final
 import pytest
 
 from conda_recipe_manager.parser._node_var import NodeVar
+from conda_recipe_manager.parser.cbc_reader import CbcReader  # Used in some parsing tests instead of `RecipeReader`.
 from conda_recipe_manager.parser.enums import SchemaVersion
 from conda_recipe_manager.parser.exceptions import DuplicateKeyException, DuplicateKeyWarning, ParsingJinjaException
-from conda_recipe_manager.parser.recipe_parser import RecipeReader
+from conda_recipe_manager.parser.recipe_reader import RecipeReader
 from conda_recipe_manager.parser.types import RecipeReaderFlags
 from conda_recipe_manager.types import JsonType, Primitives
 from tests.constants import SIMPLE_DESCRIPTION
@@ -173,64 +175,80 @@ def test_loading_obj_in_list() -> None:
 
 
 @pytest.mark.parametrize(
-    "file",
+    ["file", "cls"],
     [
         #### V0 Recipe Files ####
-        "types-toml.yaml",  # "Easy-difficulty" recipe, representative of common/simple recipes.
-        "simple-recipe.yaml",  # "Medium-difficulty" recipe, containing several contrived examples
-        "multi-output.yaml",  # Contains a multi-output recipe
-        "huggingface_hub.yaml",  # Contains a blank lines in a multiline string
-        "simple-recipe_multiline_strings.yaml",  # Contains multiple multiline strings, using various operators
-        "curl.yaml",  # Complex, multi-output recipe
-        "gsm-amzn2-aarch64.yaml",  # Regression test: Contains `- '*'` string that failed to parse
-        "pytest-pep8.yaml",
-        "google-cloud-cpp.yaml",
-        "dynamic-linking.yaml",
-        "sub_vars.yaml",
-        "h5py.yaml",  # `numpy {{ numpy }}` regression example.
+        ("types-toml.yaml", RecipeReader),  # "Easy-difficulty" recipe, representative of common/simple recipes.
+        ("simple-recipe.yaml", RecipeReader),  # "Medium-difficulty" recipe, containing several contrived examples
+        ("multi-output.yaml", RecipeReader),  # Contains a multi-output recipe
+        ("huggingface_hub.yaml", RecipeReader),  # Contains a blank lines in a multiline string
+        (
+            "simple-recipe_multiline_strings.yaml",
+            RecipeReader,
+        ),  # Contains multiple multiline strings, using various operators
+        ("curl.yaml", RecipeReader),  # Complex, multi-output recipe
+        ("gsm-amzn2-aarch64.yaml", RecipeReader),  # Regression test: Contains `- '*'` string that failed to parse
+        ("pytest-pep8.yaml", RecipeReader),
+        ("google-cloud-cpp.yaml", RecipeReader),
+        ("dynamic-linking.yaml", RecipeReader),
+        ("sub_vars.yaml", RecipeReader),
+        ("h5py.yaml", RecipeReader),  # `numpy {{ numpy }}` regression example.
         # TODO Fix: string quotes around concatenation are not correct when round-tripped.
-        "x264.yaml",
-        "parser_regressions/issue-366_quote_regressions_round_trip.yaml",
-        "parser_regressions/issue-378_colon_quote_regression.yaml",
+        ("x264.yaml", RecipeReader),
+        ("parser_regressions/issue-366_quote_regressions_round_trip.yaml", RecipeReader),
+        ("parser_regressions/issue-378_colon_quote_regression.yaml", RecipeReader),
         # NOTE: Some of these ISSUE #220 examples based on output found in `.conda` files. `conda-build`, as it turns
         # out, produces a lot of multiline strings not commonly seen in original recipe files.
-        "parser_regressions/issue-220_raw_multiline_str_01.yaml",
-        "parser_regressions/issue-220_raw_multiline_str_02.yaml",
-        "parser_regressions/issue-220_raw_multiline_str_03.yaml",
-        "parser_regressions/issue-220_raw_multiline_str_04.yaml",
-        "parser_regressions/issue-220_raw_multiline_str_05.yaml",
-        "parser_regressions/issue-220_raw_multiline_str_06.yaml",
-        "parser_regressions/issue-220_raw_multiline_str_07.yaml",
+        ("parser_regressions/issue-220_raw_multiline_str_01.yaml", RecipeReader),
+        ("parser_regressions/issue-220_raw_multiline_str_02.yaml", RecipeReader),
+        ("parser_regressions/issue-220_raw_multiline_str_03.yaml", RecipeReader),
+        ("parser_regressions/issue-220_raw_multiline_str_04.yaml", RecipeReader),
+        ("parser_regressions/issue-220_raw_multiline_str_05.yaml", RecipeReader),
+        ("parser_regressions/issue-220_raw_multiline_str_06.yaml", RecipeReader),
+        ("parser_regressions/issue-220_raw_multiline_str_07.yaml", RecipeReader),
         #### V1 Recipe Files ####
-        "v1_format/v1_types-toml.yaml",
-        "v1_format/v1_simple-recipe.yaml",
-        "v1_format/v1_multi-output.yaml",
-        "v1_format/v1_huggingface_hub.yaml",
-        "v1_format/v1_curl.yaml",
-        "v1_format/v1_pytest-pep8.yaml",
-        "v1_format/v1_google-cloud-cpp.yaml",
-        "v1_format/v1_dynamic-linking.yaml",
-        "v1_format/v1_sub_vars.yaml",
-        "parser_regressions/v1_format/v1_issue-366_quote_regressions.yaml",
-        "parser_regressions/v1_format/v1_issue-378_colon_quote_regression.yaml",
-        "parser_regressions/v1_format/v1_issue-220_raw_multiline_str_01.yaml",
-        "parser_regressions/v1_format/v1_issue-220_raw_multiline_str_02.yaml",
-        "parser_regressions/v1_format/v1_issue-220_raw_multiline_str_03.yaml",
-        "parser_regressions/v1_format/v1_issue-220_raw_multiline_str_04.yaml",
-        "parser_regressions/v1_format/v1_issue-220_raw_multiline_str_05.yaml",
-        "parser_regressions/v1_format/v1_issue-220_raw_multiline_str_06.yaml",
-        "parser_regressions/v1_format/v1_issue-220_raw_multiline_str_07.yaml",
+        ("v1_format/v1_types-toml.yaml", RecipeReader),
+        ("v1_format/v1_simple-recipe.yaml", RecipeReader),
+        ("v1_format/v1_multi-output.yaml", RecipeReader),
+        ("v1_format/v1_huggingface_hub.yaml", RecipeReader),
+        ("v1_format/v1_curl.yaml", RecipeReader),
+        ("v1_format/v1_pytest-pep8.yaml", RecipeReader),
+        ("v1_format/v1_google-cloud-cpp.yaml", RecipeReader),
+        ("v1_format/v1_dynamic-linking.yaml", RecipeReader),
+        ("v1_format/v1_sub_vars.yaml", RecipeReader),
+        ("parser_regressions/v1_format/v1_issue-366_quote_regressions.yaml", RecipeReader),
+        ("parser_regressions/v1_format/v1_issue-378_colon_quote_regression.yaml", RecipeReader),
+        ("parser_regressions/v1_format/v1_issue-220_raw_multiline_str_01.yaml", RecipeReader),
+        ("parser_regressions/v1_format/v1_issue-220_raw_multiline_str_02.yaml", RecipeReader),
+        ("parser_regressions/v1_format/v1_issue-220_raw_multiline_str_03.yaml", RecipeReader),
+        ("parser_regressions/v1_format/v1_issue-220_raw_multiline_str_04.yaml", RecipeReader),
+        ("parser_regressions/v1_format/v1_issue-220_raw_multiline_str_05.yaml", RecipeReader),
+        ("parser_regressions/v1_format/v1_issue-220_raw_multiline_str_06.yaml", RecipeReader),
+        ("parser_regressions/v1_format/v1_issue-220_raw_multiline_str_07.yaml", RecipeReader),
+        #### List-within-a-list Regressions (V0 + V1) ####
+        ("parser_regressions/list_of_lists_multiline_str_01.yaml", RecipeReader),
+        ("parser_regressions/list_of_lists_multiline_str_02.yaml", RecipeReader),
+        ("parser_regressions/list_of_lists_multiline_str_03.yaml", RecipeReader),
+        ("parser_regressions/list_of_lists_one_member.yaml", RecipeReader),
+        #### V0-style CBC files ####
+        # NOTE: Using `CbcReader` instead of `RecipeReader` means that newlines won't be added in-between top-level
+        #       keys. This is common practice in recipe files but not CBC files.
+        ("cbc_files/boost_cbc.yaml", CbcReader),
+        ("cbc_files/zip_keys_simple_list.yaml", CbcReader),
+        # Regression: `RecipeReader` should be able to render lists within lists correctly.
+        ("cbc_files/zip_keys_multiple_lists.yaml", CbcReader),
     ],
 )
-def test_round_trip(file: str) -> None:
+def test_round_trip(file: str, cls: type[RecipeReader]) -> None:
     """
     Test "eating our own dog food"/round-tripping the parser: Take a recipe, construct a parser, re-render and
-    ensure the output matches the input.
+    ensure the output matches the input. This test is designed to also validate minor differences with the `CbcReader`.
 
     :param file: Recipe file to round-trip.
+    :param cls: Class to construct with.
     """
     expected: Final = load_file(file)
-    parser: Final = RecipeReader(expected)
+    parser: Final = cls(expected)
     assert parser.render() == expected
 
 
@@ -272,7 +290,7 @@ def test_round_trip_with_changes(file: str, expected: str) -> None:
 @pytest.mark.parametrize(
     "file,substitute,expected",
     [
-        # V0 Recipes
+        #### V0 Recipes ####
         (
             "simple-recipe.yaml",
             False,
@@ -399,6 +417,166 @@ def test_round_trip_with_changes(file: str, expected: str) -> None:
                 "package": {"name": "types-toml"},
             },
         ),
+        (
+            "multi-output.yaml",
+            False,
+            {
+                "outputs": [
+                    {
+                        "name": "libdb",
+                        "build": {
+                            "run_exports": ["bar"],
+                        },
+                        "test": {
+                            "commands": [
+                                "test -f ${PREFIX}/lib/libdb${SHLIB_EXT}",
+                                r"if not exist %LIBRARY_BIN%\libdb%SHLIB_EXT%",
+                            ],
+                        },
+                    },
+                    {
+                        "name": "db",
+                        "requirements": {
+                            "build": [
+                                "foo3",
+                                "foo2",
+                                "{{ compiler('c') }}",
+                                "{{ compiler('cxx') }}",
+                            ],
+                            "run": ["foo"],
+                        },
+                        "test": {
+                            "commands": [
+                                "db_archive -m hello",
+                            ]
+                        },
+                    },
+                ]
+            },
+        ),
+        #### List-within-a-list Regressions (V0 + V1) ####
+        (
+            "parser_regressions/list_of_lists_multiline_str_01.yaml",
+            False,
+            {"mr_burns": [["It was the best of times,\nIt was the blurst of times!?\nYou stupid monkey!"]]},
+        ),
+        (
+            "parser_regressions/list_of_lists_multiline_str_02.yaml",
+            False,
+            {"mr_burns": [["It was the best of times, It was the blurst of times!? You stupid monkey!"]]},
+        ),
+        (
+            "parser_regressions/list_of_lists_multiline_str_03.yaml",
+            False,
+            {
+                "mr_burns": [
+                    [
+                        "Excellent, Smithers.",
+                        "It was the best of times, It was the blurst of times!? You stupid monkey!",
+                        "It was the best of times,\nIt was the blurst of times!?\nYou stupid monkey!",
+                        "Homer Simpson, eh?",
+                    ],
+                ]
+            },
+        ),
+        ("parser_regressions/list_of_lists_one_member.yaml", False, {"foo": [["bar"]]}),
+        #### V0-style CBC files ####
+        (
+            "cbc_files/boost_cbc.yaml",
+            False,
+            {
+                "c_compiler_version": ["17.0.6"],
+                "cxx_compiler_version": ["17.0.6"],
+            },
+        ),
+        (
+            "cbc_files/boost_cbc.yaml",
+            # NOTE: CBC files define variables, they should not contain JINJA variables/expressions. This test acts as
+            #       a small smoke-test against setting this flag on reading from a CBC file.
+            True,
+            {
+                "c_compiler_version": ["17.0.6"],
+                "cxx_compiler_version": ["17.0.6"],
+            },
+        ),
+        (
+            "cbc_files/zip_keys_simple_list.yaml",
+            False,
+            {
+                "zip_keys": [
+                    "python",
+                    "numpy",
+                    "pypy",
+                    "pypy3",
+                    "boost",
+                    "boost_cpp",
+                    "libpng",
+                    "libtiff",
+                    "lzo",
+                    "lz4",
+                    "xz",
+                    "zstd",
+                    "liblzma",
+                    "libzstd",
+                    "m2w64_c_compiler_version",
+                    "m2w64_cxx_compiler_version",
+                    "m2w64_fortran_compiler_version",
+                    "rust_compiler_version",
+                    "rust_gnu_compiler_version",
+                    "r_version",
+                    "r_implementation",
+                ],
+            },
+        ),
+        (
+            "cbc_files/zip_keys_multiple_lists.yaml",
+            False,
+            {
+                "zip_keys": [
+                    [
+                        "python",
+                        "numpy",
+                    ],
+                    [
+                        "pypy",
+                        "pypy3",
+                    ],
+                    [
+                        "boost",
+                        "boost_cpp",
+                    ],
+                    [
+                        "libpng",
+                        "libtiff",
+                    ],
+                    [
+                        "lzo",
+                        "lz4",
+                    ],
+                    [
+                        "xz",
+                        "zstd",
+                    ],
+                    [
+                        "liblzma",
+                        "libzstd",
+                    ],
+                    [
+                        "m2w64_c_compiler_version",
+                        "m2w64_cxx_compiler_version",
+                        "m2w64_fortran_compiler_version",
+                    ],
+                    [
+                        "rust_compiler_version",
+                        "rust_gnu_compiler_version",
+                    ],
+                    [
+                        "r_version",
+                        "r_implementation",
+                    ],
+                ],
+            },
+        ),
     ],
 )
 def test_render_to_object(file: str, substitute: bool, expected: JsonType) -> None:
@@ -412,46 +590,6 @@ def test_render_to_object(file: str, substitute: bool, expected: JsonType) -> No
     """
     parser = load_recipe(file, RecipeReader)
     assert parser.render_to_object(substitute) == expected
-
-
-def test_render_to_object_multi_output() -> None:
-    """
-    Tests rendering a recipe to an object format.
-    """
-    parser = load_recipe("multi-output.yaml", RecipeReader)
-    assert parser.render_to_object() == {
-        "outputs": [
-            {
-                "name": "libdb",
-                "build": {
-                    "run_exports": ["bar"],
-                },
-                "test": {
-                    "commands": [
-                        "test -f ${PREFIX}/lib/libdb${SHLIB_EXT}",
-                        r"if not exist %LIBRARY_BIN%\libdb%SHLIB_EXT%",
-                    ],
-                },
-            },
-            {
-                "name": "db",
-                "requirements": {
-                    "build": [
-                        "foo3",
-                        "foo2",
-                        "{{ compiler('c') }}",
-                        "{{ compiler('cxx') }}",
-                    ],
-                    "run": ["foo"],
-                },
-                "test": {
-                    "commands": [
-                        "db_archive -m hello",
-                    ]
-                },
-            },
-        ]
-    }
 
 
 ## Values ##
