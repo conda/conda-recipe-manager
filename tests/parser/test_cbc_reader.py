@@ -1,5 +1,5 @@
 """
-:Description: Provides unit tests for the CBC Reader module
+:Description: Provides unit tests for the CBC Reader module.
 """
 
 from pathlib import Path
@@ -15,6 +15,9 @@ from conda_recipe_manager.types import JsonType, Primitives
 from tests.file_loading import get_test_path, load_cbc, load_json_file
 
 CONDA_BUILD_VARIANTS_PATH: Final[Path] = get_test_path() / "variants"
+
+# NOTE: Since the `CbcReader` class leverages the `RecipeReader` class for parsing of V0/V1 Conda recipe file text,
+#       many CBC-parsing related tests are found in the `test_recipe_reader.py` file to prevent duplication of work.
 
 
 @pytest.mark.parametrize(

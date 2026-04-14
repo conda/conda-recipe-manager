@@ -115,6 +115,7 @@ class CbcReader(RecipeReader):
         super().__init__(content, flags=RecipeReaderFlags.FLOATS_AS_STRINGS)
         self._cbc_vars_tbl: _CbcTable = {}
         self._zip_keys: list[list[NodeVar]] = []
+        self._is_cbc = True
 
         parsed_contents: Final[_CbcType] = cast(_CbcType, self.get_value("/"))
         # NOTE: The comments table does not include selectors.
