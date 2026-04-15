@@ -464,22 +464,6 @@ class RecipeReader(IsModifiable):
         return Node(value=output, comment=comment)
 
     @staticmethod
-    def _expand_compact_nested_lists(yaml_str: str) -> str:
-        """
-        Expands compact nested list syntax into the equivalent expanded form. For example:
-          "  - - target_machine"
-        becomes:
-          "  -"
-          "    - target_machine"
-
-        :param yaml_str: Raw YAML string.
-        :returns: YAML string with compact nested lists expanded.
-        """
-        if not yaml_str:
-            return yaml_str
-        return re.sub(r"^([ \t]*)-[ \t]+-[ \t]+", r"\1-\n\1  - ", yaml_str, flags=re.MULTILINE)
-
-    @staticmethod
     def _create_private_recipe_reader(content: str) -> RecipeReader:
         """
         Creates a new RecipeReader instance. Exclusively for internal RecipeReader use.
@@ -730,6 +714,8 @@ class RecipeReader(IsModifiable):
         if not fmt.is_v0_recipe() or internal_call:
             return self._init_content, 0
 
+        fmt.expand_compact_nested_lists()
+
         fmt.fmt_text()
         # Calculate the string equivalent once.
         fmt_str: Final = str(fmt)
@@ -773,7 +759,6 @@ class RecipeReader(IsModifiable):
 
         # Iterate with an index variable, so we can handle multiline values
         line_idx = 0
-        sanitized_yaml = RecipeReader._expand_compact_nested_lists(sanitized_yaml)
         lines: Final = sanitized_yaml.splitlines()
         num_lines: Final = len(lines)
         while line_idx < num_lines:

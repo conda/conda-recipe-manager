@@ -237,6 +237,7 @@ def test_loading_obj_in_list() -> None:
         ("cbc_files/zip_keys_simple_list.yaml", CbcReader),
         # Regression: `RecipeReader` should be able to render lists within lists correctly.
         ("cbc_files/zip_keys_multiple_lists.yaml", CbcReader),
+        ("cbc_files/zip_keys_compact_nested_list_rendered.yaml", CbcReader),
     ],
 )
 def test_round_trip(file: str, cls: type[RecipeReader]) -> None:
@@ -266,10 +267,6 @@ def test_round_trip(file: str, cls: type[RecipeReader]) -> None:
         ),
         (
             "cbc_files/zip_keys_compact_nested_list.yaml",
-            "cbc_files/zip_keys_compact_nested_list_rendered.yaml",
-        ),
-        (
-            "cbc_files/zip_keys_compact_nested_list_extra_spaces.yaml",
             "cbc_files/zip_keys_compact_nested_list_rendered.yaml",
         ),
         #### V1 Recipe Files ####

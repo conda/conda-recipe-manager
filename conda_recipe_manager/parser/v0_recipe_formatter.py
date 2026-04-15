@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Final
 
 from conda_recipe_manager.parser._types import Regex
@@ -53,6 +54,20 @@ class V0RecipeFormatter:
         :returns: True if the recipe content provided is in the V0 format. False otherwise.
         """
         return self._is_v0_recipe
+
+    def expand_compact_nested_lists(self) -> None:
+        """
+        Expands compact nested list syntax into the equivalent expanded form. For example:
+          "  - - target_machine"
+        becomes:
+          "  -"
+          "    - target_machine"
+
+        Modifies ``self._lines`` in place.
+        """
+        text = "\n".join(self._lines)
+        text = re.sub(r"^([ \t]*)-[ \t]+-[ \t]+", r"\1-\n\1  - ", text, flags=re.MULTILINE)
+        self._lines = text.splitlines()
 
     def _fix_excessive_indentation(self) -> None:  # pylint: disable=too-complex
         """
