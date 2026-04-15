@@ -269,6 +269,10 @@ def test_round_trip(file: str, cls: type[RecipeReader]) -> None:
             "cbc_files/zip_keys_compact_nested_list.yaml",
             "cbc_files/zip_keys_compact_nested_list_rendered.yaml",
         ),
+        (
+            "cbc_files/zip_keys_compact_nested_list_extra_space.yaml",
+            "cbc_files/zip_keys_compact_nested_list_rendered.yaml",
+        ),
         #### V1 Recipe Files ####
     ],
 )
