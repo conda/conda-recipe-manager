@@ -1,0 +1,5 @@
+zip_keys:
+  -
+    - target_machine
+    - cross_target_platform
+    - centos_machine

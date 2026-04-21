@@ -54,6 +54,21 @@ class V0RecipeFormatter:
         """
         return self._is_v0_recipe
 
+    def expand_compact_nested_lists(self) -> None:
+        """
+        Expands compact nested list syntax into the equivalent expanded form. For example:
+            - - target_machine
+        becomes:
+            -
+              - target_machine
+
+        """
+        new_lines: list[str] = []
+        for line in self._lines:
+            result = Regex.PRE_PROCESS_COMPACT_NESTED_LIST.sub(r"\1-\n\1  - ", line)
+            new_lines.extend(result.split("\n"))
+        self._lines = new_lines
+
     def _fix_excessive_indentation(self) -> None:  # pylint: disable=too-complex
         """
         Fixes excessive indentation in the recipe file. Excessive indentation is defined as a line that is more than 1

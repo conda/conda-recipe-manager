@@ -361,6 +361,11 @@ def test_get_cbc_variable_values_with_default(
         ),
         ("zip_keys_multiple_lists.yaml", BuildContext(platform=Platform.OSX_ARM_64), [{"pypy", "pypy3"}]),
         ("zip_keys_multiple_lists.yaml", BuildContext(platform=Platform.WIN_64), [{"python", "numpy"}]),
+        (
+            "zip_keys_compact_nested_list.yaml",
+            BuildContext(platform=Platform.LINUX_64),
+            [{"target_machine", "cross_target_platform", "centos_machine"}],
+        ),
     ],
 )
 def test_get_zip_keys(file: str, build_context: BuildContext, expected: list[set[str]]) -> None:

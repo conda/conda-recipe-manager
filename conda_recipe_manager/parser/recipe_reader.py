@@ -714,6 +714,8 @@ class RecipeReader(IsModifiable):
         if not fmt.is_v0_recipe() or internal_call:
             return self._init_content, 0
 
+        fmt.expand_compact_nested_lists()
+
         fmt.fmt_text()
         # Calculate the string equivalent once.
         fmt_str: Final = str(fmt)
