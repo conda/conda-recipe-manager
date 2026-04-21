@@ -197,6 +197,9 @@ class Regex:
     PRE_PROCESS_MIN_PIN_REPLACEMENT: Final[re.Pattern[str]] = re.compile(r"min_pin=")
     PRE_PROCESS_MAX_PIN_REPLACEMENT: Final[re.Pattern[str]] = re.compile(r"max_pin=")
 
+    # Attempts to normalize compact nested list syntax into the equivalent expanded form.
+    PRE_PROCESS_COMPACT_NESTED_LIST: Final[re.Pattern[str]] = re.compile(r"^([ \t]*)-[ \t]+-[ \t]+", flags=re.MULTILINE)
+
     ## Ambiguous Dependency Corrections ##
     # Regular expressions used to modify problematic dependencies in the upgrade path. Note this have to account for
     # the dependency name as `VersionSpec`.raw_value does not actually contain the original, unmodified version string.
