@@ -22,14 +22,13 @@ Note: version releases in the 0.x.y range may introduce breaking changes.
 ### Changed
 - `stack_path_to_str` to always make a copy of the data being manipulated.
 - `pre-commit` to simplify `isort`, `black`, and `pylint` versioning consistency.
-- `CbcParser` to be split into `CbcParser` and `CbcReader` to be consistent with the `Recipe*` clases.
+- `CbcParser` to be split into `CbcParser` and `CbcReader` to be consistent with the `Recipe*` classes.
 ### Removed
 - Redundant README line.
 - `dangerous-default-value` pylint ignores.
 ### Fixed
 - @psteyer fixed the parser to handle nested list yaml syntax in CBC files.
 - Multi-list rendering bug to correctly render lines that are blank but are the beginning of a list.
-### Security
 
 ## [0.10.1]
 ### Added
