@@ -138,7 +138,7 @@ def convert_file(
         )
 
     # Parse the recipe
-    base_flags = RecipeReaderFlags.NONE
+    base_flags = RecipeReaderFlags.ALLOW_DUPLICATE_KEYS
     if also_test_latest_python:
         base_flags |= RecipeReaderFlags.ALSO_TEST_LATEST_PYTHON
     parser: RecipeParserConvert
