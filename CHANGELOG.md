@@ -15,6 +15,22 @@ Note: version releases in the 0.x.y range may introduce breaking changes.
 ### Fixed
 ### Security
 
+## [0.10.2]
+### Added
+- Finalizer to fetch test cases so that clean up of the temp directory doesn't cause issues.
+- Conversion for `skip_compile_pyc` in v0 to v1.
+### Changed
+- `stack_path_to_str` to always make a copy of the data being manipulated.
+- `pre-commit` to simplify `isort`, `black`, and `pylint` versioning consistency.
+- `CbcParser` to be split into `CbcParser` and `CbcReader` to be consistent with the `Recipe*` clases.
+### Removed
+- Redundant README line.
+- `dangerous-default-value` pylint ignores.
+### Fixed
+- @psteyer fixed the parser to handle nested list yaml syntax in CBC files.
+- Multi-list rendering bug to correctly render lines that are blank but are the beginning of a list.
+### Security
+
 ## [0.10.1]
 ### Added
 - `ALLOW_DUPLICATE_KEYS` flag to ignore duplicate key exception on parsing of recipe files with duplicate keys.
@@ -265,7 +281,8 @@ and continually changing.
 Migrates parser from [percy](https://github.com/anaconda-distribution/percy/tree/main)
 , ,
 
-[Unreleased]: https://github.com/conda/conda-recipe-manager/compare/v0.10.1...HEAD
+[Unreleased]: https://github.com/conda/conda-recipe-manager/compare/v0.10.2...HEAD
+[0.10.2]: https://github.com/conda/conda-recipe-manager/compare/v0.10.1...v0.10.2
 [0.10.1]: https://github.com/conda/conda-recipe-manager/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/conda/conda-recipe-manager/compare/v0.9.3...v0.10.0
 [0.9.3]: https://github.com/conda/conda-recipe-manager/compare/v0.9.2...v0.9.3
