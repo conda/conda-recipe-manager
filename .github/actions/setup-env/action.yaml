@@ -10,7 +10,7 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - uses: conda-incubator/setup-miniconda@v3
+    - uses: conda-incubator/setup-miniconda@bce0bd83659520ccaf4925e604d458d512f7df37 # v4.0.0
       with:
         python-version: ${{ inputs.python-version }}
         activate-environment: conda-recipe-manager
