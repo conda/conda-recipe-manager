@@ -4,7 +4,7 @@
 
 import traceback
 from logging import Logger
-from typing import Optional
+from typing import Optional, cast
 
 import requests
 from jsonschema import validate as schema_validate
@@ -56,7 +56,7 @@ def make_request_and_validate(
     # Validate JSON
     response_json: JsonType = {}
     try:
-        response_json = response.json()
+        response_json = cast(JsonType, response.json())
     except Exception as e:
         raise BaseApiException("Failed to parse JSON response.") from e
     try:
