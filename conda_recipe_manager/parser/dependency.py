@@ -182,7 +182,7 @@ def dependency_data_render_as_str(data: DependencyData) -> str:
     :return s: The original (raw) string found in the recipe file.
     """
     match data:
-        case MatchSpec():
+        case MatchSpec():  # type: ignore[misc]
             return cast(str, data.original_spec_str)
         case DependencyVariable():
             return data.name
