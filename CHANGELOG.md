@@ -277,7 +277,7 @@ This marks the first actual release of the project, but still consider this work
 and continually changing.
 
 ## 0.1.0
-Migrates parser from [percy](https://github.com/anaconda-distribution/percy/tree/main)
+Migrates parser from internal project.
 , ,
 
 [Unreleased]: https://github.com/conda/conda-recipe-manager/compare/v0.10.2...HEAD

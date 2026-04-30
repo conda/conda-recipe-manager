@@ -57,8 +57,8 @@ V1-formatted files.
 <!-- /TOC -->
 
 ## History
-This project started out as a recipe parsing library in Anaconda's
-[percy](https://github.com/anaconda-distribution/percy) project. Some `git` history was lost during that transfer
+This project started out as a recipe parsing library in an Anaconda
+internal project. Some `git` history was lost during that transfer
 process.
 
 For those of you who come from `conda-forge`, you may associate CRM as "the tool that converts recipe files for
@@ -155,9 +155,9 @@ Here is a brief overview of our current release process:
 1. Make a post to the [build-tools Zulip channel](https://conda.zulipchat.com/#narrow/channel/471111-builds-tools) announcing the release with highlights from `CHANGELOG.md`.
 
 # Special Thanks
-- @cbouss for his work on the [Percy project](https://github.com/anaconda/percy) that originally inspired the recipe parser.
+- @cbouss for his work on the internal project that originally inspired the recipe parser.
 - @akabanovs for his work and experimentation on package dependency graph building.
-- @JeanChristopheMorinPerso for his PR review contributions when this project was a part of `Percy` and answering questions about the `conda` file formats.
+- @JeanChristopheMorinPerso for his PR review contributions when this project was internal and answering questions about the `conda` file formats.
 - @mrbean-bremen for maintaining the `pyfakefs` project and for providing guidance and assistance with `pyfakefs`.
 - Several pieces of test data that are essential to the testing and maintenance of `conda-recipe-manager` are adapted from [AnacondaRecipes](https://github.com/AnacondaRecipes) and [conda-forge](https://github.com/conda-forge),
  we would like to acknowledge this and thank everyone who has contributed to those recipes and config files.
