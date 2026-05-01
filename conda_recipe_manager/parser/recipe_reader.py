@@ -55,7 +55,13 @@ from conda_recipe_manager.parser.exceptions import (
     SentinelTypeEvaluationException,
 )
 from conda_recipe_manager.parser.selector_parser import SelectorParser
-from conda_recipe_manager.parser.types import TAB_AS_SPACES, TAB_SPACE_COUNT, MultilineVariant, RecipeReaderFlags
+from conda_recipe_manager.parser.types import (
+    TAB_AS_SPACES,
+    TAB_SPACE_COUNT,
+    MultilineVariant,
+    NoArchType,
+    RecipeReaderFlags,
+)
 from conda_recipe_manager.parser.v0_recipe_formatter import V0RecipeFormatter
 from conda_recipe_manager.types import PRIMITIVES_NO_NONE_TUPLE, PRIMITIVES_TUPLE, JsonType, Primitives, SentinelType
 from conda_recipe_manager.utils.cryptography.hashing import hash_str
@@ -1467,6 +1473,21 @@ class RecipeReader(IsModifiable):
                         continue
                     return True
         return False
+
+    def get_noarch_type(self) -> NoArchType:
+        """
+        Convenience function that returns an enumerated value indicating the `noarch` classification for this recipe.
+
+        :returns: The `noarch` classification of the recipe.
+        """
+        noarch_set: Final = set(NoArchType)
+        noarch: Final = optional_str(self.get_value("/build/noarch", default=None))
+        if noarch is None:
+            return NoArchType.NONE
+        noarch_sanitized: Final = noarch.strip().lower()
+        if noarch_sanitized not in noarch_set:
+            return NoArchType.NONE
+        return NoArchType(noarch_sanitized)
 
     def get_package_paths(self) -> list[str]:
         """
