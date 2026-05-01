@@ -26,6 +26,10 @@ from tests.file_loading import get_test_path, load_file
 @pytest.mark.parametrize(
     "feedstock",
     [
+        # Validates a simple "pure python" recipe.
+        "types-toml",
+        # Validates python-variations behavior on a simple noarch recipe file.
+        "types-toml_noarch",
         "curl",
         # NOTE: The recipe was modified to avoid a duplicate script key in each output.
         "intel_repack",
@@ -39,9 +43,10 @@ from tests.file_loading import get_test_path, load_file
         #   - To avoid duplicate build/string keys in the recipe.
         #   - To avoid duplicate summary keys in the recipe.
         "openblas",
+        # TODO Add V1 support (test cases)
     ],
 )
-def test_variants_manager(platform: Platform, feedstock: str) -> None:
+def test_variants_manager_get_recipe_variants(platform: Platform, feedstock: str) -> None:
     """
     Tests the VariantsManager class by computing recipe variants for a given feedstock and platform.
     These variants are compared against the expected variants,
@@ -57,13 +62,18 @@ def test_variants_manager(platform: Platform, feedstock: str) -> None:
     recipe_cbc_path = get_test_path() / "recipe_variants" / feedstock / "recipe" / "conda_build_config.yaml"
     recipe_path = get_test_path() / "recipe_variants" / feedstock / "recipe" / "meta.yaml"
 
-    cbc_strs: Final[list[str]] = [aggregate_cbc_path.read_text()]
+    cbc_strs: Final = [aggregate_cbc_path.read_text()]
     if recipe_cbc_path.exists():
         cbc_strs.append(recipe_cbc_path.read_text())
 
-    manager = VariantsManager(
+    manager: Final = VariantsManager(
         recipe_str=recipe_path.read_text(), cbc_strs=cbc_strs, build_context=BuildContext(platform=platform)
     )
 
-    for i, variant in enumerate(manager.get_recipe_variants()):
+    variants: Final = manager.get_recipe_variants()
+    # Ensure that the number of test files matches the number of variants produced. Otherwise, we could pass this test
+    # while producing too few variants.
+    platform_test_files: Final = list((get_test_path() / "recipe_variants" / feedstock).glob(f"{platform}_*.yaml"))
+    assert len(variants) == len(platform_test_files)
+    for i, variant in enumerate(variants):
         assert variant.render() == load_file(f"recipe_variants/{feedstock}/{platform}_{i}.yaml")
