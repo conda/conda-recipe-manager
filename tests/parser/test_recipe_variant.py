@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+from typing import Final
+
 import pytest
 
 from conda_recipe_manager.parser.build_context import BuildContext
@@ -91,10 +93,46 @@ def test_evaluate_jinja_expressions(file: str, build_context: BuildContext, expe
     """
     Tests the ability for the `RecipeParser` to replace Jinja expressions in the recipe with their evaluated values.
 
-    :param file: The file to load the recipe from.
-    :param build_context: The build context to evaluate the Jinja expressions for.
+    :param file: Recipe file to test against.
+    :param build_context: The build context to evaluate recipe expressions with.
     :param expected_file: The file to compare the evaluated recipe to.
     """
     parser = RecipeVariant(load_file(file))
     parser._evaluate_jinja_expressions(build_context)  # pylint: disable=protected-access
     assert parser.render() == load_file(expected_file)
+
+
+@pytest.mark.parametrize(
+    ["file", "build_context", "expected"],
+    [
+        # TODO Future: Ensure that these are the same values returned by `conda-build`
+        # Usually the `python` variable is provided by the CBC file.
+        ("types-toml.yaml", BuildContext(platform=Platform.LINUX_64, build_env_vars={"python": "3.11"}), "py311h_0"),
+        ("types-toml.yaml", BuildContext(platform=Platform.LINUX_64, build_env_vars={"python": "3.12"}), "py311h_0"),
+        # Non-zero build number
+        (
+            "bump_recipe/build_num_42.yaml",
+            BuildContext(platform=Platform.LINUX_64, build_env_vars={"python": "3.12"}),
+            "py312h_42",
+        ),
+        # noarch: python
+        ("more-itertools.yaml", BuildContext(platform=Platform.LINUX_64, build_env_vars={"python": "3.12"}), "pyh_0"),
+        # noarch: generic
+        (
+            "bump_recipe/gsm-amzn2-aarch64_build_num_6.yaml",
+            BuildContext(platform=Platform.LINUX_64, build_env_vars={"python": "3.12"}),
+            "h_0",
+        ),
+        # TODO Add V1 support (test cases)
+    ],
+)
+def test_get_build_str(file: str, build_context: BuildContext, expected: str) -> None:
+    """
+    Ensures that `RecipeVariant`s can produce valid package build strings.
+
+    :param file: Recipe file to test against.
+    :param build_context: The build context to evaluate the Jinja expressions for.
+    :param expected: Expected build string.
+    """
+    parser: Final = RecipeVariant(load_file(file), build_context)
+    assert parser.get_build_str() == expected

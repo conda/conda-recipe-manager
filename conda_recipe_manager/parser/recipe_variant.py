@@ -10,15 +10,21 @@ This class is intended to be used in the context of the VariantsManager class.
 
 from __future__ import annotations
 
+import hashlib
+import json
 from typing import Final, cast
+
+from conda.models.match_spec import MatchSpec
 
 from conda_recipe_manager.parser._node import Node
 from conda_recipe_manager.parser.build_context import BuildContext
 from conda_recipe_manager.parser.recipe_parser import RecipeParser
 from conda_recipe_manager.parser.recipe_reader_deps import RecipeReaderDeps
 from conda_recipe_manager.parser.selector_parser import SelectorParser
-from conda_recipe_manager.parser.types import RecipeReaderFlags
+from conda_recipe_manager.parser.types import NoArchType, RecipeReaderFlags
 from conda_recipe_manager.types import PRIMITIVES_NO_NONE_TUPLE, JsonType
+from conda_recipe_manager.utils.cryptography.hashing import hash_str
+from conda_recipe_manager.utils.typing import optional_str
 
 
 class RecipeVariant(RecipeReaderDeps):
@@ -111,7 +117,68 @@ class RecipeVariant(RecipeReaderDeps):
         :param flags: (Optional) Flags to control the behavior of the recipe reader.
         """
         super().__init__(content, flags)
-        if build_context is None:
+        self._build_ctx = build_context
+        if self._build_ctx is None:
             return
-        self._filter_by_selectors(build_context)
-        self._evaluate_jinja_expressions(build_context)
+        self._filter_by_selectors(self._build_ctx)
+        self._evaluate_jinja_expressions(self._build_ctx)
+
+    def _hash_pkg(self) -> str:
+        """
+        TODO
+        """
+        # Hashing contents are determined by:
+        #   https://github.com/conda/conda-build/blob/main/conda_build/metadata.py#L1702
+        to_hash = {}
+        # TODO: match filtering mechanisms found in conda-build
+        for _, deps in self.get_all_dependencies(include_test_dependencies=False).items():
+            for dep in deps:
+                to_hash[dep.data.name] = "" if not isinstance(dep.data, MatchSpec) else dep.data.version
+
+        recipe_dep_hash: Final = hash_str(json.dumps(to_hash, sort_keys=True), hashlib.sha1)
+        # Default hash-length used by conda-build is 7 (+1 to handle the encoding marker):
+        #   https://github.com/conda/conda-build/blob/main/conda_build/config.py#L229
+        # `h` marks that this is a hex-representation.
+        return f"h{recipe_dep_hash[:7 + 1]}"
+
+    def get_build_str(self) -> str:
+        """
+        TODO
+
+        Attempts to mimics the behavior of `conda-build`
+
+        :returns: Build string for this recipe variant.
+        """
+        # Look at conda-build's `Metadata::hash_dependencies()` function for the conda-build's build-string logic.
+        # TODO, handle tensorflow examples:
+        #   string: cuda{{ cuda_compiler_version | replace('.', '') }}py{{ CONDA_PY }}h{{ PKG_HASH }}_{{ PKG_BUILDNUM }}  # [cuda_compiler_version != "None"]
+        #   string: cpu_py{{ CONDA_PY }}h{{ PKG_HASH }}_{{ PKG_BUILDNUM }}  # [cuda_compiler_version == "None"]
+        # TODO test against non-python package: jq
+        build_str: Final = optional_str(self.get_value("/build/string", default=None, sub_vars=True))
+        build_num: Final = int(cast(int, self.get_value("/build/number", default=0, sub_vars=True)))
+        pkg_hash: Final = self._hash_pkg()
+        # TODO regex-replace un-calculated conda variables
+        # TODO Future: Ideally this replacement work should live in the variable rendering logic in `RecipeReader`
+        #              so that `PKG_*` variables may be used when `sub_vars=True`. Unfortunately, calculating `PKG_HASH`
+        #              uses tooling made available in `RecipeReaderDeps`.
+        if build_str is not None:
+            return build_str
+
+        # Helper function for calculating the `py*` prefix in the build string name.
+        def _py_prefix() -> str:
+            if not self.is_python_recipe():
+                return ""
+
+            match self.get_noarch_type():
+                case NoArchType.PYTHON:
+                    return "py"
+                case NoArchType.GENERIC:
+                    return ""
+                case NoArchType.NONE:
+                    if self._build_ctx is not None:
+                        py_ver: Final = self._build_ctx.get_python_version_as_int()
+                        if py_ver is not None:
+                            return f"py{py_ver}"
+                    return "py"
+
+        return f"{_py_prefix()}{pkg_hash}_{build_num}"
