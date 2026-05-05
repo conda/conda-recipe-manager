@@ -32,6 +32,39 @@ class RecipeVariant(RecipeReaderDeps):
     Class that represents a recipe variant, filtered by selectors and evaluated for Jinja expressions.
     """
 
+    def _hash_pkg(self) -> str:
+        """
+        Helper function that calculates a recipe variant's "package hash" component of a "build string". This is a
+        mechanism in conda-build to fingerprint dependencies in builds.
+
+        :returns: The "package hash" component of the recipe variant's build string.
+        """
+        # Hashing contents are determined by:
+        #   https://github.com/conda/conda-build/blob/main/conda_build/metadata.py#L1702
+        to_hash = {}
+        # TODO: match filtering mechanisms found in conda-build
+        for _, deps in self.get_all_dependencies(include_test_dependencies=False).items():
+            for dep in deps:
+                to_hash[dep.data.name] = "" if not isinstance(dep.data, MatchSpec) else dep.data.version
+
+        recipe_dep_hash: Final = hash_str(json.dumps(to_hash, sort_keys=True), hashlib.sha1)
+        # Default hash-length used by conda-build is 7:
+        #   https://github.com/conda/conda-build/blob/main/conda_build/config.py#L229
+        # `h` usually marks that this is a hex-representation, but that is not included in the `PKG_HASH` variable (or
+        # at least recipes that reference `PKG_HASH` tend to include the `h` manually).
+        return recipe_dep_hash[:7]
+
+    def _get_build_num(self) -> int:
+        """
+        Convenience function for retrieving the `/build/number` field and ensuring it is a numeric type.
+
+        :returns: An integer representation of the `/build/number` field.
+        """
+        build_num: Final = self.get_value("/build/number", default=0, sub_vars=True)
+        if not isinstance(build_num, int):
+            return 0
+        return build_num
+
     def _filter_by_selectors(self, build_context: BuildContext) -> None:
         """
         Filters the recipe by the selectors in the build context.
@@ -79,13 +112,21 @@ class RecipeVariant(RecipeReaderDeps):
     def _evaluate_jinja_expressions(self, build_context: BuildContext) -> None:
         """
         Evaluates Jinja expressions in the recipe given the provided query and the recipe variables.
-        This function is destructive and will modify the recipe in place,
-        removing all Jinja variables and expressions.
+        This function is destructive and will modify the recipe in place, removing all Jinja variables and expressions.
 
         :param build_context: Build context to evaluate the Jinja expressions for.
         :raises ValueError: If the JINJA expression evaluation result is not a primitive type.
         """
         recipe_vars_context: Final[dict[str, JsonType]] = {k: self.get_variable(k) for k in self._vars_tbl}
+
+        # We inject special build-time variables here so they can be rendered appropriately throughout the variant.
+        # TODO Future: Ideally this replacement work should live in the variable rendering logic in `RecipeReader`
+        #              so that `PKG_*` variables may be used when `sub_vars=True`. Unfortunately, calculating `PKG_HASH`
+        #              uses tooling made available in `RecipeReaderDeps`.
+        # TODO Future: Figure out what other conda-build variables fall into this category.
+        recipe_vars_context["PKG_HASH"] = self._hash_pkg()
+        recipe_vars_context["PKG_BUILDNUM"] = self._get_build_num()
+
         context: Final = {**build_context.get_context(), **recipe_vars_context}
         _, sub_regex = self._set_on_schema_version()
 
@@ -123,27 +164,6 @@ class RecipeVariant(RecipeReaderDeps):
         self._filter_by_selectors(self._build_ctx)
         self._evaluate_jinja_expressions(self._build_ctx)
 
-    def _hash_pkg(self) -> str:
-        """
-        Helper function that calculates a recipe variant's "package hash" component of a "build string". This is a
-        mechanism in conda-build to fingerprint dependencies in builds.
-
-        :returns: The "package hash" component of the recipe variant's build string.
-        """
-        # Hashing contents are determined by:
-        #   https://github.com/conda/conda-build/blob/main/conda_build/metadata.py#L1702
-        to_hash = {}
-        # TODO: match filtering mechanisms found in conda-build
-        for _, deps in self.get_all_dependencies(include_test_dependencies=False).items():
-            for dep in deps:
-                to_hash[dep.data.name] = "" if not isinstance(dep.data, MatchSpec) else dep.data.version
-
-        recipe_dep_hash: Final = hash_str(json.dumps(to_hash, sort_keys=True), hashlib.sha1)
-        # Default hash-length used by conda-build is 7 (+1 to handle the encoding marker):
-        #   https://github.com/conda/conda-build/blob/main/conda_build/config.py#L229
-        # `h` marks that this is a hex-representation.
-        return f"h{recipe_dep_hash[:7 + 1]}"
-
     def get_build_str(self) -> str:
         """
         Attempts to mimic the build-string generation behavior of `conda-build`.
@@ -152,19 +172,12 @@ class RecipeVariant(RecipeReaderDeps):
         :returns: Build string for this recipe variant.
         """
         # Look at conda-build's `Metadata::hash_dependencies()` function for the conda-build's build-string logic.
-        # TODO, handle tensorflow examples:
-        #   string: cuda{{ cuda_compiler_version | replace('.', '') }}py{{ CONDA_PY }}h{{ PKG_HASH }}_{{ PKG_BUILDNUM }}  # [cuda_compiler_version != "None"]
-        #   string: cpu_py{{ CONDA_PY }}h{{ PKG_HASH }}_{{ PKG_BUILDNUM }}  # [cuda_compiler_version == "None"]
-        # TODO test against non-python package: jq
         build_str: Final = optional_str(self.get_value("/build/string", default=None, sub_vars=True))
-        build_num: Final = int(cast(int, self.get_value("/build/number", default=0, sub_vars=True)))
-        pkg_hash: Final = self._hash_pkg()
-        # TODO regex-replace un-calculated conda variables
-        # TODO Future: Ideally this replacement work should live in the variable rendering logic in `RecipeReader`
-        #              so that `PKG_*` variables may be used when `sub_vars=True`. Unfortunately, calculating `PKG_HASH`
-        #              uses tooling made available in `RecipeReaderDeps`.
         if build_str is not None:
             return build_str
+
+        build_num: Final = self._get_build_num()
+        pkg_hash: Final = self._hash_pkg()
 
         # Helper function for calculating the `py*` prefix in the build string name.
         def _py_prefix() -> str:
@@ -183,4 +196,4 @@ class RecipeVariant(RecipeReaderDeps):
                             return f"py{py_ver}"
                     return "py"
 
-        return f"{_py_prefix()}{pkg_hash}_{build_num}"
+        return f"{_py_prefix()}h{pkg_hash}_{build_num}"

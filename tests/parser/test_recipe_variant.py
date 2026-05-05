@@ -123,6 +123,10 @@ def test_evaluate_jinja_expressions(file: str, build_context: BuildContext, expe
             BuildContext(platform=Platform.LINUX_64, build_env_vars={"python": "3.12"}),
             "h_0",
         ),
+        # TODO, handle tensorflow examples:
+        #   string: cuda{{ cuda_compiler_version | replace('.', '') }}py{{ CONDA_PY }}h{{ PKG_HASH }}_{{ PKG_BUILDNUM }}  # [cuda_compiler_version != "None"]
+        #   string: cpu_py{{ CONDA_PY }}h{{ PKG_HASH }}_{{ PKG_BUILDNUM }}  # [cuda_compiler_version == "None"]
+        # TODO test against non-python package like jq
         # TODO Add V1 support (test cases)
     ],
 )
