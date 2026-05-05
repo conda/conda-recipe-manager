@@ -166,4 +166,7 @@ class BuildContext:
 
         :returns: The target Python version in an integer representation, if applicable. Otherwise, `None`.
         """
-        return int(cast(int, self._context.get("py", None)))
+        py_ver: Final = self._context.get("py", None)
+        if py_ver is None:
+            return None
+        return int(cast(int, py_ver))

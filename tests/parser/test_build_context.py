@@ -58,7 +58,7 @@ def test_get_platform(build_context: BuildContext, expected: Platform) -> None:
         (BuildContext(platform=Platform.LINUX_64, build_env_vars={"python": "3.11"}), 311),
     ],
 )
-def test_get_build_str(build_context: BuildContext, expected: Optional[int]) -> None:
+def test_get_python_version_as_int(build_context: BuildContext, expected: Optional[int]) -> None:
     """
     Ensures a `BuildContext` instance correctly returns the associated Python version, if available.
 
