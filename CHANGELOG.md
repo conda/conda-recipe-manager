@@ -15,6 +15,16 @@ Note: version releases in the 0.x.y range may introduce breaking changes.
 ### Fixed
 ### Security
 
+## [0.10.3]
+### Changed
+- `crm convert` command now defaults to use the `ALLOW_DUPLICATE_KEYS` flag in the parser. Our integration tests have
+  shown that this improves `crm convert` compatibility more than it risks breakages in the conversion process.
+### Fixed
+- Documentation typos.
+- Minor infrastructure improvements.
+- `VariantsManager` now more closely follows `conda-build`'s behavior. Variants are produced per Python version
+  supplied by the CBC file, unless a `noarch` recipe is used.
+
 ## [0.10.2]
 ### Added
 - Finalizer to fetch test cases so that clean up of the temp directory doesn't cause issues.
@@ -280,7 +290,8 @@ and continually changing.
 Migrates parser from internal project.
 , ,
 
-[Unreleased]: https://github.com/conda/conda-recipe-manager/compare/v0.10.2...HEAD
+[Unreleased]: https://github.com/conda/conda-recipe-manager/compare/v0.10.3...HEAD
+[0.10.3]: https://github.com/conda/conda-recipe-manager/compare/v0.10.2...v0.10.3
 [0.10.2]: https://github.com/conda/conda-recipe-manager/compare/v0.10.1...v0.10.2
 [0.10.1]: https://github.com/conda/conda-recipe-manager/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/conda/conda-recipe-manager/compare/v0.9.3...v0.10.0
