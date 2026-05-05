@@ -112,6 +112,17 @@ OPPOSITE_OPS: Final[list[tuple[str, str]]] = [
 PYTHON_SKIP_PATTERN: Final[re.Pattern[str]] = re.compile(r"py[ \t]*([~!<>=]=|>|<)[ \t]*\d\d+")
 
 
+class NoArchType(StrEnum):
+    """
+    Enumerates recognized `/build/noarch` values.
+    """
+
+    # `/build/noarch` is unspecified/unrecognized.
+    NONE = ""
+    GENERIC = "generic"
+    PYTHON = "python"
+
+
 class MultilineVariant(StrEnum):
     """
     Captures which "multiline" descriptor was used on a Node, if one was used at all.

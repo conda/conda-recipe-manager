@@ -15,7 +15,7 @@ from conda_recipe_manager.parser.cbc_reader import CbcReader  # Used in some par
 from conda_recipe_manager.parser.enums import SchemaVersion
 from conda_recipe_manager.parser.exceptions import DuplicateKeyException, DuplicateKeyWarning, ParsingJinjaException
 from conda_recipe_manager.parser.recipe_reader import RecipeReader
-from conda_recipe_manager.parser.types import RecipeReaderFlags
+from conda_recipe_manager.parser.types import NoArchType, RecipeReaderFlags
 from conda_recipe_manager.types import JsonType, Primitives
 from tests.constants import SIMPLE_DESCRIPTION
 from tests.file_loading import load_file, load_recipe
@@ -1289,7 +1289,7 @@ def test_is_multi_output(file: str, expected: bool) -> None:
 
 
 @pytest.mark.parametrize(
-    "file,expected",
+    ["file", "expected"],
     [
         ("multi-output.yaml", False),
         ("simple-recipe.yaml", False),
@@ -1312,10 +1312,31 @@ def test_is_python_recipe(file: str, expected: bool) -> None:
     """
     Validates if a recipe is a "pure Python" package.
 
-    :param file: File to test against
-    :param expected: Expected output
+    :param file: File to test against.
+    :param expected: Expected output.
     """
     assert load_recipe(file, RecipeReader).is_python_recipe() == expected
+
+
+@pytest.mark.parametrize(
+    ["file", "expected"],
+    [
+        ("multi-output.yaml", NoArchType.NONE),
+        ("types-toml.yaml", NoArchType.NONE),
+        ("boto.yaml", NoArchType.NONE),
+        ("cctools-ld64.yaml", NoArchType.NONE),
+        ("more-itertools.yaml", NoArchType.PYTHON),
+        ("gsm-amzn2-aarch64.yaml", NoArchType.GENERIC),
+    ],
+)
+def test_get_noarch_type(file: str, expected: NoArchType) -> None:
+    """
+    Validates what kind of "noarch" recipe the recipe is.
+
+    :param file: File to test against.
+    :param expected: Expected output.
+    """
+    assert load_recipe(file, RecipeReader).get_noarch_type() == expected
 
 
 @pytest.mark.parametrize(
