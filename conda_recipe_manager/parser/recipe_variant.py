@@ -125,7 +125,10 @@ class RecipeVariant(RecipeReaderDeps):
 
     def _hash_pkg(self) -> str:
         """
-        TODO
+        Helper function that calculates a recipe variant's "package hash" component of a "build string". This is a
+        mechanism in conda-build to fingerprint dependencies in builds.
+
+        :returns: The "package hash" component of the recipe variant's build string.
         """
         # Hashing contents are determined by:
         #   https://github.com/conda/conda-build/blob/main/conda_build/metadata.py#L1702
@@ -143,9 +146,8 @@ class RecipeVariant(RecipeReaderDeps):
 
     def get_build_str(self) -> str:
         """
-        TODO
-
-        Attempts to mimics the behavior of `conda-build`
+        Attempts to mimic the build-string generation behavior of `conda-build`.
+        NOTE: As of writing, this behavior is not guaranteed to match!
 
         :returns: Build string for this recipe variant.
         """
