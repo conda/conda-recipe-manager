@@ -1160,7 +1160,9 @@ class RecipeReader(IsModifiable):
             is_last_line = depth < 0 and child == node.children[-1]
             if is_last_line and omit_trailing_newline:
                 return
-            if (is_cbc and is_last_line) or (not is_cbc and depth < 0 and not child.is_comment()):
+            if (is_cbc and is_last_line) or (
+                not is_cbc and depth < 0 and not child.is_comment() and (not lines or lines[-1] != "")
+            ):
                 lines.append("")
 
     def render(self, omit_trailing_newline: bool = False) -> str:

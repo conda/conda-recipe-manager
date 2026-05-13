@@ -116,7 +116,6 @@ about:
     GluonTS is a Python package for probabilistic time series modeling, focusing on deep learning based models, based
     on PyTorch and MXNet.
 
-
 extra:
   recipe-maintainers:
     - dkomisar

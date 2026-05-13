@@ -139,6 +139,25 @@ def test_str(file: str, out_file: str) -> None:
     assert not parser.is_modified()
 
 
+def test_round_trip_multiline_string_before_next_section() -> None:
+    """
+    Validates that a section separator after a multi-line string does not get captured as part of the string.
+    """
+    content: Final[str] = (
+        "about:\n"
+        "  summary: Example output 2\n"
+        "  description: |\n"
+        "    This is a test package for output2.\n"
+        "\n"
+        "extra:\n"
+        "  recipe-maintainers:\n"
+        "    - conda\n"
+    )
+    parser: Final = RecipeReader(content)
+
+    assert parser.render() == content
+
+
 @pytest.mark.parametrize(
     "file,other_file",
     [
