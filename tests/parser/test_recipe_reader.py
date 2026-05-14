@@ -174,6 +174,26 @@ def test_loading_obj_in_list() -> None:
     assert parser.render() == replace
 
 
+def test_multiline_string_before_top_level_section_does_not_duplicate_blank_line() -> None:
+    """
+    Regression test for multiline strings at the end of top-level sections.
+    """
+    content = (
+        "about:\n"
+        "  summary: Example output 2\n"
+        "  description: |\n"
+        "    This is a test package for output2.\n"
+        "\n"
+        "extra:\n"
+        "  recipe-maintainers:\n"
+        "    - conda\n"
+    )
+
+    parser = RecipeReader(content)
+
+    assert parser.render() == content
+
+
 @pytest.mark.parametrize(
     ["file", "cls"],
     [
