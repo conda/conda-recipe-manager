@@ -1218,8 +1218,31 @@ class RecipeReader(IsModifiable):
             return
 
         if node.is_strong_leaf():
-            # At this point, we know the data is a list
-            data.append(self._preprocess_node_value(node, replace_variables))
+            value = self._preprocess_node_value(node, replace_variables)
+            # The common case: a strong leaf appears as a list member, so `data` is the
+            # parent list to which we append. If the parser instead handed us a dict, the
+            # leaf was promoted to a sibling of an empty-key node — typically because of
+            # selector comments / blank lines disturbing list nesting (see
+            # https://github.com/conda/conda-recipe-manager/issues/<TBD>). Recover by
+            # attaching the leaf as a single-item list under the most recent empty-key
+            # sibling, which preserves the data the user clearly intended.
+            if isinstance(data, list):
+                data.append(value)
+            elif isinstance(data, dict) and data:
+                last_key = next(reversed(data))
+                if data[last_key] is None:
+                    data[last_key] = [value]
+                elif isinstance(data[last_key], list):
+                    data[last_key].append(value)
+                else:
+                    raise TypeError(
+                        f"List leaf {value!r} cannot be attached: previous key "
+                        f"{last_key!r} already has a non-list value."
+                    )
+            else:
+                raise TypeError(
+                    f"List leaf {value!r} appeared with no list context to append to."
+                )
             return
 
         # Process collection nodes (lists or dicts that are list members)

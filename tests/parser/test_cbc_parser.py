@@ -565,3 +565,25 @@ def test_generate_variants(
         assert _find_matching_variant(exp_var, generated_variants)
     for gen_var in generated_variants:
         assert _find_matching_variant(gen_var, expected_variants)
+
+
+def test_empty_key_with_selector_followed_by_list() -> None:
+    """
+    Regression test: CBCs that pin a key only on a particular platform are sometimes
+    written as an empty key with a selector comment, immediately followed by a list
+    item also under a selector. This shape used to crash `_render_object_tree` with
+    "'dict' object has no attribute 'append'" because the parser promoted the list
+    item to a sibling of the empty key. The render layer now recovers by attaching
+    the leaf back under the most recent empty-key sibling.
+    """
+    cbc = (
+        "c_compiler:                    # [win]\n"
+        "- vs2019                       # [win]\n"
+        "cxx_compiler:                  # [win]\n"
+        "- vs2019                       # [win]\n"
+    )
+    parser = CbcParser(cbc)
+    assert parser.get_value("/") == {
+        "c_compiler": ["vs2019"],
+        "cxx_compiler": ["vs2019"],
+    }
