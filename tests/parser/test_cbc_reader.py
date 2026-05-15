@@ -157,7 +157,18 @@ def test_contains(file: str, variable: str, expected: bool) -> None:
                 "cdt_name",
                 "zstd",
             ],
-        )
+        ),
+        # Regression: a CBC where list items share indentation with their parent key,
+        # e.g.
+        #   c_compiler:
+        #   - vs2019
+        # is valid YAML (PyYAML reads `{c_compiler: [vs2019]}`) but used to flatten
+        # to all-siblings under the root, breaking downstream rendering. See
+        # https://github.com/conda/conda-recipe-manager/pull/<TBD>.
+        (
+            "zero_indent_list_cbc.yaml",
+            ["c_compiler", "cxx_compiler"],
+        ),
     ],
 )
 def test_list_cbc_variables(file: str, expected: list[str]) -> None:
@@ -201,6 +212,9 @@ def test_list_cbc_variables(file: str, expected: list[str]) -> None:
             BuildContext(platform=Platform.OSX_64, build_env_vars={"ANACONDA_ROCKET_ENABLE_PY314": 1}),
             ["2.0", "2.0", "2.0", "2.0", "2.1", "2.3"],
         ),
+        # Regression: zero-indent list items must nest under their parent key.
+        ("zero_indent_list_cbc.yaml", "c_compiler", BuildContext(platform=Platform.WIN_64), ["vs2019"]),
+        ("zero_indent_list_cbc.yaml", "cxx_compiler", BuildContext(platform=Platform.WIN_64), ["vs2019"]),
     ],
 )
 def test_get_cbc_variable_values(
