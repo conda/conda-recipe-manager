@@ -47,8 +47,11 @@ jobs:
           run: |
             source $CONDA/bin/activate
             conda create --name build-env -y python=3.11 conda-build
-            conda activate build-env
-            conda build -c defaults recipe/meta.yaml
+            # Use `conda run -n build-env` so the `conda` that picks up
+            # conda-build's plugin entry points is the one inside the env.
+            # `conda activate` alone leaves the base conda on PATH, which no
+            # longer ships `conda build` as a builtin subcommand.
+            conda run -n build-env conda build -c defaults recipe/meta.yaml
   # Eat our own dog food and build this project with rattler-build by converting our existing recipe.
   # Remember, `rattler-build` will pull from the `conda-forge` channel, which may cause some version inconsistencies.
   # NOTE: As of 2026-02-25, we tell `rattler-build` to ignore 3.14+ explicitly (via `sed`) to avoid issues with the
