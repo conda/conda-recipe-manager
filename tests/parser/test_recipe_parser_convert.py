@@ -82,6 +82,7 @@ def test_pre_process_recipe_text(input_file: str, expected_file: str) -> None:
             "pytest-pep8.yaml",
             [],
             [
+                "`fn` at `/source/fn` was omitted because V1 `file_name` is invalid for archive sources.",
                 "Field at `/about/doc_source_url` is no longer supported.",
             ],
         ),
@@ -140,6 +141,7 @@ def test_pre_process_recipe_text(input_file: str, expected_file: str) -> None:
             "boto.yaml",
             [],
             [
+                "`fn` at `/source/fn` was omitted because V1 `file_name` is invalid for archive sources.",
                 "Field at `/about/doc_source_url` is no longer supported.",
             ],
         ),

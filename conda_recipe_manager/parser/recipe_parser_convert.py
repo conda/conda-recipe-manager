@@ -31,6 +31,17 @@ class RecipeParserConvert(RecipeParserDeps):
     # "Static", one-time initialization of the the SPDX utility class. As this module is "read-only", we only need one
     # instance allocated for all converter-parsers that are initialized.
     _SPDX_UTILS: Final = SpdxUtils()
+    _ARCHIVE_SOURCE_SUFFIXES: Final[tuple[str, ...]] = (
+        ".tar",
+        ".tar.bz2",
+        ".tar.gz",
+        ".tar.xz",
+        ".tar.zst",
+        ".tbz2",
+        ".tgz",
+        ".txz",
+        ".zip",
+    )
 
     def __init__(self, content: str, flags: RecipeReaderFlags = RecipeReaderFlags.NONE):
         """
@@ -128,6 +139,23 @@ class RecipeParserConvert(RecipeParserDeps):
         if self._v1_recipe.contains_value(RecipeParser.append_to_path(base_path, old_ext)):
             self._patch_add_missing_path(base_path, new_path)
         self._patch_move_base_path(base_path, old_ext, RecipeParser.append_to_path(new_path, new_ext))
+
+    def _source_has_archive_url(self, src_path: str) -> bool:
+        """
+        Detects URL-based archive sources, whose V0 `fn` field cannot be translated to V1 `file_name`.
+
+        :param src_path: Path to a source entry
+        :returns: True if the source URL looks like an archive
+        """
+        url_path: Final[str] = RecipeParser.append_to_path(src_path, "/url")
+        if not self._v1_recipe.contains_value(url_path):
+            return False
+
+        url = self._v1_recipe.get_value(url_path)
+        if not isinstance(url, str):
+            return False
+
+        return url.lower().endswith(self._ARCHIVE_SOURCE_SUFFIXES)
 
     def _patch_deprecated_fields(self, base_path: str, fields: list[str]) -> None:
         """
@@ -467,7 +495,15 @@ class RecipeParserConvert(RecipeParserDeps):
                     )
 
                 # Basic renaming transformations
-                self._patch_move_base_path(src_path, "/fn", "/file_name")
+                fn_path = RecipeParser.append_to_path(src_path, "/fn")
+                if self._v1_recipe.contains_value(fn_path) and self._source_has_archive_url(src_path):
+                    if self._patch_and_log({"op": "remove", "path": fn_path}):
+                        self._msg_tbl.add_message(
+                            MessageCategory.WARNING,
+                            f"`fn` at `{fn_path}` was omitted because V1 `file_name` is invalid for archive sources.",
+                        )
+                else:
+                    self._patch_move_base_path(src_path, "/fn", "/file_name")
                 self._patch_move_base_path(src_path, "/folder", "/target_directory")
 
                 # `git` source transformations (`conda` does not appear to support all of the new features)
