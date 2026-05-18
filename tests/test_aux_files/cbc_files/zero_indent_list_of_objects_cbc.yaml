@@ -1,0 +1,5 @@
+build_constraints:
+- name: numpy
+  version: ">=1.0"
+- name: scipy
+  version: ">=2.0"

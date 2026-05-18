@@ -762,6 +762,11 @@ class RecipeReader(IsModifiable):
         # Relative depth is determined by the increase/decrease of indentation marks (spaces)
         cur_indent = 0
         last_node = node_stack[-1]
+        # Tracks whether the most recent stack push was due to the same-indent
+        # list-under-key edge case (e.g., `c_compiler:` followed by `- vs2019`
+        # both at column 0). When True, we pop the stack on the next non-list
+        # sibling at the same indent.
+        same_indent_list_active = False
 
         # Iterate with an index variable, so we can handle multiline values
         line_idx = 0
@@ -799,6 +804,22 @@ class RecipeReader(IsModifiable):
                 # to be added to the stack to maintain composition
                 if last_node.is_collection_element() and not last_node.children[0].is_single_key():
                     node_stack.append(last_node.children[0])
+            # Edge case: YAML allows list items to share indentation with their parent key, e.g.
+            #   c_compiler:
+            #   - vs2019
+            # PyYAML treats this as `{c_compiler: [vs2019]}`. Without these branches the parser
+            # would treat both nodes as siblings under the previous parent.
+            elif (
+                new_indent == cur_indent and new_node.list_member_flag and last_node.is_key() and not last_node.children
+            ):
+                # Push the key onto the stack so the list member nests under it.
+                node_stack.append(last_node)
+                same_indent_list_active = True
+            elif new_indent == cur_indent and not new_node.list_member_flag and same_indent_list_active:
+                # Leaving the same-indent list context; pop the key we pushed earlier so the
+                # next node returns to its proper sibling level.
+                node_stack.pop()
+                same_indent_list_active = False
             elif new_indent < cur_indent:
                 # Multiple levels of depth can change from line to line, so multiple stack nodes must be pop'd. Example:
                 # foo:
