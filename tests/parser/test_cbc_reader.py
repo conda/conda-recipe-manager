@@ -157,7 +157,18 @@ def test_contains(file: str, variable: str, expected: bool) -> None:
                 "cdt_name",
                 "zstd",
             ],
-        )
+        ),
+        # Regression: a CBC where list items share indentation with their parent key,
+        # e.g.
+        #   c_compiler:
+        #   - vs2019
+        # is valid YAML (PyYAML reads `{c_compiler: [vs2019]}`) but used to flatten
+        # to all-siblings under the root, breaking downstream rendering. See
+        # https://github.com/conda/conda-recipe-manager/pull/531.
+        (
+            "zero_indent_list_cbc.yaml",
+            ["c_compiler", "cxx_compiler"],
+        ),
     ],
 )
 def test_list_cbc_variables(file: str, expected: list[str]) -> None:
@@ -201,6 +212,9 @@ def test_list_cbc_variables(file: str, expected: list[str]) -> None:
             BuildContext(platform=Platform.OSX_64, build_env_vars={"ANACONDA_ROCKET_ENABLE_PY314": 1}),
             ["2.0", "2.0", "2.0", "2.0", "2.1", "2.3"],
         ),
+        # Regression: zero-indent list items must nest under their parent key.
+        ("zero_indent_list_cbc.yaml", "c_compiler", BuildContext(platform=Platform.WIN_64), ["vs2019"]),
+        ("zero_indent_list_cbc.yaml", "cxx_compiler", BuildContext(platform=Platform.WIN_64), ["vs2019"]),
     ],
 )
 def test_get_cbc_variable_values(
@@ -569,3 +583,38 @@ def test_generate_variants(
         assert _find_matching_variant(exp_var, generated_variants)
     for gen_var in generated_variants:
         assert _find_matching_variant(gen_var, expected_variants)
+
+
+@pytest.mark.parametrize(
+    "file,expected_root",
+    [
+        # Zero-indent simple list (the original bug from
+        # https://github.com/conda/conda-recipe-manager/pull/531).
+        (
+            "zero_indent_list_cbc.yaml",
+            {"c_compiler": ["vs2019"], "cxx_compiler": ["vs2019"]},
+        ),
+        # Zero-indent list-of-lists. Each top-level list entry is itself a list.
+        (
+            "zero_indent_list_of_lists_cbc.yaml",
+            {"zip_keys": [["python", "numpy"], ["target_platform", "macos_min_version"]]},
+        ),
+        # Zero-indent list-of-objects. Each top-level list entry is a mapping.
+        (
+            "zero_indent_list_of_objects_cbc.yaml",
+            {
+                "build_constraints": [
+                    {"name": "numpy", "version": ">=1.0"},
+                    {"name": "scipy", "version": ">=2.0"},
+                ],
+            },
+        ),
+    ],
+)
+def test_zero_indent_list_parses_under_parent(file: str, expected_root: dict[str, JsonType]) -> None:
+    """
+    Regression: list items written at the same column as their parent key (a valid YAML
+    shape that PyYAML accepts) used to flatten to siblings under the root. The parser
+    now nests them correctly. Covers simple lists, lists-of-lists, and lists-of-objects.
+    """
+    assert load_cbc(file).get_value("/") == expected_root

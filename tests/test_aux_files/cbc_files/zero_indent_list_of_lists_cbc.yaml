@@ -1,0 +1,5 @@
+zip_keys:
+- - python
+  - numpy
+- - target_platform
+  - macos_min_version
