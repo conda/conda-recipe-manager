@@ -95,7 +95,7 @@ lint:			## Runs the linter against the project
 
 format:			## Runs the code auto-formatter
 	isort --profile black --line-length=120 $(SRC_DIR) $(TEST_DIR) $(SCRIPTS_DIR)
-	black --line-length=120 $(SRC_DIR) $(TEST_DIR) $(SCRIPTS_DIR)
+	black --line-length=120 --target-version py311 $(SRC_DIR) $(TEST_DIR) $(SCRIPTS_DIR)
 
 format-docs:	## Runs the docstring auto-formatter. NOTE: this requires manually installing `docconvert` with `pip`
 	docconvert --in-place --config .docconvert.json $(SRC_DIR)
