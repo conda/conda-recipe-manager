@@ -15,6 +15,11 @@ Note: version releases in the 0.x.y range may introduce breaking changes.
 ### Fixed
 ### Security
 
+## [0.10.4]
+### Fixed
+- Bad cast in the `ArtifactFetcher` recovery logic.
+- Recipe/CBC file parsing issue tied to list indentation.
+
 ## [0.10.3]
 ### Changed
 - `crm convert` command now defaults to use the `ALLOW_DUPLICATE_KEYS` flag in the parser. Our integration tests have
@@ -290,7 +295,8 @@ and continually changing.
 Migrates parser from internal project.
 , ,
 
-[Unreleased]: https://github.com/conda/conda-recipe-manager/compare/v0.10.3...HEAD
+[Unreleased]: https://github.com/conda/conda-recipe-manager/compare/v0.10.4...HEAD
+[0.10.4]: https://github.com/conda/conda-recipe-manager/compare/v0.10.3...v0.10.4
 [0.10.3]: https://github.com/conda/conda-recipe-manager/compare/v0.10.2...v0.10.3
 [0.10.2]: https://github.com/conda/conda-recipe-manager/compare/v0.10.1...v0.10.2
 [0.10.1]: https://github.com/conda/conda-recipe-manager/compare/v0.10.0...v0.10.1
