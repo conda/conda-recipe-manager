@@ -626,6 +626,17 @@ class RecipeParserConvert(RecipeParserDeps):
             # New `prefix_detection` section changes
             # NOTE: There is a new `force_file_type` field that may map to an unknown field that conda supports.
             self._patch_move_new_path(build_path, "/ignore_prefix_files", "/prefix_detection", "/ignore")
+            # V0's `detect_binary_files_with_prefix` is the logical inverse of V1's
+            # `prefix_detection/ignore_binary_files`, so the boolean value must be negated as part of the move.
+            detect_binary_path = RecipeParser.append_to_path(build_path, "/detect_binary_files_with_prefix")
+            if self._v1_recipe.contains_value(detect_binary_path):
+                self._patch_and_log(
+                    {
+                        "op": "replace",
+                        "path": detect_binary_path,
+                        "value": not self._v1_recipe.get_value(detect_binary_path),
+                    }
+                )
             self._patch_move_new_path(
                 build_path, "/detect_binary_files_with_prefix", "/prefix_detection", "/ignore_binary_files"
             )
