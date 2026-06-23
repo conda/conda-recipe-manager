@@ -13,6 +13,9 @@ Note: version releases in the 0.x.y range may introduce breaking changes.
 ### Deprecated
 ### Removed
 ### Fixed
+- `crm convert` now negates `detect_binary_files_with_prefix` when converting it to the V1
+  `prefix_detection/ignore_binary_files` field. The two flags are logical inverses, so previously carrying the value
+  over unchanged produced recipes with inverted binary prefix-replacement behavior.
 ### Security
 
 ## [0.10.4]
