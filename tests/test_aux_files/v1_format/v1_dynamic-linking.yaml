@@ -14,6 +14,10 @@ source:
 
 build:
   number: 0
+  prefix_detection:
+    ignore:
+      - "**/text_file.txt"
+    ignore_binary_files: false
   dynamic_linking:
     missing_dso_allowlist:
       - "**/lib.so"

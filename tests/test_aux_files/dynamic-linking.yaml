@@ -15,6 +15,9 @@ build:
     - "**/lib.so"
   runpath_whitelist:
     - "**/lib.so"
+  detect_binary_files_with_prefix: true
+  ignore_prefix_files:
+    - "**/text_file.txt"
 
 requirements:
   host:
