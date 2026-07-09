@@ -240,7 +240,7 @@ def test_get_cbc_variable_values(
     ],
 )
 def test_get_cbc_variable_values_raises(
-    file: str, variable: str, build_context: BuildContext, exception: Exception
+    file: str, variable: str, build_context: BuildContext, exception: type[Exception]
 ) -> None:
     """
     Validates that an error is thrown when a variable does not exist in a CBC file or is not found for the provided
@@ -252,7 +252,7 @@ def test_get_cbc_variable_values_raises(
     :param exception: Exception expected to be raised
     """
     reader: Final = load_cbc(file)
-    with pytest.raises(exception):  # type: ignore
+    with pytest.raises(exception):
         reader.get_cbc_variable_values(variable, build_context)
 
 

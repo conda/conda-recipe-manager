@@ -218,7 +218,7 @@ def test_add_comment(file: str, ops: list[tuple[str, str]], expected: str) -> No
         ("simple-recipe.yaml", "/build/number", "    ", ValueError),
     ],
 )
-def test_add_comment_raises(file: str, path: str, comment: str, exception: BaseException) -> None:
+def test_add_comment_raises(file: str, path: str, comment: str, exception: type[BaseException]) -> None:
     """
     Tests scenarios where `add_comment()` should raise an exception
 
@@ -228,7 +228,7 @@ def test_add_comment_raises(file: str, path: str, comment: str, exception: BaseE
     :param exception: Exception expected to be raised
     """
     parser = load_recipe(file, RecipeParser)
-    with pytest.raises(exception):  # type: ignore
+    with pytest.raises(exception):
         parser.add_comment(path, comment)
 
 
