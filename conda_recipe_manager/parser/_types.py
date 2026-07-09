@@ -7,7 +7,7 @@ from __future__ import annotations
 import re
 from typing import Final
 
-from yaml import Dumper, ScalarNode
+from yaml import SafeDumper, ScalarNode
 
 # Import guard: Fallback to `SafeLoader` if `CSafeLoader` isn't available
 try:
@@ -116,7 +116,7 @@ class CanonicalSortOrder:
 # sense to dedicate a file for.
 
 
-class ForceIndentDumper(Dumper):
+class ForceIndentDumper(SafeDumper):
     """
     Custom YAML dumper used to include optional indentation for human readability.
     Adapted from: https://stackoverflow.com/questions/25108581/python-yaml-dump-bad-indentation
