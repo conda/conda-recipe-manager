@@ -240,9 +240,19 @@ class RecipeReader(IsModifiable):
         if line_idx >= len(lines):
             return line_idx, None
 
+        # Addressing issue #541.
+        # Look ahead past any blank lines to find the next real content line.
+        look_ahead_idx = line_idx
+        while look_ahead_idx < len(lines) and lines[look_ahead_idx].strip() == "":
+            look_ahead_idx += 1
+
+        # If the file ends in blank lines, there's no continuation to find.
+        if look_ahead_idx >= len(lines):
+            return line_idx, None
+
         # "Raw" multiline strings are indicated by having the next line be at a greater indentation level. Look-ahead
         # and bail if that is not the case.
-        look_ahead: Final = lines[line_idx]
+        look_ahead: Final = lines[look_ahead_idx]
         if num_tab_spaces(look_ahead) <= new_indent:
             return line_idx, None
 
@@ -297,9 +307,19 @@ class RecipeReader(IsModifiable):
         if line_idx >= len(lines):
             return line_idx
 
+        # Addressing issue #541.
+        # Look ahead past any blank lines to find the next real content line.
+        look_ahead_idx = line_idx
+        while look_ahead_idx < len(lines) and lines[look_ahead_idx].strip() == "":
+            look_ahead_idx += 1
+
+        # If the file ends in blank lines, there's no continuation to find and we can bail.
+        if look_ahead_idx >= len(lines):
+            return line_idx
+
         # "Raw" multiline strings are indicated by having the next line be at a greater indentation level.
         # Look-ahead and bail if that is not the case.
-        look_ahead: Final = lines[line_idx]
+        look_ahead: Final = lines[look_ahead_idx]
         if num_tab_spaces(look_ahead) <= new_indent:
             return line_idx
 
