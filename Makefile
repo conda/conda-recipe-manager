@@ -4,7 +4,7 @@ SHELL := /bin/bash
 # For GNU Make v4 and above, you must include the `-c` in order for `make` to find symbols from `PATH`
 .SHELLFLAGS := -c -o pipefail -o errexit
 CONDA_ACTIVATE = source $$(conda info --base)/etc/profile.d/conda.sh ; conda activate ; conda activate
-# Ensure that we are using the python interpretter provided by the conda environment.
+# Ensure that we are using the python interpreter provided by the conda environment.
 PYTHON3 := "$(CONDA_PREFIX)/bin/python3"
 
 .PHONY: clean clean-build clean-env clean-test help dev pre-commit test test-cov lint format format-docs analyze docs

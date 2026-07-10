@@ -206,6 +206,10 @@ def test_loading_obj_in_list() -> None:
         ("parser_regressions/issue-220_raw_multiline_str_05.yaml", RecipeReader),
         ("parser_regressions/issue-220_raw_multiline_str_06.yaml", RecipeReader),
         ("parser_regressions/issue-220_raw_multiline_str_07.yaml", RecipeReader),
+        # These tests are related to the original #220 issue but were added with #541
+        ("parser_regressions/issue-220_raw_multiline_str_08.yaml", RecipeReader),
+        ("parser_regressions/issue-220_raw_multiline_str_09.yaml", RecipeReader),
+        ("parser_regressions/issue-220_raw_multiline_str_10.yaml", RecipeReader),
         #### V1 Recipe Files ####
         ("v1_format/v1_types-toml.yaml", RecipeReader),
         ("v1_format/v1_simple-recipe.yaml", RecipeReader),
