@@ -285,3 +285,18 @@ def search_any_regex(re_set: Iterable[re.Pattern[str]], s: str) -> bool:
             return True
 
     return False
+
+
+def look_ahead_next_non_blank_line_idx(lines: list[str], line_idx: int) -> int:
+    """
+    Looks ahead from `line_idx` to find the index of the next non-blank line.
+
+    :param lines: List of all lines in the file.
+    :param line_idx: Index to start scanning from (inclusive).
+    :returns: The index of the next line containing non-whitespace content. If only blank
+        lines remain until the end of the file, returns `len(lines)`.
+    """
+    look_ahead_idx = line_idx
+    while look_ahead_idx < len(lines) and lines[look_ahead_idx].strip() == "":
+        look_ahead_idx += 1
+    return look_ahead_idx

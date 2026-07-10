@@ -33,6 +33,7 @@ from conda_recipe_manager.parser._types import (
 )
 from conda_recipe_manager.parser._utils import (
     dedupe_and_preserve_order,
+    look_ahead_next_non_blank_line_idx,
     normalize_multiline_strings,
     num_tab_spaces,
     quote_special_strings,
@@ -242,9 +243,7 @@ class RecipeReader(IsModifiable):
 
         # Addressing issue #541.
         # Look ahead past any blank lines to find the next real content line.
-        look_ahead_idx = line_idx
-        while look_ahead_idx < len(lines) and lines[look_ahead_idx].strip() == "":
-            look_ahead_idx += 1
+        look_ahead_idx = look_ahead_next_non_blank_line_idx(lines, line_idx)
 
         # If the file ends in blank lines, there's no continuation to find.
         if look_ahead_idx >= len(lines):
@@ -309,9 +308,7 @@ class RecipeReader(IsModifiable):
 
         # Addressing issue #541.
         # Look ahead past any blank lines to find the next real content line.
-        look_ahead_idx = line_idx
-        while look_ahead_idx < len(lines) and lines[look_ahead_idx].strip() == "":
-            look_ahead_idx += 1
+        look_ahead_idx = look_ahead_next_non_blank_line_idx(lines, line_idx)
 
         # If the file ends in blank lines, there's no continuation to find and we can bail.
         if look_ahead_idx >= len(lines):
