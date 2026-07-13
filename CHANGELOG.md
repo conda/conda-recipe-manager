@@ -18,6 +18,11 @@ Note: version releases in the 0.x.y range may introduce breaking changes.
   over unchanged produced recipes with inverted binary prefix-replacement behavior.
 ### Security
 
+## [0.10.5]
+### Fixed
+- The boolean flag for `detect_binary_files_with_prefix` not being inverted.
+- Multiline string regression issue, [#541](https://github.com/conda/conda-recipe-manager/issues/541).
+
 ## [0.10.4]
 ### Fixed
 - Bad cast in the `ArtifactFetcher` recovery logic.
@@ -298,7 +303,8 @@ and continually changing.
 Migrates parser from internal project.
 , ,
 
-[Unreleased]: https://github.com/conda/conda-recipe-manager/compare/v0.10.4...HEAD
+[Unreleased]: https://github.com/conda/conda-recipe-manager/compare/v0.10.5...HEAD
+[0.10.4]: https://github.com/conda/conda-recipe-manager/compare/v0.10.4...v0.10.5
 [0.10.4]: https://github.com/conda/conda-recipe-manager/compare/v0.10.3...v0.10.4
 [0.10.3]: https://github.com/conda/conda-recipe-manager/compare/v0.10.2...v0.10.3
 [0.10.2]: https://github.com/conda/conda-recipe-manager/compare/v0.10.1...v0.10.2
