@@ -7,6 +7,9 @@ import pytest_socket  # type: ignore[import-untyped]
 import requests
 
 
+# pytest-socket@0.8.0+ marks any socket usage with a pytest warning. We must suppress this in order to pass the
+# smoke-test that ensures pytest-socket is working as intended.
+@pytest.mark.filterwarnings("ignore::UserWarning")
 def test_validate_pysocket_plugin() -> None:
     """
     Smoke test that ensures that the `pysocket` plugin is working by running an unmocked HTTP GET request that should
