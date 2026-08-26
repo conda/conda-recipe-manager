@@ -850,7 +850,8 @@ class RecipeReader(IsModifiable):
             cur_indent = new_indent
             # Look at the stack to determine the parent Node and then append the current node to the new parent.
             parent = node_stack[-1]
-            # Check for duplicate keys and bail if found.
+            # Check for duplicate keys and bail if found. In V0, duplicate keys are used in conjunction with selectors
+            # to change behavior for different build variants, platforms, etc.
             if (
                 new_node.is_key()
                 and not new_node.list_member_flag
@@ -865,12 +866,30 @@ class RecipeReader(IsModifiable):
                 # See:
                 #   - `/conda-recipe-manager/__init__.py` for an example of enabling it.
                 #   - https://docs.python.org/3.11/library/warnings.html for more details.
+                #
+                # For debugging/user-experience purposes, attempt to render a path to help locate the duplicate in the
+                # file. At this point, we only have a stack of parent-nodes, not a full parse-tree. Plus, we have no way
+                # in our JSON-patch syntax to discern between duplicate paths.
+                dup_path = "/".join(
+                    [
+                        (
+                            ""
+                            if node.value == ROOT_NODE_VALUE
+                            else str(node.value) if not node.is_collection_element() else "?"
+                        )
+                        for node in node_stack
+                    ]
+                )
+                warn_str = (
+                    f"Duplicate `{dup_path}/{new_node.value}` key found while `ALLOW_DUPLICATE_KEYS` is enabled."
+                    " Ignoring..."
+                )
                 warnings.warn(
-                    f"Duplicate {new_node.value} keys found, ALLOW_DUPLICATE_KEYS enabled, allowing...",
+                    warn_str,
                     DuplicateKeyWarning,
                 )
                 # Log the warning to actual logs.
-                log.warning("Duplicate %s keys found, ALLOW_DUPLICATE_KEYS enabled, allowing...", new_node.value)
+                log.warning("%s", warn_str)
             parent.children.append(new_node)
             # Update the last node for the next line interpretation
             last_node = new_node
