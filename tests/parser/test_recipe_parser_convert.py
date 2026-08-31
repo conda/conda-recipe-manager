@@ -524,6 +524,15 @@ def test_pre_process_recipe_text(input_file: str, expected_file: str) -> None:
                 "dependencies that use variables: {{ stdlib('c') }}",
             ],
         ),
+        (
+            "parser_regressions/issue-307-jinja2-ambig-vars.yaml",
+            [],
+            [
+                "Version on dependency changed to: python {{ python_min }}.*",
+                "Field at `/about/license_family` is no longer supported.",
+                "Field at `/about/doc_source_url` is no longer supported.",
+            ],
+        ),
     ],
 )
 def test_render_to_v1_recipe_format(file: str, errors: list[str], warnings: list[str]) -> None:

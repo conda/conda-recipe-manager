@@ -166,12 +166,15 @@ class RecipeReaderDeps(RecipeReader):
                 )
             )
 
-    def get_all_dependencies(self, include_test_dependencies: bool = False) -> DependencyMap:
+    def get_all_dependencies(self, include_test_dependencies: bool = False, sub_vars: bool = True) -> DependencyMap:
         """
         Get a parsed representation of all the dependencies found in the recipe.
 
         :param include_test_dependencies: (Optional) If True, include test dependencies.
             Defaults to False, which will exclude test dependencies, for backwards compatibility.
+        :param sub_vars: (Optional) If set to True and the dependency contains a Jinja template
+            variable, the Jinja value will be "rendered". Any variables that can't be resolved
+            will be escaped with `${{ }}`. Defaults to True for backwards compatibility.
         :raises KeyError: If a package in the recipe does not have a name
         :raises ValueError: If a recipe contains a package with duplicate names
         :raises SentinelTypeEvaluationException: If a node value with a sentinel type is evaluated.
@@ -189,7 +192,7 @@ class RecipeReaderDeps(RecipeReader):
             # Requirements
             requirements = cast(
                 Optional[str | dict[str, list[Optional[str]]]],
-                self.get_value(RecipeReader.append_to_path(path, "/requirements"), default={}, sub_vars=True),
+                self.get_value(RecipeReader.append_to_path(path, "/requirements"), default={}, sub_vars=sub_vars),
             )
             # Skip over empty/malformed requirements sections
             if requirements is not None and not isinstance(requirements, str):
@@ -201,7 +204,7 @@ class RecipeReaderDeps(RecipeReader):
                 continue
             test_requirements = cast(
                 Optional[list[Optional[str]]],
-                self.get_value(RecipeReader.append_to_path(path, "/test/requires"), default=[], sub_vars=True),
+                self.get_value(RecipeReader.append_to_path(path, "/test/requires"), default=[], sub_vars=sub_vars),
             )
             # Skip over empty/malformed test requirements sections
             if test_requirements is not None and isinstance(test_requirements, list):
