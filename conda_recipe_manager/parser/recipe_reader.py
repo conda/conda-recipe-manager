@@ -25,6 +25,7 @@ from conda_recipe_manager.parser._traverse import traverse, traverse_all
 from conda_recipe_manager.parser._types import (
     RECIPE_MANAGER_SUB_MARKER,
     ROOT_NODE_VALUE,
+    ROOT_PATH,
     ForceIndentDumper,
     Regex,
     SafeLoader,
@@ -1558,8 +1559,10 @@ class RecipeReader(IsModifiable):
               https://github.com/AnacondaRecipes/curl-feedstock/blob/master/recipe/meta.yaml
 
         :raises SentinelTypeEvaluationException: If a node value with a sentinel type is evaluated.
+        :returns: List of path prefixes, indicating "packages". ALWAYS begins with the top-level path, followed by
+            any `/outputs/*` paths, if applicable.
         """
-        paths: list[str] = ["/"]
+        paths: list[str] = [ROOT_PATH]
 
         outputs: Final[list[str]] = cast(list[str], self.get_value("/outputs", []))
         for i in range(len(outputs)):
