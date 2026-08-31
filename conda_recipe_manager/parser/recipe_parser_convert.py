@@ -14,7 +14,7 @@ from conda_recipe_manager.licenses.spdx_utils import SpdxUtils
 from conda_recipe_manager.parser._message_table import MessageCategory, MessageTable
 from conda_recipe_manager.parser._types import ROOT_NODE_VALUE, CanonicalSortOrder, Regex
 from conda_recipe_manager.parser._utils import search_any_regex, set_key_conditionally, stack_path_to_str
-from conda_recipe_manager.parser.dependency import Dependency, DependencyConflictMode
+from conda_recipe_manager.parser.dependency import Dependency, DependencyConflictMode, dependency_data_from_str
 from conda_recipe_manager.parser.enums import SchemaVersion, SelectorConflictMode
 from conda_recipe_manager.parser.recipe_parser import RecipeParser
 from conda_recipe_manager.parser.recipe_parser_deps import RecipeParserDeps
@@ -244,7 +244,8 @@ class RecipeParserConvert(RecipeParserDeps):
         yet available.
         """
         try:
-            dep_map = self._v1_recipe.get_all_dependencies()
+            dep_map = self._v1_recipe.get_all_dependencies(sub_vars=True)
+            dep_map_with_vars = self._v1_recipe.get_all_dependencies(sub_vars=False)
         except (KeyError, ValueError):
             self._msg_tbl.add_message(
                 MessageCategory.ERROR,
@@ -252,8 +253,18 @@ class RecipeParserConvert(RecipeParserDeps):
             )
             return
 
-        for _, deps in dep_map.items():
-            for dep in deps:
+        for key, deps in dep_map.items():
+            deps_with_vars = dep_map_with_vars.get(key, deps)
+
+            if len(deps) != len(deps_with_vars):
+                self._msg_tbl.add_message(
+                    MessageCategory.ERROR,
+                    "Found different numbers of dependencies between dependencies with variable "
+                    "substitutuion versus without when attempting to upgrade ambiguous version numbers.",
+                )
+                return
+
+            for dep, dep_with_vars in zip(deps, deps_with_vars):
                 # Warn and quit-early if there is a potential for a ambiguous version variable.
                 if not isinstance(dep.data, MatchSpec):  # type: ignore[misc]
                     # TODO: Reduce spammy-ness by looking at the variables table
@@ -269,7 +280,7 @@ class RecipeParserConvert(RecipeParserDeps):
                 if dep.data.version is None or not isinstance(dep.data.original_spec_str, str):  # type: ignore[misc]
                     continue
 
-                spec_str = dep.data.original_spec_str
+                spec_str = dep_with_vars.data.original_spec_str
                 # Corrects fairly common typos when dealing with >= and <= operators in dependency version selection
                 # statements.
                 spec_str = Regex.AMBIGUOUS_DEP_VERSION_GE_TYPO.sub(r"\1>=\2", spec_str)
@@ -290,17 +301,17 @@ class RecipeParserConvert(RecipeParserDeps):
                     spec_str = f"{spec_str}.*"
 
                 # Only commit changes to modified dependencies.
-                if dep.data.original_spec_str == spec_str:
+                if dep_with_vars.data.original_spec_str == spec_str:
                     continue
 
                 # TODO add IGNORE conflict mode for selectors???
                 self._v1_recipe.add_dependency(
                     Dependency(
-                        required_by=dep.required_by,
-                        path=dep.path,
-                        type=dep.type,
-                        data=MatchSpec(spec_str),
-                        selector=dep.selector,
+                        required_by=dep_with_vars.required_by,
+                        path=dep_with_vars.path,
+                        type=dep_with_vars.type,
+                        data=dependency_data_from_str(spec_str),
+                        selector=dep_with_vars.selector,
                     ),
                     dep_mode=DependencyConflictMode.EXACT_POSITION,
                     sel_mode=SelectorConflictMode.OR,
