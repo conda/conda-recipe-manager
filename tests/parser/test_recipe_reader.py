@@ -1878,4 +1878,4 @@ def test_duplicate_keys_allowed(file: str, flags: RecipeReaderFlags, caplog: pyt
         with pytest.warns(DuplicateKeyWarning):
             load_recipe(file, RecipeReader, flags)
 
-    assert "Duplicate script keys found, ALLOW_DUPLICATE_KEYS enabled, allowing..." in caplog.text
+    assert "Duplicate `/outputs/?/script` key found while `ALLOW_DUPLICATE_KEYS` is enabled. Ignoring..." in caplog.text
