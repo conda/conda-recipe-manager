@@ -133,6 +133,15 @@ class DependencyVariable:
         # TODO normalize common JINJA functions for quote usage
         self.name = s.strip()
 
+    @property
+    def original_spec_str(self) -> str:
+        """
+        Property that allows the object to be used as a `MatchSpec` without type guards similarly to `name` above.
+
+        :returns: A string representing the original specification.
+        """
+        return self.name
+
     def __eq__(self, o: object) -> bool:
         """
         Checks to see if two objects are equivalent.
