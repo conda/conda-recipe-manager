@@ -301,7 +301,7 @@ class RecipeParserConvert(RecipeParserDeps):
                     spec_str = f"{spec_str}.*"
 
                 # Only commit changes to modified dependencies.
-                if dep_with_vars.data.original_spec_str == spec_str:
+                if cast(str, dep_with_vars.data.original_spec_str) == spec_str:
                     continue
 
                 # TODO add IGNORE conflict mode for selectors???
