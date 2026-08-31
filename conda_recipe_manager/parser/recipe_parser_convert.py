@@ -280,7 +280,7 @@ class RecipeParserConvert(RecipeParserDeps):
                 if dep.data.version is None or not isinstance(dep.data.original_spec_str, str):  # type: ignore[misc]
                     continue
 
-                spec_str = dep_with_vars.data.original_spec_str
+                spec_str = cast(str, dep_with_vars.data.original_spec_str)
                 # Corrects fairly common typos when dealing with >= and <= operators in dependency version selection
                 # statements.
                 spec_str = Regex.AMBIGUOUS_DEP_VERSION_GE_TYPO.sub(r"\1>=\2", spec_str)
