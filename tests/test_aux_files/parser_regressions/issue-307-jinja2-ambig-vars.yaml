@@ -1,0 +1,56 @@
+{% set name = "nbclient" %}
+{% set version = "0.11.0" %}
+{% set python_min = "3.10" %}
+{% set build = 0 %}
+
+package:
+  name: {{ name }}
+  version: {{ version }}
+
+source:
+  url: https://pypi.org/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz
+  sha256: 04a134a5b087f2c5887f228aca155db50169b8cd9334dee6942c8e927e56081a
+
+build:
+  number: {{ build }}
+  script: {{ PYTHON }} -m pip install . -vv
+  noarch: python
+
+requirements:
+  host:
+    - python {{ python_min }}
+    - pip
+    - hatchling
+  run:
+    - python >={{ python_min }}
+    - jupyter_client >=7.0.0
+    - jupyter_core >=5.4
+    - nbformat >=5.2.0
+    - traitlets >=5.13
+
+test:
+  requires:
+    - python {{ python_min }}
+    - pip
+  imports:
+    - nbclient
+  commands:
+    - pip check
+
+about:
+  home: https://jupyter.org
+  license: BSD-3-Clause
+  license_family: BSD
+  license_file: LICENSE
+  summary: A client library for executing notebooks. Formally nbconvert's ExecutePreprocessor.
+  description: |
+    NBClient is a tool for parameterizing and executing Jupyter Notebooks.
+    NBClient lets you execute notebooks. Similar in nature to jupyter_client, as the jupyter_client
+    is to the jupyter protocol nbclient is to notebooks allowing for execution contexts to be run.
+  dev_url: https://github.com/jupyter/nbclient
+  doc_url: https://nbclient.readthedocs.io
+  doc_source_url: https://github.com/jupyter/nbclient/tree/master/docs
+
+extra:
+  recipe-maintainers:
+    - davidbrochart
