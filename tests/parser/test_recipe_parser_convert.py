@@ -123,6 +123,11 @@ def test_pre_process_recipe_text(input_file: str, expected_file: str) -> None:
                 "dependencies that use variables: {{ compiler('c') }}",
                 "Recipe upgrades cannot currently upgrade ambiguous version constraints on "
                 "dependencies that use variables: {{ compiler('cxx') }}",
+                (
+                    "This recipe contains a top-level `/requirements` section and at least one"
+                    " `/outputs/*/requirements` section. Manual intervention will be required to match expected V0"
+                    " build behavior in V1."
+                ),
                 "Field at `/about/license_family` is no longer supported.",
             ],
         ),
@@ -149,6 +154,11 @@ def test_pre_process_recipe_text(input_file: str, expected_file: str) -> None:
             "cctools-ld64.yaml",
             [],
             [
+                (
+                    "This recipe contains a top-level `/requirements` section and at least one"
+                    " `/outputs/*/requirements` section. Manual intervention will be required to match expected V0"
+                    " build behavior in V1."
+                ),
                 "Changed /outputs/0/about/license from `Apple Public Source License 2.0` to " "`APSL-2.0`",
                 "Field at `/outputs/0/about/license_family` is no longer supported.",
                 "Changed /outputs/1/about/license from `Apple Public Source License 2.0` to " "`APSL-2.0`",
@@ -559,7 +569,16 @@ def test_render_to_v1_recipe_format(file: str, errors: list[str], warnings: list
         (
             "parser_regressions/run_exports_as_list.yaml",
             [],
-            [],
+            [
+                # NOTE: The original V0 recipe does not contain both `/requirements` section contexts. HOWEVER the
+                #       resulting V1 recipe DOES contain both, because `run_exports` moved to the `/requirements`
+                #       section in V1. So a package builder should still be made aware.
+                (
+                    "This recipe contains a top-level `/requirements` section and at least one"
+                    " `/outputs/*/requirements` section. Manual intervention will be required to match expected V0"
+                    " build behavior in V1."
+                ),
+            ],
         ),
     ],
 )

@@ -12,7 +12,7 @@ from conda.models.match_spec import MatchSpec
 
 from conda_recipe_manager.licenses.spdx_utils import SpdxUtils
 from conda_recipe_manager.parser._message_table import MessageCategory, MessageTable
-from conda_recipe_manager.parser._types import ROOT_NODE_VALUE, CanonicalSortOrder, Regex
+from conda_recipe_manager.parser._types import ROOT_NODE_VALUE, ROOT_PATH, CanonicalSortOrder, Regex
 from conda_recipe_manager.parser._utils import search_any_regex, set_key_conditionally, stack_path_to_str
 from conda_recipe_manager.parser.dependency import Dependency, DependencyConflictMode, dependency_data_from_str
 from conda_recipe_manager.parser.enums import SchemaVersion, SelectorConflictMode
@@ -676,10 +676,32 @@ class RecipeParserConvert(RecipeParserDeps):
 
         :param base_package_paths: Set of base paths to process that could contain this section.
         """
+        detect_and_warn_top_level_requirements_once = False
         for base_path in base_package_paths:
             requirements_path = RecipeParser.append_to_path(base_path, "/requirements")
             if not self._v1_recipe.contains_value(requirements_path):
                 continue
+
+            # While we are modifying all the changes that need to be made in the `/requirements` section, detect and
+            # produce 1 warning indicating if there is a top-level `/requirements` section and at least one other in a
+            # multi-output recipe. This dual-context situation in V0 is rarely used and has an _incredibly_ nuanced
+            # interpretation in `conda-build`. Given that, we do not attempt to remedy the situation and alert the
+            # the package builder that they will have to manually fix this.
+            if base_path == ROOT_PATH:
+                detect_and_warn_top_level_requirements_once = True
+            # If this was set AND we have found another `/requirements` section in a following iteration, we have _the_
+            # problem.
+            elif detect_and_warn_top_level_requirements_once:
+                self._msg_tbl.add_message(
+                    MessageCategory.WARNING,
+                    (
+                        "This recipe contains a top-level `/requirements` section and at least one"
+                        " `/outputs/*/requirements` section. Manual intervention will be required to match expected"
+                        " V0 build behavior in V1."
+                    ),
+                )
+                # Reset to fail on the next iteration, warning only one time.
+                detect_and_warn_top_level_requirements_once = False
 
             # Renames `run_constrained` to the new equivalent name
             self._patch_move_base_path(requirements_path, "/run_constrained", "/run_constraints")
@@ -1089,7 +1111,7 @@ class RecipeParserConvert(RecipeParserDeps):
         # Sort the top-level keys to a "canonical" ordering. This should make previous patch operations look more
         # "sensible" to a human reader.
         self._v1_recipe._sort_subtree_keys(  # pylint: disable=protected-access
-            "/", CanonicalSortOrder.TOP_LEVEL_KEY_SORT_ORDER
+            ROOT_PATH, CanonicalSortOrder.TOP_LEVEL_KEY_SORT_ORDER
         )
 
         # Override the schema value as the recipe conversion is now complete.

@@ -25,6 +25,8 @@ StrStackImmutable = tuple[str, ...]
 
 #### Private Constants (Not to be used external to the `parser` module) ####
 
+# String that represents the top-level path to a document.
+ROOT_PATH: Final[str] = "/"
 # String that represents a root node in our path.
 ROOT_NODE_VALUE: Final[str] = "/"
 # Marker used to temporarily work around some Jinja-template parsing issues
