@@ -10,20 +10,36 @@ Note: version releases in the 0.x.y range may introduce breaking changes.
 ## [Unreleased]
 ### Added
 ### Changed
-- `click` dependency has been pinned to 8.4.1, which is available on `defaults` and `conda-forge`
-  channels for Python 3.11-3.14.
 ### Deprecated
 ### Removed
 ### Fixed
-- `crm convert` now negates `detect_binary_files_with_prefix` when converting it to the V1
-  `prefix_detection/ignore_binary_files` field. The two flags are logical inverses, so previously carrying the value
-  over unchanged produced recipes with inverted binary prefix-replacement behavior.
 ### Security
+
+## [0.10.6]
+### Added
+- Two adjustments to user warnings for `crm convert` for edge cases that require manual intervention from the package
+  builder:
+  - When duplicate keys are detected in a V0 recipe file (usually when a selector is applied to both), users now get
+    a partial key-path logged rather than just the base key-name.
+  - Users are now informed when a V0 recipe contains a top-level `/requirements` section and one or more `/requirements`
+    section(s) in the `/outputs` section. This behavior is not supported in V1 and is incredibly nuanced in V0; it
+    should be left up to the package builder to decide how to handle the changes in V1.
+### Changed
+- `click` dependency has been pinned to 8.4.1, which is available on `defaults` and `conda-forge`
+  channels for Python 3.11-3.14.
+- Various GitHub infrastructure improvements adopted by the Conda Org.
+### Fixed
+- Fixed `pytest-socket` smoke test to support versions 0.8.0+.
+- @beckermr fixed issue [#307](https://github.com/conda/conda-recipe-manager/issues/307) which now prevents JINJA
+  variables from being rendered while upgrading them to their non-ambiguous version constraints in `crm convert`.
 
 ## [0.10.5]
 ### Fixed
 - The boolean flag for `detect_binary_files_with_prefix` not being inverted.
 - Multiline string regression issue, [#541](https://github.com/conda/conda-recipe-manager/issues/541).
+- @chrisburr `crm convert` now negates `detect_binary_files_with_prefix` when converting it to the V1
+  `prefix_detection/ignore_binary_files` field. The two flags are logical inverses, so previously carrying the value
+  over unchanged produced recipes with inverted binary prefix-replacement behavior.
 
 ## [0.10.4]
 ### Fixed
@@ -305,8 +321,9 @@ and continually changing.
 Migrates parser from internal project.
 , ,
 
-[Unreleased]: https://github.com/conda/conda-recipe-manager/compare/v0.10.5...HEAD
-[0.10.4]: https://github.com/conda/conda-recipe-manager/compare/v0.10.4...v0.10.5
+[Unreleased]: https://github.com/conda/conda-recipe-manager/compare/v0.10.6...HEAD
+[0.10.6]: https://github.com/conda/conda-recipe-manager/compare/v0.10.5...v0.10.6
+[0.10.5]: https://github.com/conda/conda-recipe-manager/compare/v0.10.4...v0.10.5
 [0.10.4]: https://github.com/conda/conda-recipe-manager/compare/v0.10.3...v0.10.4
 [0.10.3]: https://github.com/conda/conda-recipe-manager/compare/v0.10.2...v0.10.3
 [0.10.2]: https://github.com/conda/conda-recipe-manager/compare/v0.10.1...v0.10.2
