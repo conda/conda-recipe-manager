@@ -10,6 +10,7 @@ Note: version releases in the 0.x.y range may introduce breaking changes.
 ## [Unreleased]
 ### Added
 ### Changed
+- Widened `click` dependency has been pinning to allow for more known safe versions, per community feedback.
 ### Deprecated
 ### Removed
 ### Fixed
