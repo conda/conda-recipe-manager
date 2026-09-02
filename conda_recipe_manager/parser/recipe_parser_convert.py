@@ -302,7 +302,9 @@ class RecipeParserConvert(RecipeParserDeps):
                     isinstance(dep.data, MatchSpec)  # type: ignore[misc]
                     and cast(bool, dep.data.version.is_exact())  # type: ignore[misc]
                     and "=" not in dep.data.original_spec_str  # type: ignore[misc]
-                ) or Regex.AMBIGUOUS_DEP_JINJA_VAR.match(dep_with_vars.data.original_spec_str):  # type: ignore[misc]
+                ) or (
+                    Regex.AMBIGUOUS_DEP_JINJA_VAR.match(dep_with_vars.data.original_spec_str)  # type: ignore[misc]
+                ):
                     spec_str = f"{spec_str}.*"
 
                 # Only commit changes to modified dependencies.
