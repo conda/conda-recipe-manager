@@ -226,7 +226,6 @@ class Regex:
 
     ## Jinja regular expressions ##
     JINJA_V0_SUB: Final[re.Pattern[str]] = re.compile(r"{{\s*" + _JINJA_VAR_FUNCTION_PATTERN + r"\s*}}")
-
     # Detects multi-line JINJA statements.
     # re.DOTALL is used to allow for multiline matches and '?' is used to make the quantifier '.+' non-greedy,
     # allowing for the shortest possible match, in order to avoid matching all the way to the last JINJA statement
