@@ -24,9 +24,10 @@ requirements:
     - wheel
   run:
     - python >=3.11
-    # `click` has historically given us some grief with breaking changes between minor versions, so we hard-pin it.
-    # 8.4.1 is available on `defaults` and `conda-forge` for Python 3.11+.
-    - click ==8.4.1
+    # `click` has historically given us some grief with breaking changes between minor versions, so we restrict it.
+    # As of writing, 8.4.1 is the latest known working available version on Anaconda's `main` channel and `conda-forge`
+    # for Python 3.11+.
+    - click >=8.2.1,<=8.4.1
     - conda
     - jinja2
     - pyyaml

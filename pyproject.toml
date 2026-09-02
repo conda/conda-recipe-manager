@@ -41,7 +41,7 @@ classifiers = [
     "Topic :: Utilities",
 ]
 dependencies = [
-  "click==8.4.1",
+  "click>=8.2.1,<=8.4.1",
   "jinja2",
   "pyyaml",
   "jsonschema",
