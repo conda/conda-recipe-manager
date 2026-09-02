@@ -244,8 +244,8 @@ class RecipeParserConvert(RecipeParserDeps):
         yet available.
         """
         try:
-            dep_map = self._v1_recipe.get_all_dependencies(sub_vars=True)
-            dep_map_with_vars = self._v1_recipe.get_all_dependencies(sub_vars=False)
+            dep_map = self._v1_recipe.get_all_dependencies(sub_vars=True, include_test_dependencies=True)
+            dep_map_with_vars = self._v1_recipe.get_all_dependencies(sub_vars=False, include_test_dependencies=True)
         except (KeyError, ValueError):
             self._msg_tbl.add_message(
                 MessageCategory.ERROR,

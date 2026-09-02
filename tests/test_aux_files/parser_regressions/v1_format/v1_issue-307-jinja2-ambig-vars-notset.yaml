@@ -1,54 +1,74 @@
 schema_version: 1
 
 context:
-  name: nbclient
-  version: "0.11.0"
-  build: 0
+  name: conda-index
+  version: "0.12.1"
 
 package:
-  name: ${{ name }}
+  name: ${{ name|lower }}
   version: ${{ version }}
 
 source:
-  url: https://pypi.org/packages/source/${{ name[0] }}/${{ name }}/${{ name }}-${{ version }}.tar.gz
-  sha256: 04a134a5b087f2c5887f228aca155db50169b8cd9334dee6942c8e927e56081a
+  url: https://github.com/conda/${{ name }}/archive/refs/tags/${{ version }}.tar.gz
+  sha256: 08586a4d67d0faea679721b434a1e2df5a26ed58b6b0d7e62d19e5ada803e380
 
 build:
-  number: ${{ build }}
+  number: 0
   noarch: python
-  script: ${{ PYTHON }} -m pip install . -vv
+  script:
+    env:
+      SETUPTOOLS_SCM_PRETEND_VERSION: ${{ version }}
+    content: ${{ PYTHON }} -m pip install --no-build-isolation . -vv
 
 requirements:
   host:
+    - hatchling >=1.12.2
+    - hatch-vcs >=0.2.0
     - python ${{ python_min }}.*
     - pip
-    - hatchling
   run:
     - python >=${{ python_min }}
-    - jupyter_client >=7.0.0
-    - jupyter_core >=5.4
-    - nbformat >=5.2.0
-    - traitlets >=5.13
+    - conda >=25
+    - conda-package-streaming >=0.12.0
+    - filelock
+    - jinja2
+    - msgpack-python >=1.0.2
+    - ruamel.yaml
+    - zstandard
 
 tests:
   - python:
       imports:
-        - nbclient
-      pip_check: true
-      python_version: ${{ python_min }}
+        - conda_index.index
+      pip_check: false
+      python_version: ${{ python_min }}.*
+  - files:
+      source:
+        - tests
+    requirements:
+      run:
+        - conda-build >=25
+        - conda-package-handling >=2.2.0
+        - coverage
+        - fsspec
+        - pytest >=7
+        - pytest-cov
+        - pytest-mock
+        - python ${{ python_min }}.*
+    script:
+      - pytest -k test_index_on_single_subdir_1
 
 about:
+  summary: Create `repodata.json` for collections of conda packages.
   license: BSD-3-Clause
   license_file: LICENSE
-  summary: A client library for executing notebooks. Formally nbconvert's ExecutePreprocessor.
-  description: |
-    NBClient is a tool for parameterizing and executing Jupyter Notebooks.
-    NBClient lets you execute notebooks. Similar in nature to jupyter_client, as the jupyter_client
-    is to the jupyter protocol nbclient is to notebooks allowing for execution contexts to be run.
-  homepage: https://jupyter.org
-  repository: https://github.com/jupyter/nbclient
-  documentation: https://nbclient.readthedocs.io
+  homepage: https://github.com/conda/conda-index
+  repository: https://github.com/conda/conda-index
+  documentation: https://conda.github.io/conda-index
 
 extra:
   recipe-maintainers:
-    - davidbrochart
+    - kenodegard
+    - AndresGuzman-Ballen
+    - dholth
+    - jharlow-intel

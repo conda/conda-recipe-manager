@@ -110,6 +110,8 @@ def test_pre_process_recipe_text(input_file: str, expected_file: str) -> None:
                 'dependencies that use variables: {{ pin_subpackage("libgoogle-cloud-all", '
                 "exact=True) }}",
                 "Recipe upgrades cannot currently upgrade ambiguous version constraints on "
+                "dependencies that use variables: {{ compiler('cxx') }}",
+                "Recipe upgrades cannot currently upgrade ambiguous version constraints on "
                 "dependencies that use variables: {{ compiler('c') }}",
                 "Recipe upgrades cannot currently upgrade ambiguous version constraints on "
                 "dependencies that use variables: {{ compiler('cxx') }}",
@@ -539,6 +541,7 @@ def test_pre_process_recipe_text(input_file: str, expected_file: str) -> None:
             [],
             [
                 "Version on dependency changed to: python {{ python_min }}.*",
+                "Version on dependency changed to: python {{ python_min }}.*",
                 "Field at `/about/license_family` is no longer supported.",
                 "Field at `/about/doc_source_url` is no longer supported.",
             ],
@@ -550,8 +553,7 @@ def test_pre_process_recipe_text(input_file: str, expected_file: str) -> None:
                 "Version on dependency changed to: python {{ python_min }}.*",
                 "Recipe upgrades cannot currently upgrade ambiguous version constraints on "
                 "dependencies that use variables: python >={{ python_min }}",
-                "Field at `/about/license_family` is no longer supported.",
-                "Field at `/about/doc_source_url` is no longer supported.",
+                "Version on dependency changed to: python {{ python_min }}.*",
             ],
         ),
     ],
