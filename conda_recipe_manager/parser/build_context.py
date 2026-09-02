@@ -129,6 +129,7 @@ class BuildContext:
 
         :param platform: Platform to evaluate the context for.
         :param build_env_vars: Build environment variables to evaluate the context for.
+        :raises BuildContextVersionException: If a version string is provided as an unexpected type.
         """
         self._platform: Final[Platform] = platform
         self._build_env_vars: Final[dict[str, Primitives]] = {} if build_env_vars is None else build_env_vars
@@ -158,3 +159,14 @@ class BuildContext:
         :returns: The build platform.
         """
         return self._platform
+
+    def get_python_version_as_int(self) -> Optional[int]:
+        """
+        If available, returns the Python version set as an conda-styled integer (i.e. `3.11` --> `311`).
+
+        :returns: The target Python version in an integer representation, if applicable. Otherwise, `None`.
+        """
+        py_ver: Final = self._context.get("py", None)
+        if py_ver is None:
+            return None
+        return int(cast(int, py_ver))
