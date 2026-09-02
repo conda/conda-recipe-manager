@@ -210,6 +210,9 @@ class Regex:
     AMBIGUOUS_DEP_MULTI_OPERATOR: Final[re.Pattern[str]] = re.compile(
         r"([\w|\-]+\s*)(~|<|>|<=|>=|==|!=|~=)(\s*[\d|\.]+)(\.\*)"
     )
+    AMBIGUOUS_DEP_JINJA_VAR: Final[re.Pattern[str]] = re.compile(
+        r"^\s*((([a-z0-9])|([a-z0-9_](?!_)))[._-]?([a-z0-9]+(\.|-|_|))*)\s*\$?\{\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*\}\}$"
+    )
 
     ## Selector Replacements ##
     # Replaces Python version expressions with the newer V1 `match()` function
@@ -223,6 +226,7 @@ class Regex:
 
     ## Jinja regular expressions ##
     JINJA_V0_SUB: Final[re.Pattern[str]] = re.compile(r"{{\s*" + _JINJA_VAR_FUNCTION_PATTERN + r"\s*}}")
+
     # Detects multi-line JINJA statements.
     # re.DOTALL is used to allow for multiline matches and '?' is used to make the quantifier '.+' non-greedy,
     # allowing for the shortest possible match, in order to avoid matching all the way to the last JINJA statement

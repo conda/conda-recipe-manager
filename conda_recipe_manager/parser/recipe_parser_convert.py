@@ -266,7 +266,9 @@ class RecipeParserConvert(RecipeParserDeps):
 
             for dep, dep_with_vars in zip(deps, deps_with_vars):
                 # Warn and quit-early if there is a potential for a ambiguous version variable.
-                if not isinstance(dep.data, MatchSpec):  # type: ignore[misc]
+                if (not isinstance(dep.data, MatchSpec)) and (
+                    not Regex.AMBIGUOUS_DEP_JINJA_VAR.match(dep_with_vars.data.original_spec_str)
+                ):  # type: ignore[misc]
                     # TODO: Reduce spammy-ness by looking at the variables table
                     self._msg_tbl.add_message(
                         MessageCategory.WARNING,
@@ -277,7 +279,9 @@ class RecipeParserConvert(RecipeParserDeps):
                     )
                     continue
 
-                if dep.data.version is None or not isinstance(dep.data.original_spec_str, str):  # type: ignore[misc]
+                if isinstance(dep.data, MatchSpec) and (
+                    dep.data.version is None or not isinstance(dep.data.original_spec_str, str)
+                ):  # type: ignore[misc]
                     continue
 
                 spec_str = cast(str, dep_with_vars.data.original_spec_str)
@@ -295,9 +299,10 @@ class RecipeParserConvert(RecipeParserDeps):
                 # `VersionSpec` does not make a distinction between a version that contains a `==` operator and a
                 # version with no operator (which is ambiguous per the V1 specification).
                 if (
-                    cast(bool, dep.data.version.is_exact())  # type: ignore[misc]
+                    isinstance(dep.data, MatchSpec)
+                    and cast(bool, dep.data.version.is_exact())  # type: ignore[misc]
                     and "=" not in dep.data.original_spec_str
-                ):
+                ) or Regex.AMBIGUOUS_DEP_JINJA_VAR.match(dep_with_vars.data.original_spec_str):
                     spec_str = f"{spec_str}.*"
 
                 # Only commit changes to modified dependencies.
