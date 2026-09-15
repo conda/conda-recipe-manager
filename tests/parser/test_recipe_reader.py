@@ -10,6 +10,7 @@ from typing import Final
 
 import pytest
 
+from conda_recipe_manager.parser._node import Node
 from conda_recipe_manager.parser._node_var import NodeVar
 from conda_recipe_manager.parser.cbc_reader import CbcReader  # Used in some parsing tests instead of `RecipeReader`.
 from conda_recipe_manager.parser.enums import SchemaVersion
@@ -1895,3 +1896,119 @@ def test_duplicate_keys_allowed(file: str, flags: RecipeReaderFlags, caplog: pyt
             load_recipe(file, RecipeReader, flags)
 
     assert "Duplicate `/outputs/?/script` key found while `ALLOW_DUPLICATE_KEYS` is enabled. Ignoring..." in caplog.text
+
+
+@pytest.mark.parametrize(
+    "file,flags",
+    [
+        ("duplicate_keys/unconditional-top-level-section.yaml", RecipeReaderFlags.NONE),
+        ("duplicate_keys/unconditional-top-level-section.yaml", RecipeReaderFlags.ALLOW_DUPLICATE_KEYS),
+    ],
+)
+def test_duplicate_unconditional_section_always_raises(file: str, flags: RecipeReaderFlags) -> None:
+    """
+    Tests that a section duplicated with no selector to distinguish the occurrences (e.g. two full `build:` blocks)
+    is always rejected with an actionable reason, even when `ALLOW_DUPLICATE_KEYS` is set. Unlike a duplicated leaf
+    key, there is no way to reconcile two blocks of nested content into one, so this is almost always an authoring
+    mistake.
+
+    :param file: File to run against
+    :param flags: RecipeReaderFlags to enable.
+    """
+    with pytest.raises(DuplicateKeyException) as e:
+        load_recipe(file, RecipeReader, flags)
+    assert e.value.message == (
+        "Duplicate key found at line 13: build. This key introduces a section (nested content on following lines), "
+        "and a duplicated section cannot be safely merged - there is no way to reconcile two blocks of nested "
+        "content into one. This is likely an authoring mistake in the source recipe that needs manual review."
+    )
+
+
+@pytest.mark.parametrize(
+    "file,flags",
+    [
+        ("duplicate_keys/selector-guarded-top-level-section.yaml", RecipeReaderFlags.NONE),
+        ("duplicate_keys/selector-guarded-top-level-section.yaml", RecipeReaderFlags.ALLOW_DUPLICATE_KEYS),
+    ],
+)
+def test_duplicate_selector_guarded_section_always_raises(file: str, flags: RecipeReaderFlags) -> None:
+    """
+    Tests that a duplicated section is rejected even when every occurrence carries a selector (e.g.
+    `build:  # [win]` / `build:  # [not win]`). Unlike a duplicated leaf key, CRM has no logic to fold two blocks of
+    nested content into one, so it would otherwise carry both through into V1 output verbatim - which is invalid.
+
+    :param file: File to run against
+    :param flags: RecipeReaderFlags to enable.
+    """
+    with pytest.raises(DuplicateKeyException) as e:
+        load_recipe(file, RecipeReader, flags)
+    assert e.value.message == (
+        "Duplicate key found at line 12: build. This key introduces a section (nested content on following lines), "
+        "and a duplicated section cannot be safely merged - there is no way to reconcile two blocks of nested "
+        "content into one. This is likely an authoring mistake in the source recipe that needs manual review."
+    )
+
+
+@pytest.mark.parametrize(
+    "file,flags",
+    [
+        ("duplicate_keys/nested-selector-guarded-section.yaml", RecipeReaderFlags.NONE),
+        ("duplicate_keys/nested-selector-guarded-section.yaml", RecipeReaderFlags.ALLOW_DUPLICATE_KEYS),
+    ],
+)
+def test_duplicate_nested_section_always_raises(file: str, flags: RecipeReaderFlags) -> None:
+    """
+    Tests that the section-duplication rejection applies no matter how deeply the section is nested, not just at
+    the top level (e.g. a duplicated `build:` block nested under an `outputs:` list entry).
+
+    :param file: File to run against
+    :param flags: RecipeReaderFlags to enable.
+    """
+    with pytest.raises(DuplicateKeyException) as e:
+        load_recipe(file, RecipeReader, flags)
+    assert e.value.message == (
+        "Duplicate key found at line 13: build. This key introduces a section (nested content on following lines), "
+        "and a duplicated section cannot be safely merged - there is no way to reconcile two blocks of nested "
+        "content into one. This is likely an authoring mistake in the source recipe that needs manual review."
+    )
+
+
+@pytest.mark.parametrize(
+    "file,flags",
+    [
+        ("duplicate_keys/partial-selector-leaf-key.yaml", RecipeReaderFlags.NONE),
+        ("duplicate_keys/partial-selector-leaf-key.yaml", RecipeReaderFlags.ALLOW_DUPLICATE_KEYS),
+    ],
+)
+def test_duplicate_leaf_key_missing_selector_on_an_occurrence_always_raises(
+    file: str, flags: RecipeReaderFlags
+) -> None:
+    """
+    Tests that a duplicated leaf key is rejected if at least one occurrence is missing a selector (e.g.
+    `script: default.sh` followed by `script: win.sh  # [win]`), since CRM's V1 fold cannot reliably tell which
+    value is the fallback/default in that case and produces broken output.
+
+    :param file: File to run against
+    :param flags: RecipeReaderFlags to enable.
+    """
+    with pytest.raises(DuplicateKeyException) as e:
+        load_recipe(file, RecipeReader, flags)
+    assert e.value.message == (
+        "Duplicate key found at line 11: script. Every occurrence of a duplicated key must carry a selector (e.g. "
+        "`# [win]`) to distinguish it from the others; otherwise there is no reliable way to tell which value "
+        "should apply."
+    )
+
+
+def test_is_leaf_key_rejects_section_with_single_list_item() -> None:
+    """
+    Tests that `RecipeReader._is_leaf_key()` does not mistake a section holding exactly one list item (e.g. `run:`
+    followed by a single `- a` line) for a true in-line `key: value` pair. Both end up with exactly one "strong
+    leaf" child, so `Node.is_single_key()` alone cannot tell them apart - the list item's `list_member_flag` is what
+    disambiguates the two.
+    """
+    leaf_key = Node(value="script", key_flag=True, children=[Node(value="install.sh")])
+    section_with_one_list_item = Node(value="run", key_flag=True, children=[Node(value="a", list_member_flag=True)])
+
+    assert RecipeReader._is_leaf_key(leaf_key)  # pylint: disable=protected-access
+    assert not RecipeReader._is_leaf_key(section_with_one_list_item)  # pylint: disable=protected-access

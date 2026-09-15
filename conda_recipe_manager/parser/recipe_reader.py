@@ -767,6 +767,58 @@ class RecipeReader(IsModifiable):
 
         return str(sanitized_fmt), tof_comment_cntr
 
+    @staticmethod
+    def _is_leaf_key(node: Node) -> bool:
+        """
+        Indicates if a key node's value was declared entirely in-line (e.g. `script: install.sh`), as opposed to a
+        section that introduces nested content on subsequent lines.
+
+        NOTE: `Node.is_single_key()` is not sufficient here: a section holding exactly one list item (e.g.
+        `run:` followed by a single line) also ends up with exactly one "strong leaf" child, indistinguishable
+        from a true in-line pair. The child's `list_member_flag` disambiguates the two.
+
+        :param node: The key node to inspect.
+        :returns: True if the node's value was declared on the key's own line. False otherwise.
+        """
+        return node.is_single_key() and not node.children[0].list_member_flag
+
+    @staticmethod
+    def _get_invalid_key_duplication_reason(new_node: Node, parent: Node) -> Optional[str]:
+        """
+        Determines whether a duplicate key is the one that `ALLOW_DUPLICATE_KEYS` can legitimately tolerate, or
+        whether it is an authoring mistake that should be rejected outright, regardless of that flag.
+
+        Only a duplicated *leaf* key (a one-line `key: value` pair, e.g. `script: install.sh`) can be tolerated: V1
+        conversion can fold same-named leaf keys into a single JINJA ternary expression. A duplicated section
+        (a key that introduces nested content on following lines, e.g. two full `build:` blocks, or two `run:` lists)
+        has no such fold available - there is no way to reconcile two blocks of nested content into one, so CRM has
+        no choice but to carry both through into V1 output verbatim, which is invalid at that point.
+
+        Additionally, even a duplicated leaf key only folds correctly when every occurrence carries a selector
+        (e.g. `# [win]`): without one on every occurrence, there is no reliable way to tell which value is the
+        fallback/default, and the V1 fold itself produces broken output.
+
+        :param new_node: The newly parsed, duplicate key node.
+        :param parent: The parent node both the new node and its existing duplicate(s) live under.
+        :returns: `None` if the duplication can be tolerated. Otherwise, a reason to explain why it cannot.
+        """
+        occurrences = [child for child in parent.children if child.value == new_node.value] + [new_node]
+
+        if not all(RecipeReader._is_leaf_key(occurrence) for occurrence in occurrences):
+            return (
+                "This key introduces a section (nested content on following lines), and a duplicated section "
+                "cannot be safely merged - there is no way to reconcile two blocks of nested content into one. "
+                "This is likely an authoring mistake in the source recipe that needs manual review."
+            )
+
+        if not all(Regex.SELECTOR.search(occurrence.comment) for occurrence in occurrences):
+            return (
+                "Every occurrence of a duplicated key must carry a selector (e.g. `# [win]`) to distinguish it "
+                "from the others; otherwise there is no reliable way to tell which value should apply."
+            )
+
+        return None
+
     def _construct_parse_tree(self, sanitized_yaml: str, tof_comment_cntr: int) -> None:
         """
         Constructs the parse tree from the sanitized YAML.
@@ -874,6 +926,10 @@ class RecipeReader(IsModifiable):
                 and not new_node.list_member_flag
                 and new_node.value in [child.value for child in parent.children]
             ):
+                invalid_dup_reason = RecipeReader._get_invalid_key_duplication_reason(new_node, parent)
+                if invalid_dup_reason is not None:
+                    raise DuplicateKeyException(line_idx, str(new_node.value), reason=invalid_dup_reason)
+
                 if RecipeReaderFlags.ALLOW_DUPLICATE_KEYS not in self._flags:
                     raise DuplicateKeyException(line_idx, str(new_node.value))
 
