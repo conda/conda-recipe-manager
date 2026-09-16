@@ -1133,7 +1133,7 @@ def test_contains_value(file: str, path: str, expected: bool) -> None:
             False,
             "#1 quality TLS certs while you wait, for the discerning tester",
         ),
-        # Comments indented with a section
+        # Comments indented within a section
         (
             "parser_regressions/comment_indented_inside_section.yaml",
             "/requirements/run",
