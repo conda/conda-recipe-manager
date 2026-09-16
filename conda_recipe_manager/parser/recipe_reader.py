@@ -816,6 +816,22 @@ class RecipeReader(IsModifiable):
             if tof_comment_cntr > 0 and not new_node.is_comment():
                 tof_comment_cntr = -1
 
+            # Handle comments that are indented inside sections and sandwiched between other nodes.
+            # Ex:
+            #   - foo
+            #    # a stray comment indented one space too many
+            #    # another one
+            #   - bar
+            if (
+                new_indent > cur_indent
+                and new_node.is_comment()
+                and not new_node.list_member_flag
+                and last_node.is_strong_leaf()
+            ):
+                parent = node_stack[-1]
+                parent.children.append(new_node)
+                continue
+
             if new_indent > cur_indent:
                 node_stack.append(last_node)
                 # Edge case: The first element of a list of objects that is NOT a 1-line key-value pair needs
