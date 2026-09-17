@@ -1,0 +1,6 @@
+requirements:
+  run:
+    - foo
+    # a stray comment indented one space too many
+    # another one
+    - bar

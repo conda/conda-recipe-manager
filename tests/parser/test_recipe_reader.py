@@ -269,6 +269,11 @@ def test_round_trip(file: str, cls: type[RecipeReader]) -> None:
             "parser_regressions/issue-407_duplicate_jinja_vars_input_streamlit.yaml",
             "parser_regressions/issue-407_duplicate_jinja_vars_parsed_streamlit.yaml",
         ),
+        #### Comment Indentation Regressions ####
+        (
+            "parser_regressions/comment_indented_inside_section.yaml",
+            "parser_regressions/comment_indented_inside_section_normalized.yaml",
+        ),
         (
             "cbc_files/zip_keys_compact_nested_list.yaml",
             "cbc_files/zip_keys_compact_nested_list_rendered.yaml",
@@ -1128,6 +1133,13 @@ def test_contains_value(file: str, path: str, expected: bool) -> None:
             False,
             "#1 quality TLS certs while you wait, for the discerning tester",
         ),
+        # Comments indented within a section
+        (
+            "parser_regressions/comment_indented_inside_section.yaml",
+            "/requirements/run",
+            False,
+            ["foo", "bar"],
+        ),
     ],
 )
 def test_get_value(file: str, path: str, sub_vars: bool, expected: JsonType) -> None:
@@ -1468,6 +1480,10 @@ def test_append_to_path(base: str, ext: str, expected: str) -> None:
                 "/outputs/1/requirements/run/0",
                 "/outputs/1/requirements/run/1",
             ],
+        ),
+        (
+            "parser_regressions/comment_indented_inside_section.yaml",
+            ["/requirements/run/0", "/requirements/run/1"],
         ),
     ],
 )
