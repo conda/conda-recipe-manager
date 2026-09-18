@@ -768,21 +768,6 @@ class RecipeReader(IsModifiable):
         return str(sanitized_fmt), tof_comment_cntr
 
     @staticmethod
-    def _is_leaf_key(node: Node) -> bool:
-        """
-        Indicates if a key node's value was declared entirely in-line (e.g. `script: install.sh`), as opposed to a
-        section that introduces nested content on subsequent lines.
-
-        NOTE: `Node.is_single_key()` is not sufficient here: a section holding exactly one list item (e.g.
-        `run:` followed by a single line) also ends up with exactly one "strong leaf" child, indistinguishable
-        from a true in-line pair. The child's `list_member_flag` disambiguates the two.
-
-        :param node: The key node to inspect.
-        :returns: True if the node's value was declared on the key's own line. False otherwise.
-        """
-        return node.is_single_key() and not node.children[0].list_member_flag
-
-    @staticmethod
     def _get_invalid_key_duplication_reason(new_node: Node, parent: Node) -> Optional[str]:
         """
         Determines whether a duplicate key is the one that `ALLOW_DUPLICATE_KEYS` can legitimately tolerate, or
@@ -802,9 +787,9 @@ class RecipeReader(IsModifiable):
         :param parent: The parent node both the new node and its existing duplicate(s) live under.
         :returns: `None` if the duplication can be tolerated. Otherwise, a reason to explain why it cannot.
         """
-        occurrences = [child for child in parent.children if child.value == new_node.value] + [new_node]
+        occurrences: Final = [child for child in parent.children if child.value == new_node.value] + [new_node]
 
-        if not all(RecipeReader._is_leaf_key(occurrence) for occurrence in occurrences):
+        if not all(occurrence.is_inline_scalar_key() for occurrence in occurrences):
             return (
                 "This key introduces a section (nested content on following lines), and a duplicated section "
                 "cannot be safely merged - there is no way to reconcile two blocks of nested content into one. "

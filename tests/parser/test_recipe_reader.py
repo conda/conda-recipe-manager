@@ -10,7 +10,6 @@ from typing import Final
 
 import pytest
 
-from conda_recipe_manager.parser._node import Node
 from conda_recipe_manager.parser._node_var import NodeVar
 from conda_recipe_manager.parser.cbc_reader import CbcReader  # Used in some parsing tests instead of `RecipeReader`.
 from conda_recipe_manager.parser.enums import SchemaVersion
@@ -1998,17 +1997,3 @@ def test_duplicate_leaf_key_missing_selector_on_an_occurrence_always_raises(
         "`# [win]`) to distinguish it from the others; otherwise there is no reliable way to tell which value "
         "should apply."
     )
-
-
-def test_is_leaf_key_rejects_section_with_single_list_item() -> None:
-    """
-    Tests that `RecipeReader._is_leaf_key()` does not mistake a section holding exactly one list item (e.g. `run:`
-    followed by a single `- a` line) for a true in-line `key: value` pair. Both end up with exactly one "strong
-    leaf" child, so `Node.is_single_key()` alone cannot tell them apart - the list item's `list_member_flag` is what
-    disambiguates the two.
-    """
-    leaf_key = Node(value="script", key_flag=True, children=[Node(value="install.sh")])
-    section_with_one_list_item = Node(value="run", key_flag=True, children=[Node(value="a", list_member_flag=True)])
-
-    assert RecipeReader._is_leaf_key(leaf_key)  # pylint: disable=protected-access
-    assert not RecipeReader._is_leaf_key(section_with_one_list_item)  # pylint: disable=protected-access
