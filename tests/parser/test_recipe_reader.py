@@ -1999,4 +1999,4 @@ def test_duplicate_key_always_raises(file: str, flags: RecipeReaderFlags, key: s
     """
     with pytest.raises(DuplicateKeyException) as e:
         load_recipe(file, RecipeReader, flags)
-    assert e.value.message == f"Duplicate key found at line {line}: {key}. {reason}"
+        assert e.value.message == f"Duplicate key found at line {line}: {key}. {reason}"
