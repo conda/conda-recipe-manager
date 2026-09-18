@@ -37,13 +37,11 @@ QUICK_FOX_L_ANGLE_MINUS: Final[str] = "The quick brown tiger\njumped over the la
 
 # `DuplicateKeyException` reasons. Same as the text produced by `RecipeReader._get_invalid_key_duplication_reason()`.
 DUPLICATE_KEY_SECTION_REASON: Final[str] = (
-    "This key introduces a section (nested content on following lines), and a duplicated section "
-    "cannot be safely merged - there is no way to reconcile two blocks of nested content into one. "
-    "This is likely an authoring mistake in the source recipe that needs manual review."
+    "This key introduces a section, which cannot be safely merged with a duplicate. This is likely "
+    "an authoring mistake that needs manual review."
 )
 DUPLICATE_KEY_MISSING_SELECTOR_REASON: Final[str] = (
-    "Every occurrence of a duplicated key must carry a selector (e.g. `# [win]`) to distinguish it "
-    "from the others; otherwise there is no reliable way to tell which value should apply."
+    "Every occurrence must carry a selector to distinguish which value should apply."
 )
 
 

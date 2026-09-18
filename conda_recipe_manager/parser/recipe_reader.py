@@ -791,16 +791,12 @@ class RecipeReader(IsModifiable):
 
         if not all(occurrence.is_inline_scalar_key() for occurrence in occurrences):
             return (
-                "This key introduces a section (nested content on following lines), and a duplicated section "
-                "cannot be safely merged - there is no way to reconcile two blocks of nested content into one. "
-                "This is likely an authoring mistake in the source recipe that needs manual review."
+                "This key introduces a section, which cannot be safely merged with a duplicate. This is likely "
+                "an authoring mistake that needs manual review."
             )
 
         if not all(Regex.SELECTOR.search(occurrence.comment) for occurrence in occurrences):
-            return (
-                "Every occurrence of a duplicated key must carry a selector (e.g. `# [win]`) to distinguish it "
-                "from the others; otherwise there is no reliable way to tell which value should apply."
-            )
+            return "Every occurrence must carry a selector to distinguish which value should apply."
 
         return None
 
