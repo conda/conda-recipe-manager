@@ -211,6 +211,19 @@ class Node:
         """
         return self.key_flag and len(self.children) == 1 and self.children[0].is_strong_leaf()
 
+    def is_inline_scalar_key(self) -> bool:
+        """
+        Indicates if a key node's value was declared entirely in-line (e.g. `script: install.sh`), as opposed to a
+        section that introduces nested content on subsequent lines.
+
+        NOTE: `Node.is_single_key()` is not sufficient here: a section holding exactly one list item (e.g.
+        `run:` followed by a single line) also ends up with exactly one "strong leaf" child, indistinguishable
+        from a true in-line pair. The child's `list_member_flag` disambiguates the two.
+
+        :returns: True if the node's value was declared on the key's own line. False otherwise.
+        """
+        return self.is_single_key() and not self.children[0].list_member_flag
+
     def is_collection_element(self) -> bool:
         """
         Indicates if the node is a list member that contains other collection types. In other words, this node has no

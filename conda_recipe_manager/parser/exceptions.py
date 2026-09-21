@@ -179,14 +179,18 @@ class DuplicateKeyException(ParsingException):
     Exception raised when a duplicate key is encountered.
     """
 
-    def __init__(self, line_number: int, key: str):
+    def __init__(self, line_number: int, key: str, reason: str = ""):
         """
         Constructs a duplicate key exception.
 
         :param line_number: The line number where the duplicate key was encountered.
         :param key: The duplicate key that was encountered.
+        :param reason: (Optional) Additional context on why this duplicate could not be tolerated.
         """
-        super().__init__(f"Duplicate key found at line {line_number}: {key}")
+        msg = f"Duplicate key found at line {line_number}: {key}"
+        if reason:
+            msg = f"{msg}. {reason}"
+        super().__init__(msg)
 
 
 class DuplicateKeyWarning(UserWarning):
