@@ -1,0 +1,21 @@
+package:
+  name: r-loose-rock
+  version: 1.0.0
+
+source:
+  url: https://example.com/r-loose-rock_1.0.0.tar.gz
+  sha256: 0000000000000000000000000000000000000000000000000000000000000
+
+build:
+  number: 0
+  noarch: generic
+
+build:
+  number: 0
+
+requirements:
+  run:
+    - r-base
+
+about:
+  license: MIT
