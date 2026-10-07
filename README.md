@@ -155,8 +155,8 @@ Here is a brief overview of our current release process:
 1. Make a post to the [build-tools Zulip channel](https://conda.zulipchat.com/#narrow/channel/471111-builds-tools) announcing the release with highlights from `CHANGELOG.md`.
 
 # Special Thanks
-Over the years there have been a lot of folks who have helped out Conda Recipe Manager behind the scenes without direct
-visibility on GitHub and elsewhere in the wider open Conda Community. This section shout-out folks who made CRM
+Over the years there have been a lot of folks who have helped out Conda Recipe Manager behind the scenes. Some kinds of
+help are not always directly visible on GitHub or on the open internet. This section shout-out folks who made CRM
 possible in many unseen ways. We are incredibly grateful for their contributions.
 
 - @markan and @ythomasAnaconda who both initially believed in the idea that would become CRM and actively encouraged the
