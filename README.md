@@ -165,7 +165,8 @@ possible in many unseen ways. We are incredibly grateful for their contributions
   to the Conda Organization.
 - @cbouss for his work on the internal project that originally inspired the recipe parser.
 - @akabanovs for his work and experimentation on package dependency graph building.
-- @JeanChristopheMorinPerso for his PR review contributions when this project was internal and answering questions about the `conda` file formats.
+- @JeanChristopheMorinPerso for his PR review contributions when this project was internal and answering questions about
+  the `conda` file formats.
 - @mrbean-bremen for maintaining the `pyfakefs` project and for providing guidance and assistance with `pyfakefs`.
 - Several pieces of test data that are essential to the testing and maintenance of `conda-recipe-manager` are adapted
   from [AnacondaRecipes](https://github.com/AnacondaRecipes) and [conda-forge](https://github.com/conda-forge),
