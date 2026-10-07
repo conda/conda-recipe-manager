@@ -278,11 +278,7 @@ class CbcReader(RecipeReader):
         default_variants = {}
         for key, value in DEFAULT_VARIANTS.items():
             default_variants[key] = [value] if isinstance(value, PRIMITIVES_TUPLE) else value
-        return CbcReader(
-            yaml.dump(
-                default_variants, Dumper=ForceIndentDumper, sort_keys=False, width=sys.maxsize  # type: ignore[misc]
-            )
-        )
+        return CbcReader(yaml.dump(default_variants, Dumper=ForceIndentDumper, sort_keys=False, width=sys.maxsize))
 
     @staticmethod
     def generate_cbc_values(cbc_files: list[CbcReader], build_context: BuildContext) -> CbcOutputType:

@@ -522,7 +522,7 @@ class RecipeReader(IsModifiable):
             return RecipeReader._create_private_recipe_reader(  # pylint: disable=protected-access
                 # NOTE: `yaml.dump()` defaults to 80 character lines. Longer lines may have newlines unexpectedly
                 #       injected into this value, screwing up the parse-tree.
-                yaml.dump(value, Dumper=ForceIndentDumper, sort_keys=False, width=sys.maxsize),  # type: ignore[misc]
+                yaml.dump(value, Dumper=ForceIndentDumper, sort_keys=False, width=sys.maxsize),
             )._root.children
 
         # Primitives can be safely stringified to generate a parse tree.

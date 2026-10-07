@@ -155,9 +155,19 @@ Here is a brief overview of our current release process:
 1. Make a post to the [build-tools Zulip channel](https://conda.zulipchat.com/#narrow/channel/471111-builds-tools) announcing the release with highlights from `CHANGELOG.md`.
 
 # Special Thanks
+Over the years there have been a lot of folks who have helped out Conda Recipe Manager behind the scenes. Some kinds of
+help are not always directly visible on GitHub or on the open internet. This section shout-out folks who made CRM
+possible in many unseen ways. We are incredibly grateful for their contributions.
+
+- @markan and @ythomasAnaconda who both initially believed in the idea that would become CRM and actively encouraged the
+  development of this project.
+- @chenghlee and @jezdez for their incredible early support for making this an OSS project and their help onboarding CRM
+  to the Conda Organization.
 - @cbouss for his work on the internal project that originally inspired the recipe parser.
 - @akabanovs for his work and experimentation on package dependency graph building.
-- @JeanChristopheMorinPerso for his PR review contributions when this project was internal and answering questions about the `conda` file formats.
+- @JeanChristopheMorinPerso for his PR review contributions when this project was internal and answering questions about
+  the `conda` file formats.
 - @mrbean-bremen for maintaining the `pyfakefs` project and for providing guidance and assistance with `pyfakefs`.
-- Several pieces of test data that are essential to the testing and maintenance of `conda-recipe-manager` are adapted from [AnacondaRecipes](https://github.com/AnacondaRecipes) and [conda-forge](https://github.com/conda-forge),
- we would like to acknowledge this and thank everyone who has contributed to those recipes and config files.
+- Several pieces of test data that are essential to the testing and maintenance of `conda-recipe-manager` are adapted
+  from [AnacondaRecipes](https://github.com/AnacondaRecipes) and [conda-forge](https://github.com/conda-forge),
+   we would like to acknowledge this and thank everyone who has contributed to those recipes and config files.
