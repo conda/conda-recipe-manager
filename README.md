@@ -161,8 +161,8 @@ possible in many unseen ways. We are incredibly grateful for their contributions
 
 - @markan and @ythomasAnaconda who both initially believed in the idea that would become CRM and actively encouraged the
   development of this project.
-- @chenghlee and @jezdez for their incredible early support for making this an OSS project and help us onboard CRM to
-  the Conda Organization.
+- @chenghlee and @jezdez for their incredible early support for making this an OSS project and their help onboarding CRM
+  to the Conda Organization.
 - @cbouss for his work on the internal project that originally inspired the recipe parser.
 - @akabanovs for his work and experimentation on package dependency graph building.
 - @JeanChristopheMorinPerso for his PR review contributions when this project was internal and answering questions about the `conda` file formats.
