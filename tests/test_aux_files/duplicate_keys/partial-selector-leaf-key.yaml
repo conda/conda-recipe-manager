@@ -1,0 +1,14 @@
+package:
+  name: foo
+  version: 1.0.0
+
+source:
+  url: https://example.com/foo.tar.gz
+  sha256: 0000000000000000000000000000000000000000000000000000000000000
+
+build:
+  script: default.sh
+  script: win.sh  # [win]
+
+about:
+  license: MIT

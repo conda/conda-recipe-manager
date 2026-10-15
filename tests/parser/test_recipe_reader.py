@@ -35,6 +35,15 @@ QUICK_FOX_L_ANGLE: Final[str] = "The quick brown tiger\njumped over the lazy dog
 QUICK_FOX_L_ANGLE_PLUS: Final[str] = "The quick brown tiger\njumped over the lazy dog\n"
 QUICK_FOX_L_ANGLE_MINUS: Final[str] = "The quick brown tiger\njumped over the lazy dog"
 
+# `DuplicateKeyException` reasons. Same as the text produced by `RecipeReader._get_invalid_key_duplication_reason()`.
+DUPLICATE_KEY_SECTION_REASON: Final[str] = (
+    "This key introduces a section, which cannot be safely merged with a duplicate. This is likely "
+    "an authoring mistake that needs manual review."
+)
+DUPLICATE_KEY_MISSING_SELECTOR_REASON: Final[str] = (
+    "Every occurrence must carry a selector to distinguish which value should apply."
+)
+
 
 ## Construction and rendering sanity checks ##
 
@@ -1895,3 +1904,99 @@ def test_duplicate_keys_allowed(file: str, flags: RecipeReaderFlags, caplog: pyt
             load_recipe(file, RecipeReader, flags)
 
     assert "Duplicate `/outputs/?/script` key found while `ALLOW_DUPLICATE_KEYS` is enabled. Ignoring..." in caplog.text
+
+
+@pytest.mark.parametrize(
+    "file,flags,key,line,reason",
+    [
+        # A section duplicated with no selector to distinguish the occurrences (e.g. two full, unconditional
+        # `build:` blocks at the top level).
+        (
+            "duplicate_keys/unconditional-top-level-section.yaml",
+            RecipeReaderFlags.NONE,
+            "build",
+            13,
+            DUPLICATE_KEY_SECTION_REASON,
+        ),
+        (
+            "duplicate_keys/unconditional-top-level-section.yaml",
+            RecipeReaderFlags.ALLOW_DUPLICATE_KEYS,
+            "build",
+            13,
+            DUPLICATE_KEY_SECTION_REASON,
+        ),
+        # A duplicated section is rejected even when every occurrence carries a selector (e.g.
+        # `build:  # [win]` / `build:  # [not win]`).
+        (
+            "duplicate_keys/selector-guarded-top-level-section.yaml",
+            RecipeReaderFlags.NONE,
+            "build",
+            12,
+            DUPLICATE_KEY_SECTION_REASON,
+        ),
+        (
+            "duplicate_keys/selector-guarded-top-level-section.yaml",
+            RecipeReaderFlags.ALLOW_DUPLICATE_KEYS,
+            "build",
+            12,
+            DUPLICATE_KEY_SECTION_REASON,
+        ),
+        # The section-duplication rejection applies no matter how deeply the section is nested,
+        # not just at the top level (e.g. a duplicated `build:` block nested under an `outputs:` list entry).
+        (
+            "duplicate_keys/nested-selector-guarded-section.yaml",
+            RecipeReaderFlags.NONE,
+            "build",
+            13,
+            DUPLICATE_KEY_SECTION_REASON,
+        ),
+        (
+            "duplicate_keys/nested-selector-guarded-section.yaml",
+            RecipeReaderFlags.ALLOW_DUPLICATE_KEYS,
+            "build",
+            13,
+            DUPLICATE_KEY_SECTION_REASON,
+        ),
+        # A duplicated leaf key is rejected if at least one occurrence is missing a selector
+        (
+            "duplicate_keys/partial-selector-leaf-key.yaml",
+            RecipeReaderFlags.NONE,
+            "script",
+            11,
+            DUPLICATE_KEY_MISSING_SELECTOR_REASON,
+        ),
+        (
+            "duplicate_keys/partial-selector-leaf-key.yaml",
+            RecipeReaderFlags.ALLOW_DUPLICATE_KEYS,
+            "script",
+            11,
+            DUPLICATE_KEY_MISSING_SELECTOR_REASON,
+        ),
+    ],
+    ids=[
+        "unconditional-section-none",
+        "unconditional-section-allow",
+        "selector-guarded-section-none",
+        "selector-guarded-section-allow",
+        "nested-section-none",
+        "nested-section-allow",
+        "missing-selector-leaf-key-none",
+        "missing-selector-leaf-key-allow",
+    ],
+)
+def test_duplicate_key_always_raises(file: str, flags: RecipeReaderFlags, key: str, line: int, reason: str) -> None:
+    """
+    Tests that a duplicate key which cannot be safely merged is always rejected with an actionable reason, even
+    when `ALLOW_DUPLICATE_KEYS` is set. This happens in two cases: the key introduces a section (nested content on
+    following lines), which has no fold available to reconcile two blocks into one; or the key is a leaf, but at
+    least one occurrence is missing a selector, so CRM cannot reliably tell which value is the fallback/default.
+
+    :param file: File to run against
+    :param flags: RecipeReaderFlags to enable.
+    :param key: The duplicate key's name, as it appears in the expected exception message.
+    :param line: Line number the duplicate key is expected to be reported at.
+    :param reason: The reason text expected to accompany the duplicate key exception message.
+    """
+    with pytest.raises(DuplicateKeyException) as e:
+        load_recipe(file, RecipeReader, flags)
+        assert e.value.message == f"Duplicate key found at line {line}: {key}. {reason}"
