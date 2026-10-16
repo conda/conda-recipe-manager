@@ -1,0 +1,65 @@
+{% set name = "conda-index" %}
+{% set version = "0.12.1" %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  url: https://github.com/conda/{{ name }}/archive/refs/tags/{{ version }}.tar.gz
+  sha256: 08586a4d67d0faea679721b434a1e2df5a26ed58b6b0d7e62d19e5ada803e380
+
+build:
+  script_env:
+    - SETUPTOOLS_SCM_PRETEND_VERSION={{ version }}
+  script: {{ PYTHON }} -m pip install --no-build-isolation . -vv
+  number: 0
+  noarch: python
+
+requirements:
+  host:
+    - hatchling >=1.12.2
+    - hatch-vcs >=0.2.0
+    - python {{ python_min }}
+    - pip
+  run:
+    - python >={{ python_min }}
+    - conda >=25
+    - conda-package-streaming >=0.12.0
+    - filelock
+    - jinja2
+    - msgpack-python >=1.0.2
+    - ruamel.yaml
+    - zstandard
+
+test:
+  requires:
+    - conda-build >=25
+    - conda-package-handling >=2.2.0
+    - coverage
+    - fsspec
+    - pytest >=7
+    - pytest-cov
+    - pytest-mock
+    - python {{ python_min }}
+  commands:
+    - pytest -k test_index_on_single_subdir_1
+  imports:
+    - conda_index.index
+  source_files:
+    - tests
+
+about:
+  home: https://github.com/conda/conda-index
+  summary: Create `repodata.json` for collections of conda packages.
+  license: BSD-3-Clause
+  license_file: LICENSE
+  doc_url: https://conda.github.io/conda-index
+  dev_url: https://github.com/conda/conda-index
+
+extra:
+  recipe-maintainers:
+    - kenodegard
+    - AndresGuzman-Ballen
+    - dholth
+    - jharlow-intel
