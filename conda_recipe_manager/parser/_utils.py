@@ -63,6 +63,9 @@ def str_to_stack_path(path: str) -> StrStack:
     # `PurePath` could be used here, but isn't for performance gains.
     # TODO reduce 3 (O)n operations to 1 O(n) operation
 
+    if not path:
+        raise ValueError("Recipe path must not be empty.")
+
     # Wipe the trailing `/`, if provided. It doesn't have meaning here; only the `root` path is tracked.
     if path[-1] == ROOT_NODE_VALUE:
         path = path[:-1]

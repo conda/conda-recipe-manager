@@ -4,7 +4,9 @@
 
 from __future__ import annotations
 
-from conda_recipe_manager.parser._utils import stack_path_to_str
+import pytest
+
+from conda_recipe_manager.parser._utils import stack_path_to_str, str_to_stack_path
 
 
 def test_stack_path_to_str_does_not_modify_input() -> None:
@@ -20,3 +22,19 @@ def test_stack_path_to_str_does_not_modify_input() -> None:
     stack_path_to_str(path_stack)
 
     assert path_stack == ["skip", "build", "/"]
+
+
+def test_str_to_stack_path_rejects_empty_path() -> None:
+    """
+    An empty path string cannot be deconstructed and must fail with a clear
+    error instead of an unhandled `IndexError`.
+    """
+    with pytest.raises(ValueError, match="must not be empty"):
+        str_to_stack_path("")
+
+
+def test_str_to_stack_path_round_trip() -> None:
+    """
+    A well-formed path deconstructs into a stack and back without changes.
+    """
+    assert str_to_stack_path("/foo/bar") == ["bar", "foo", "/"]
