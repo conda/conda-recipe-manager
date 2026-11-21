@@ -257,6 +257,29 @@ def test_round_trip(file: str, cls: type[RecipeReader]) -> None:
     assert parser.render() == expected
 
 
+def test_round_trip_issue_404_jinja_slice_expression() -> None:
+    """
+    Regression test for issue #404: JINJA slice expressions (e.g. `version[:-1]`) used as variable values must not be
+    wrapped in quotes when the recipe is rendered back out. Plain integer index access (e.g. `version[0]`) was already
+    exempted from quoting; slices were not.
+    """
+    recipe_str: Final[str] = (
+        '{% set name = "cfitsio" %}\n'
+        '{% set version = "3.470" %}\n'
+        "{% set nozeroversion = version[:-1] %}\n"
+        "{% set major = version[0] %}\n"
+        "\n"
+        "package:\n"
+        "  name: {{ name }}\n"
+        "  version: {{ version }}\n"
+    )
+    rendered: Final[str] = RecipeReader(recipe_str).render()
+    assert "{% set nozeroversion = version[:-1] %}" in rendered
+    assert "{% set major = version[0] %}" in rendered
+    # Re-rendering the rendered output must be stable.
+    assert RecipeReader(rendered).render() == rendered
+
+
 @pytest.mark.parametrize(
     "file,expected",
     [

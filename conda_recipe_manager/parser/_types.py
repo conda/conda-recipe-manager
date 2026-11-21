@@ -262,7 +262,9 @@ class Regex:
     JINJA_FUNCTION_JOIN: Final[re.Pattern[str]] = re.compile(
         r"""\|\s*(join)\(['"]([^'"]*)['"]\)|['"]([^'"]*)['"]\.(join)\((.*)\)"""
     )
-    JINJA_FUNCTION_IDX_ACCESS: Final[re.Pattern[str]] = re.compile(r"(.+)\[(-?\d+)\]")
+    # Matches integer index access and slice access (e.g. `version[0]`, `version[-1]`, `version[:-1]`) of a JINJA
+    # variable.
+    JINJA_FUNCTION_IDX_ACCESS: Final[re.Pattern[str]] = re.compile(r"(.+)\[(-?\d*(?::-?\d*)?)\]")
     JINJA_FUNCTION_ADD_CONCAT: Final[re.Pattern[str]] = re.compile(
         _JINJA_FUNCTION_ADD_CONCAT_TOKEN + r"[ \t]+\+[ \t]*" + _JINJA_FUNCTION_ADD_CONCAT_TOKEN
     )
